@@ -14,12 +14,14 @@
 //
 // env: { patch, reader, requestPort(), log } (patch and reader loaded and checked before any flow), and
 // for the Mac's Prolific cables: platform ('mac' | 'other') and usbDevice(filter, prompt) -> a WebUSB device.
+// env.diag (optional): a lib/diag.js Recorder. It gets the cable traffic and the facts below (never flash
+// contents), for the page's "Download diagnostics".
 //
 // Our reader on the radio can CRC flash itself, so the slow part (reading 1 MB) happens once, for the
 // backup. Telling stock from not-stock, checking the backup read and checking the install afterwards
 // all compare per-sector CRC-32s, which takes seconds.
 
-import { addr, equal } from "./bytes.js";
+import { addr, equal, sha256 } from "./bytes.js";
 import {
   APP, FLASH_SIZE, SECTOR, UNIT, VERSION_AT, BOOT_MAGIC, CheckError,
   classify, krakenUpdate, quickChecks, stockUpdate, expectedFlash, versionOf,
@@ -31,6 +33,12 @@ import { Pl2303Port, PROLIFIC_VENDOR } from "./pl2303.js";
 
 const BASE_BAUD = 115200;
 
+// Facts for the diagnostics download (env.diag): note replaces, merge adds fields, add appends to a list
+const note = (env, key, value) => env.diag?.note(key, value);
+const merge = (env, key, value) => env.diag && env.diag.note(key, { ...(env.diag.facts[key] || {}), ...value });
+const add = (env, key, value) => env.diag?.add(key, value);
+const crcHex = (list) => list.map((c) => c.toString(16).padStart(8, "0"));
+
 // The port and the current link on it. The link is reopened to change the baud rate.
 class Session {
   constructor(env, port) {
@@ -41,7 +49,7 @@ class Session {
   }
 
   async open(baud = BASE_BAUD) {
-    this.link = new Link(this.port, { log: this.log });
+    this.link = new Link(this.port, { log: this.log, trace: this.env.diag });
     await this.link.open(baud);
     this.env.link = this.link;
     return this.link;
@@ -83,6 +91,7 @@ async function openSession(env, ui) {
       try {
         await direct.open();
         env.log("Prolific cable on a Mac: using it directly over USB");
+        note(env, "cable", { usbVendorId: info.usbVendorId, usbProductId: info.usbProductId, path: "WebUSB (direct, Apple driver bypassed)" });
         return direct;
       } catch (e) {
         env.log(`direct USB access to the cable failed (${e.message}); trying its serial port`);
@@ -92,6 +101,7 @@ async function openSession(env, ui) {
   }
   const s = new Session(env, port);
   s.appleProlific = env.platform === "mac" && info.usbVendorId === PROLIFIC_VENDOR;
+  note(env, "cable", { usbVendorId: info.usbVendorId, usbProductId: info.usbProductId, path: s.appleProlific ? "Web Serial (Apple's Prolific driver)" : "Web Serial" });
   await s.open();
   return s;
 }
@@ -130,11 +140,13 @@ async function connect(session, env, ui, { askOff = true } = {}) {
   const baud = await speedUp(session, reader, { maxBaud: cableMaxBaud(usb) });
   ui.log(`cable ${hex4(usb.usbVendorId)}:${hex4(usb.usbProductId)}`);
   ui.log(`reader v${reader.version} running at ${baud} baud`);
+  note(env, "reader", { version: reader.version, divisor: reader.divisor, baud, maxBaud: cableMaxBaud(usb), tries: reader.speedTries || [] });
   const head = new Uint8Array(FLASH_SIZE);
   await reader.read(head, 0, SECTOR);
   const vsec = VERSION_AT & ~(SECTOR - 1);
   await reader.read(head, vsec, SECTOR);
   const checks = quickChecks(head.subarray(0, SECTOR), head.subarray(VERSION_AT), env.patch);
+  merge(env, "radio", { version: versionOf(head), bootHeader: equal(head.subarray(0, 4), BOOT_MAGIC) ? "ok" : "not the DM-32UV boot magic" });
   for (const c of checks) ui.check(c.id, c.label, c.ok, c.ok ? undefined : c.detail);
   const bad = checks.find((c) => !c.ok);
   if (bad) {
@@ -146,6 +158,7 @@ async function connect(session, env, ui, { askOff = true } = {}) {
   }
   ui.progress(null, "Checking the radio\u2026");
   const sums = await reader.sums(0, FLASH_SIZE, SECTOR);
+  add(env, "sectorCrc32", { when: askOff ? "connect" : "after install", unitSector: crcHex([sums[UNIT / SECTOR]])[0], crc32: crcHex(sums) });
   return { reader, sums };
 }
 
@@ -171,7 +184,7 @@ function refuseNotStock(env, ui, n) {
 }
 
 // Read all of program flash and check every sector against the radio's own CRC
-async function backup(reader, sums, ui) {
+async function backup(reader, sums, ui, env) {
   const img = new Uint8Array(FLASH_SIZE);
   ui.show({
     id: "backup",
@@ -186,15 +199,18 @@ async function backup(reader, sums, ui) {
     for (let s = 0; s < FLASH_SIZE; s += SECTOR) if (crc32(img.subarray(s, s + SECTOR)) !== sums[s / SECTOR]) bad.push(s);
     if (!bad.length) {
       ui.progress(1, "Backed up");
+      merge(env, "backup", { rereadPasses: pass, sha256: await sha256(img), firmwareSha256: await sha256(img.subarray(APP, env.patch.stock.end)) });
       return img;
     }
+    add(env, "backupRereads", { sectors: bad.map(addr) });
     ui.log(`sector(s) ${bad.map(addr).join(" ")} do not match the radio's CRC; reading again`);
     for (const s of bad) await reader.read(img, s, SECTOR);
   }
   throw new RadioError("read-unstable", "The backup didn\u2019t read cleanly. Plug the cable into another USB port and try again.");
 }
 
-function checkBackupFile(img, env, ui) {
+async function checkBackupFile(img, env, ui) {
+  note(env, "backupFile", { size: img.length, sha256: await sha256(img), version: img.length === FLASH_SIZE ? versionOf(img) : undefined });
   const ok = img.length === FLASH_SIZE && equal(img.subarray(0, 4), BOOT_MAGIC);
   ui.check("file", "File is a 1 MB DM-32UV program-memory backup", ok);
   if (!ok) throw new CheckError("file", "That file isn\u2019t a DM-32UV backup from this page.");
@@ -220,13 +236,17 @@ async function flashAndVerify(session, env, ui, file, { low, what }) {
     ui.lockCancel?.(true);
     ui.show({ id: "installing", icon: "install", title: `Installing ${what}`, steps: ["About a minute and a half."], note: "Don\u2019t unplug the cable." });
     ui.progress(null, "Erasing\u2026");
+    const stats = {};
     try {
       await flashUpdate(session.link, file, {
         onPhase: (p) => p === "restart" && ui.progress(null, "Restarting the radio\u2026"),
         onProgress: (f) => ui.progress(f, "Installing"),
+        stats,
       });
+      add(env, "flash", { what, result: "sent", ...stats });
     } catch (e) {
       ui.lockCancel?.(false);
+      add(env, "flash", { what, result: "failed", code: e.code, message: e.message, ...stats });
       if (!(e instanceof RadioError)) throw e;
       ui.log(`flash: ${e.message}`);
       const noUpdater = e.code === "no-updater";
@@ -264,6 +284,7 @@ async function flashAndVerify(session, env, ui, file, { low, what }) {
     const want = sectorSums(expectedFlash(file, low));
     const bad = [];
     for (let s = low ? 0 : APP; s < FLASH_SIZE; s += SECTOR) if (sums[s / SECTOR] !== want[s / SECTOR]) bad.push(s);
+    note(env, "verify", { bad: bad.map(addr) });
     if (!bad.length) {
       ui.check("verify", "The radio holds exactly what was sent", true);
       return;
@@ -301,6 +322,7 @@ export async function install(env, ui) {
     ui.phase("check");
     const { reader, sums } = await connect(session, env, ui);
     const quick = quickClassify(sums, env.patch);
+    merge(env, "radio", { kind: quick.kind, differ: quick.bad?.length, differing: quick.bad?.slice(0, 64).map(addr) });
     if (quick.kind === "kraken") {
       ui.check("stock", "Firmware is stock", "warn", "This radio already runs this Kraken build.");
       ui.done({ id: "already", title: "Kraken is already installed", steps: ["This radio already has this version.", "Turn it off and on again to use it."] });
@@ -308,13 +330,14 @@ export async function install(env, ui) {
     }
     if (quick.kind === "other") refuseNotStock(env, ui, quick.bad.length);
     ui.phase("backup");
-    const img = await backup(reader, sums, ui);
+    const img = await backup(reader, sums, ui, env);
     if ((await classify(img, env.patch)) !== "stock") refuseNotStock(env, ui, 1);
     ui.check("stock", "Firmware is stock and the backup is exact", true);
     ui.phase("save");
     await ui.saveBackup(img, `DM32UV-backup-${stamp()}.bin`);
     ui.check("saved", "Backup saved", true);
     const file = await krakenUpdate(img, env.patch);
+    note(env, "update", { what: "Kraken", size: file.length, sha256: await sha256(file) });
     ui.check("update", "Kraken update built and checked", true);
     await flashAndVerify(session, env, ui, file, { low: img.subarray(0, APP), what: "Kraken" });
     ui.phase("done");
@@ -328,14 +351,17 @@ async function fileFlow(env, ui, backupImg, { makeFile, what, done }) {
   const session = await openSession(env, ui);
   try {
     ui.phase("check");
-    checkBackupFile(backupImg, env, ui);
+    await checkBackupFile(backupImg, env, ui);
     const kind = await classify(backupImg, env.patch);
+    merge(env, "backupFile", { kind });
     ui.check("file-stock", "Backup holds stock firmware", kind === "stock", kind === "stock" ? undefined : `It is not stock ${env.patch.firmware} (maybe a backup taken after installing Kraken).`);
     if (kind !== "stock") throw new CheckError("file-stock", "That backup isn\u2019t of stock firmware. Choose the one this page saved before Kraken was first installed.");
     const file = await makeFile(backupImg);
+    note(env, "update", { what, size: file.length, sha256: await sha256(file) });
     ui.check("update", `${what[0].toUpperCase() + what.slice(1)} update built and checked`, true);
     const { sums } = await connect(session, env, ui);
     const same = sums[UNIT / SECTOR] === crc32(backupImg.subarray(UNIT, UNIT + SECTOR));
+    merge(env, "backupFile", { sameRadio: same });
     ui.check("same-radio", "The backup is from this radio", same ? true : "warn",
       same ? undefined : "Its per-unit sector differs. That is harmless here (the updater never writes it), but label your backups so you do not mix up radios.");
     await flashAndVerify(session, env, ui, file, { low: null, what });

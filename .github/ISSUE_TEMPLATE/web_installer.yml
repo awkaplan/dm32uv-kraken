@@ -1,0 +1,93 @@
+name: Web installer problem
+description: The web installer (Install Kraken in Chrome or Edge) stopped, failed or did something unexpected
+title: "[web installer] "
+labels: ["web-installer", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Installer problems depend on the browser, the computer and the cable, so
+        we need the page's diagnostics file to look into one. **Reports without it are labelled
+        `needs-diagnostics` and can't be worked on.**
+
+        1. **Before you reload or close the installer page**, click **Download diagnostics** at the bottom of
+           the page (or **Save diagnostics** on the error screen). The file holds what happened since the page
+           was opened, so reloading first loses it.
+        2. You get a file named `kraken-diagnostics-<date>-<time>.zip`. Attach it below, as it is.
+
+        The file has no firmware, no radio backup and no codeplug. It has your browser and operating system
+        versions, the cable's USB IDs and what the page learned about the radio. It may have the name of a
+        backup file you chose. `README.txt` inside lists everything. Bug reports are public.
+  - type: upload
+    id: diagnostics
+    attributes:
+      label: Diagnostics file
+      description: The kraken-diagnostics-….zip the installer page saved. Drag it here or click to choose it.
+    validations:
+      required: true
+      accept: ".zip"
+  - type: dropdown
+    id: flow
+    attributes:
+      label: What were you doing?
+      options:
+        - Install Kraken
+        - Update Kraken (Update or remove Kraken > Update Kraken)
+        - Restore stock firmware
+        - Nothing yet (the page itself has a problem)
+    validations:
+      required: true
+  - type: dropdown
+    id: step
+    attributes:
+      label: Where did it stop?
+      options:
+        - The page did not load, or Install Kraken stayed grey
+        - Choosing the cable (the browser's port list)
+        - Turning the radio on (Connect)
+        - Backing up
+        - Saving the backup
+        - Starting update mode or installing
+        - Checking the install afterwards
+        - It finished, but the radio is not right
+        - Somewhere else (say below)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what the page showed (the exact message helps), and what the radio did (screen, LED).
+      placeholder: |
+        I clicked Install Kraken, picked "USB-Serial Controller", turned the radio off and on.
+        The page said "The radio didn't answer..." and the radio's screen stayed dark.
+    validations:
+      required: true
+  - type: input
+    id: cable
+    attributes:
+      label: Cable
+      description: Brand, or where it came from. "The one in the box with the radio" is fine.
+  - type: dropdown
+    id: again
+    attributes:
+      label: Does it happen again if you try again?
+      options:
+        - Every time
+        - Sometimes
+        - It worked on a later try
+        - I tried only once
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else
+      description: Other things you tried (another USB port, another browser or computer), and how that went.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: I attached the diagnostics file, saved before reloading the page after the problem.
+          required: true
+        - label: This report has no callsigns, DMR IDs, locations or serial numbers.
+          required: true

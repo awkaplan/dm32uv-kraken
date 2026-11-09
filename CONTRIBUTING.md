@@ -9,6 +9,9 @@ not optional.
 
 ## Ways to help
 
+- **Report a web installer problem.** Open a "Web installer problem" issue and attach the diagnostics
+  file the page saves (**Download diagnostics**, at the bottom of the page). The form requires it. How to
+  get it: [docs/user-guide/install.md](docs/user-guide/install.md#when-the-web-installer-fails).
 - **Report a bug.** Open a "Bug report" issue. Say which Kraken release you run, what you did, what you
   expected and what happened.
 - **Report a hardware test.** Many features have only been checked in the emulator, or on one radio.

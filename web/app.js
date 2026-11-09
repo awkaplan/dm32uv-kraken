@@ -5,9 +5,14 @@ import { sha256, equal } from "./lib/bytes.js";
 import { loadPatch, CheckError } from "./lib/image.js";
 import { CancelledError } from "./lib/link.js";
 import { install, installFromBackup, restoreStock } from "./lib/flow.js";
+import { Recorder } from "./lib/diag.js";
+import { saveDiagnostics, watch } from "./diagnostics.js";
 
 const $ = (id) => document.getElementById(id);
-const env = { patch: null, reader: null, link: null, log };
+// Everything the page sees, from now on, for "Download diagnostics" (lib/diag.js)
+const diag = new Recorder();
+const pageInfo = { release: "unknown", pinned: false };
+const env = { patch: null, reader: null, link: null, log, diag };
 env.platform = /mac/i.test(navigator.userAgentData?.platform || navigator.platform || "") ? "mac" : "other";
 // A WebUSB device this page may use: one already allowed, else (prompt) the browser's picker, which needs
 // a click just before. Only the Mac's Prolific cables need it (lib/pl2303.js).
@@ -46,6 +51,7 @@ for (const el of document.querySelectorAll("[data-icon]")) el.innerHTML = svg(el
 // --- log (behind "Show log") ---
 
 function log(msg) {
+  diag.log(msg);
   const t = new Date().toISOString().slice(11, 19);
   $("log").textContent += `${t}  ${msg}\n`;
   console.log(`[kraken] ${msg}`);
@@ -57,9 +63,24 @@ $("show-log").addEventListener("click", () => {
 });
 $("copy-log").addEventListener("click", () => navigator.clipboard.writeText($("log").textContent).catch(() => {}));
 
+watch(diag, log);
+
+// A snapshot of everything, as a zip, at any moment: it only reads, so a running flow carries on
+async function downloadDiagnostics() {
+  try {
+    const { name, size } = await saveDiagnostics(diag, pageInfo);
+    log(`diagnostics saved: ${name} (${size} bytes)`);
+  } catch (e) {
+    log(`diagnostics failed: ${e.name}: ${e.message}`);
+    diag.error("diagnostics", e);
+  }
+}
+$("diag").addEventListener("click", downloadDiagnostics);
+
 // The flows report each check; the page only logs them (a failed one ends the flow with its message)
 function check(id, label, ok, detail) {
   if (ok === null || ok === undefined) return;
+  diag.check(id, label, ok, detail);
   log(`check ${id}: ${ok === true ? "ok" : ok === false ? "FAILED" : "warning"} - ${label}${detail ? ` (${detail})` : ""}`);
 }
 
@@ -77,7 +98,8 @@ function rich(text) {
   return out;
 }
 
-function screen({ icon = "wait", title, steps = [], note = "", tone = "" }) {
+function screen({ id, icon = "wait", title, steps = [], note = "", tone = "" }) {
+  diag.setScreen({ id, title });
   $("home").hidden = true;
   $("other").hidden = true;
   $("flow").hidden = false;
@@ -153,14 +175,14 @@ const ui = {
   },
   log,
   show({ id, icon, title, steps, note }) {
-    screen({ icon: icon || "wait", title, steps, note });
+    screen({ id, icon: icon || "wait", title, steps, note });
     log(`${id || "show"}: ${title}`);
   },
   lockCancel(on) {
     $("cancel").hidden = on;
   },
   ask({ id, icon, title, steps, note, button: primary, secondary }) {
-    screen({ icon, title, steps, note, tone: icon === "alert" ? "bad" : "" });
+    screen({ id, icon, title, steps, note, tone: icon === "alert" ? "bad" : "" });
     log(`ask ${id || ""}: ${title}`);
     return new Promise((resolve, reject) => {
       pending = { resolve, reject };
@@ -170,6 +192,7 @@ const ui = {
   },
   saveBackup(bytes, name) {
     screen({
+      id: "save",
       icon: "save",
       title: "Save your backup",
       steps: ["Turn the radio off.", "Save the backup file somewhere safe."],
@@ -192,7 +215,7 @@ const ui = {
   },
   done({ id, title, steps }) {
     bar("all");
-    screen({ icon: "check", title, steps, tone: "ok" });
+    screen({ id, icon: "check", title, steps, tone: "ok" });
     $("cancel").hidden = true;
     button("primary", "Done", home);
     log(`done ${id || ""}: ${title}`);
@@ -242,7 +265,7 @@ function home() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function run(flow, { skip = [] } = {}) {
+async function run(flow, { skip = [], name }) {
   if (running) return;
   // Ask for the port first, while the click still counts as a user gesture
   const portPromise = navigator.serial.requestPort();
@@ -256,11 +279,14 @@ async function run(flow, { skip = [] } = {}) {
     lock = await navigator.wakeLock?.request("screen").catch(() => null);
   } catch {}
   try {
+    diag.flowStart(name);
     await portPromise; // the person may close the picker: then nothing has happened
     bar("connect");
     $("cancel").hidden = false;
     await flow(env, ui);
+    diag.flowEnd("finished");
   } catch (e) {
+    diag.flowEnd(e.name === "NotFoundError" ? "no port picked" : e instanceof CancelledError ? "cancelled" : e instanceof CheckError ? "refused" : "failed", e);
     fail(e);
   } finally {
     running = false;
@@ -279,13 +305,15 @@ function fail(e) {
   const cancelled = e instanceof CancelledError;
   const refused = e instanceof CheckError;
   screen({
+    id: cancelled ? "cancelled" : refused ? "refused" : "failed",
     icon: cancelled ? "power" : "alert",
     tone: cancelled ? "" : "bad",
     title: cancelled ? "Cancelled" : refused ? "Can’t continue" : "Something went wrong",
     steps: cancelled ? ["Turn the radio off before starting again."] : [e.message, "Turn the radio off before trying again."],
   });
-  if (!cancelled && !refused) $("note").textContent = "Show log (below) has the details if you need help.";
+  if (!cancelled) $("note").textContent = "Need help? Save the diagnostics and attach the file to a bug report.";
   button("primary", "Start over", home);
+  if (!cancelled) button("secondary", "Save diagnostics", downloadDiagnostics);
 }
 
 $("cancel").addEventListener("click", () => {
@@ -294,9 +322,9 @@ $("cancel").addEventListener("click", () => {
   settle("reject", new CancelledError());
 });
 
-$("start").addEventListener("click", () => run(install));
-$("from-backup").addEventListener("click", () => run((env, ui) => installFromBackup(env, ui, backupBytes), { skip: ["backup"] }));
-$("restore").addEventListener("click", () => run((env, ui) => restoreStock(env, ui, backupBytes), { skip: ["backup"] }));
+$("start").addEventListener("click", () => run(install, { name: "install" }));
+$("from-backup").addEventListener("click", () => run((env, ui) => installFromBackup(env, ui, backupBytes), { skip: ["backup"], name: "update from backup" }));
+$("restore").addEventListener("click", () => run((env, ui) => restoreStock(env, ui, backupBytes), { skip: ["backup"], name: "restore stock" }));
 
 $("backup-file").addEventListener("change", async (ev) => {
   const f = ev.target.files[0];
@@ -331,6 +359,8 @@ function releasePin() {
   const pin = Object.fromEntries(raw.split(";").map((kv) => kv.trim().split("=")).filter((kv) => kv.length === 2));
   const ok = pin.tag && /^[0-9a-f]{64}$/.test(pin.patch || "") && /^[0-9a-f]{64}$/.test(pin.reader || "");
   $("release").textContent = ok ? `Kraken ${pin.tag}` : "Development build";
+  pageInfo.release = ok ? pin.tag : "development build";
+  pageInfo.pinned = Boolean(ok);
   if (ok) log(`release ${pin.tag}: patch ${pin.patch.slice(0, 12)}, reader ${pin.reader.slice(0, 12)}`);
   return ok ? pin : null;
 }
@@ -341,6 +371,7 @@ function blocked(text) {
 }
 
 async function preflight() {
+  log(`page loaded: ${navigator.userAgent}`);
   const serialOk = "serial" in navigator && window.isSecureContext;
   check("browser", "Web Serial available", serialOk);
   if (!serialOk) blocked("This browser can’t connect to the radio. Open this page in Chrome or Edge on a computer.");
@@ -359,8 +390,10 @@ async function preflight() {
     if (bin.length !== patch.reader.size || (await sha256(bin)) !== patch.reader.sha256) throw new Error("reader.bin does not match the patch file");
     env.reader = { bin, load: patch.reader.load, entry: patch.reader.entry };
     env.patch = patch;
+    pageInfo.patch = { firmware: patch.firmware, update: patch.update.sha256.slice(0, 16), reader: patch.reader.sha256.slice(0, 16) };
     check("patch", `Kraken build ${patch.update.sha256.slice(0, 12)} loaded`, true);
   } catch (e) {
+    pageInfo.patchError = e.message;
     check("patch", "Kraken build loaded", false, e.message);
     if (serialOk) blocked(e instanceof PinError ? "This page and its firmware files are from different releases. Reload the page." : "The installer didn’t load. Reload the page.");
   }

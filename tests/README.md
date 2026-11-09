@@ -26,9 +26,10 @@ A script exits 1 if any hard check fails. Lines marked `info` are reported only 
   `tools/build.sh --run 'python3 tests/test_ax25.py'`
 - `test_f13.py --regen` rewrites the golden burst in `data/` that the QEMU test compares against.
 
-The web installer has two: `web_flasher_test.mjs` (Node 20 or newer) runs its flows against a simulated
+The web installer has three: `web_diag_test.mjs` checks the diagnostics download (ZIP writer, recorder)
+and needs no build: `node tests/web_diag_test.mjs`. `web_flasher_test.mjs` (Node 20 or newer) runs its flows against a simulated
 radio (`web/mock_radio.mjs`): `node tests/web_flasher_test.mjs`. `reader_qemu_test.py` runs the reader
-program in QEMU: `tools/build.sh --run 'python3 tests/reader_qemu_test.py'`. Both need a build.
+program in QEMU: `tools/build.sh --run 'python3 tests/reader_qemu_test.py'`. Those two need a build.
 `reader_hw_test.py` runs the reader on a real radio over the cable (pyserial) and measures which fast line
 rates work: `python3 tests/reader_hw_test.py --port /dev/cu.usbserial-XXXX`. It only reads. See
 [docs/web-flasher.md](../docs/web-flasher.md).

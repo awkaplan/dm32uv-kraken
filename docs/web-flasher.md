@@ -18,7 +18,8 @@ Source: [web/](../web/) (the page), [reader/](../reader/) (the reader). The buil
 
 One button, **Install Kraken**, then the page walks through it one screen at a time (a title, one or a few
 short instructions, one button), with a four-part bar: Connect, Back up, Install, Done. The log is behind
-**Show log**. Each screen has an `id` (`off`, `on`, `update-mode`, `verify`, ...) that the tests use, so the
+**Show log**, and **Download diagnostics** in the footer saves everything the page knows as a zip at any
+moment, also from the error screen (section 7). Each screen has an `id` (`off`, `on`, `update-mode`, `verify`, ...) that the tests use, so the
 wording can change freely:
 
 | Step | The person | The page | Time |
@@ -47,6 +48,8 @@ option), when it already runs this build, or when a chosen backup is not a 1 MiB
 | `web/lib/kr.js` | Host side of the reader protocol |
 | `web/lib/link.js` | Web Serial as an exact-length byte link with deadlines, reopened to change the baud rate |
 | `web/lib/image.js` | Checks, applying the patch, the update file, the expected flash after an install |
+| `web/lib/diag.js`, `web/lib/zip.js` | The diagnostics recorder (log, cable trace, facts, the files of the zip) and a small ZIP writer (section 7) |
+| `web/diagnostics.js` | The page's side of the diagnostics: browser, OS, allowed cables, the screen, the download |
 | `reader/reader.c`, `start.S`, `reader.ld` | The reader: about 1.5 KB of C-SKY code that runs from IRAM |
 | `tools/build_reader.py` | Builds the reader with the C-SKY toolchain in the Docker image |
 | `tools/make_web_patch.py` | Writes `kraken_patch.json`, copies `web/` and `reader.bin` beside it |
@@ -130,11 +133,12 @@ Serial needs a secure context: `https://` (GitHub Pages works) or `localhost`:
 python3 -m http.server 8000 --bind 127.0.0.1 -d out/kraken/web    # then open http://127.0.0.1:8000/
 ```
 
-Two tests, both after a build:
+Two tests, both after a build, and one that needs none (CI runs it):
 
 ```sh
 node tests/web_flasher_test.mjs                                   # the page's flows, ~40 s
 tools/build.sh --run 'python3 tests/reader_qemu_test.py'          # the reader in QEMU, ~15 s
+node tests/web_diag_test.mjs                                      # the diagnostics zip and recorder, ~1 s
 ```
 
 - `web_flasher_test.mjs` runs the real flows against a simulated radio
@@ -142,7 +146,12 @@ tools/build.sh --run 'python3 tests/reader_qemu_test.py'          # the reader i
   changes included) and Baofeng's updater, with faults: corrupted, cut and subtly wrong frames, a cable chip
   limited to 1 Mbaud, fast rates that garble, the wrong firmware line, a modified or already-installed radio,
   a stock radio restored earlier, no update mode, a cable pulled mid-flash, a bad write caught afterwards, and
-  both backup flows. It also checks that the update file matches the build's byte for byte.
+  both backup flows. It also checks that the update file matches the build's byte for byte, and runs three
+  flows with the diagnostics recorder attached: the facts it collects, and that no 12-byte run of the stock
+  firmware or the update file is anywhere in its trace.
+- `web_diag_test.mjs` unpacks the ZIP writer's output with Python's `zipfile` (deflated and stored), and
+  checks the recorder's rules one by one: received bytes kept only in raw mode, labelled blocks kept as
+  length and CRC, DATA frames as their address, the trace's bounds, and the summary.
 - `reader_qemu_test.py` runs `reader.bin` in QEMU's DM-32 model with UART0 as the ROM leaves it, and checks
   every command from an independent Python host: HELLO, PING, SUMS against zlib, a full 1 MiB READ against
   the image, a READ stopped by a new command, BAUD with and without the PING (the fill-byte timing to the
@@ -221,3 +230,53 @@ Partly done. Needs the radio, the cable and someone at the radio:
 - The updater runs at 115200, so installing takes about a minute and a half whatever the cable.
 - Releases still publish `kraken_update_BFUV32-V2.bin`, which contains the stock firmware. Dropping it in
   favour of the web installer is a separate decision.
+
+## 7. Diagnostics
+
+Install problems depend on the browser, the operating system, the cable's chip and its driver, which a
+simulated radio cannot cover. So the page records what it sees from the moment it loads, and **Download
+diagnostics** (footer, always there; **Save diagnostics** on the error screen) saves it as
+`kraken-diagnostics-<UTC date>-<time>.zip`. It only reads, so it can be clicked mid-flow without
+disturbing anything. Web installer bug reports must attach it: the issue form
+([.github/ISSUE_TEMPLATE/web_installer.yml](../.github/ISSUE_TEMPLATE/web_installer.yml)) requires the
+upload, and [.github/workflows/issue-diagnostics.yml](../.github/workflows/issue-diagnostics.yml) labels a
+`web-installer` issue `needs-diagnostics`, with one comment saying how to get the file, until it has a
+`.zip` attached. Blank issues are off, so every report goes through a form.
+
+| File | What |
+|---|---|
+| `summary.txt` | Start here: release, browser and OS, features, allowed cables, each flow run and how it ended (error name, code, message), the screen, the cable path, the reader's rate and the rates tried, the radio's version and classification, each install attempt (blocks acknowledged), the check afterwards, the checks that were not ok |
+| `diagnostics.json` | All of it as data, including the radio's 256 sector CRC-32s (each connect), backup and update hashes, the updater's erase time |
+| `log.txt` | The page's log with millisecond times: every screen, check and status, plus tab hidden or shown, focus, the browser freezing the page, serial and USB connect and disconnect |
+| `trace.txt` | The cable traffic, both ways (below) |
+| `console.txt` | The browser console and uncaught errors and rejections |
+| `README.txt` | What the file holds and does not hold, for the person posting it |
+
+Browser facts come from `navigator.userAgentData` high-entropy values where the browser has them (the plain
+user-agent string freezes the macOS version and hides Windows 11), the Web Serial ports and WebUSB devices
+the page is already allowed to use (`getPorts`, `getDevices`: USB IDs, names, chip revision, interfaces,
+whether claimed; no serial numbers), feature support and permissions policy, screen size, language and
+time-zone offset.
+
+**The trace never holds firmware.** Bug reports are public, and nothing Kraken publishes may contain
+Baofeng's firmware. `Link` hands every chunk to the recorder; what it keeps depends on a mode that
+`radio.js` sets:
+
+- `raw` (boot ROM and updater): received bytes are kept, up to 64 per event, with bytes arriving within
+  20 ms joined into one event. Neither ever sends flash contents.
+- `framed` (from the reader's RUN reply until the next ROM or updater session): received bytes are only
+  counted. `kr.js readFrame` reports each frame instead: type, length, CRC good or bad, noise skipped before
+  it, and only the address of a DATA frame and the count of a SUMS reply. Payloads are kept only for HELLO,
+  PONG, OK and ERR.
+- A sent block that carries image bytes (`ROM DOWNLOAD` of `reader.bin`, each updater block) is written
+  with a label and kept as its length and CRC-32.
+
+The trace keeps its first 3000 events and its last 20000, and says how many were dropped between. A full
+install makes about 4,200 (most of them the updater's two replies per block), and the zip is about 20 KB.
+`web_flasher_test.mjs` checks that no firmware reaches the trace.
+
+The backup file, the update file and the per-unit sector are never in the zip, only their SHA-256 or
+CRC-32. The log does name a backup file the person chose; `README.txt` says so.
+
+Facts come from the flows through `env.diag` (`note`, `add`), so the flows stay free of the page: the
+tests pass a `Recorder` or none.

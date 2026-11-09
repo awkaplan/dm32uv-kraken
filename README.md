@@ -23,7 +23,9 @@ How well tested each feature is: [docs/feature-status.md](docs/feature-status.md
 
 The quickest way is the **[web installer](https://awkaplan.github.io/dm32uv-kraken/)**: open it in Chrome or
 Edge, plug in the programming cable, and click Install Kraken. It backs up your radio first. It is
-experimental: installing with it has not yet been tested on a radio.
+experimental: installing with it has not yet been tested on a radio. If it fails, click **Download
+diagnostics** at the bottom of the page and attach the file to a
+[web installer problem report](https://github.com/awkaplan/dm32uv-kraken/issues/new?template=web_installer.yml).
 
 To install by hand instead:
 

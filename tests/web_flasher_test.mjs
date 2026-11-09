@@ -14,6 +14,8 @@ import { fileURLToPath } from "node:url";
 import { MockRadio, simulateUpdate } from "./web/mock_radio.mjs";
 import { loadPatch, APP, UNIT, VERSION_AT, SECTOR } from "../web/lib/image.js";
 import { install, installFromBackup, restoreStock } from "../web/lib/flow.js";
+import { Recorder } from "../web/lib/diag.js";
+import { zip } from "../web/lib/zip.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, x, i, all) => (x.startsWith("--") ? [...a, [x.slice(2), all[i + 1]]] : a), []));
@@ -327,6 +329,89 @@ await scenario("install: a bad write is caught by the post-install CRC check", a
   await install(envFor(radio), ui);
   ok(seen.asks.includes("verify-failed"), "noticed the bad sector and offered to install again");
   ok(same(radio.flash, simulateUpdate(before, UPDATE)), "radio holds the Kraken update after the second install");
+});
+
+// --- the diagnostics recorder (web/lib/diag.js) on the real flows ---
+
+// Trace events whose kept bytes contain 12 bytes in a row of the stock firmware or the update file
+function firmwareInTrace(diag) {
+  const hay = [Buffer.from(STOCK), Buffer.from(UPDATE)];
+  const found = [];
+  for (const e of diag.trace.items()) {
+    if (!e.hex || e.hex.length < 24) continue;
+    const b = Buffer.from(e.hex, "hex");
+    for (let i = 0; i + 12 <= b.length; i++) {
+      const w = b.subarray(i, i + 12);
+      if (new Set(w).size < 6) continue; // padding (a space and zeros, say) is in any image
+      if (hay.some((h) => h.indexOf(w) >= 0)) {
+        found.push(e);
+        break;
+      }
+    }
+  }
+  return found;
+}
+
+async function diagFiles(diag) {
+  const files = diag.files({ page: { release: "test" } });
+  return { files, by: Object.fromEntries(files.map((f) => [f.name, f.data])), size: (await zip(files)).length };
+}
+
+await scenario("diagnostics: a full install leaves facts and a trace, and no firmware", async () => {
+  const before = stockRadio();
+  const radio = new MockRadio(before, { corruptFrames: [50] });
+  const { ui, seen } = person(radio);
+  const diag = new Recorder();
+  await install(envFor(radio, { diag }), ui);
+  ok(seen.done?.id === "installed", "finished");
+  const f = diag.facts;
+  ok(f.reader?.baud === 1500000 && f.reader.tries[0]?.result === "ok", `reader facts (${JSON.stringify(f.reader)})`);
+  ok(f.radio?.version.startsWith(PATCH.firmware) && f.radio.kind === "stock" && f.radio.bootHeader === "ok", "radio version and classification");
+  ok(f.sectorCrc32?.length === 2 && f.sectorCrc32.every((x) => x.crc32.length === 256), "the radio's sector CRCs, before and after");
+  ok(f.flash?.length === 1 && f.flash[0].result === "sent" && f.flash[0].acked === f.flash[0].blocks && f.flash[0].eraseMs >= 0, "the install attempt");
+  ok(f.verify?.bad.length === 0 && /^[0-9a-f]{64}$/.test(f.backup?.sha256 || "") && f.update?.size === UPDATE.length, "verify, backup hash, update size");
+  ok(diag.counts.frameErrors >= 1, `the damaged frame is counted (${diag.counts.frameErrors})`);
+  const leaks = firmwareInTrace(diag);
+  ok(leaks.length === 0, `no firmware in the trace (${leaks.length} event(s)${leaks[0] ? `, first ${JSON.stringify(leaks[0]).slice(0, 120)}` : ""})`);
+  ok(diag.trace.items().some((e) => e.k === "tx" && /^block \d+ of \d+$/.test(e.what || "")), "firmware blocks traced by label");
+  ok(diag.trace.items().some((e) => e.k === "rx" && e.hex === "06") && diag.trace.items().some((e) => e.k === "rx" && e.hex?.startsWith("02240003")), "updater and boot ROM replies traced");
+  const { by, size } = await diagFiles(diag);
+  ok(/Install +sent, (\d+)\/\1 blocks/.test(by["summary.txt"]) && /Verify +all sectors match/.test(by["summary.txt"]), "summary has the install and the check");
+  ok(size < 400000, `the zip is small (${size} bytes)`);
+});
+
+await scenario("diagnostics: Mac + Prolific over WebUSB, and a cable that dies mid-flash", async () => {
+  const before = stockRadio();
+  const radio = new MockRadio(before, { usbInfo: { usbVendorId: 0x067b, usbProductId: 0x2303 }, appleProlific: true, dieAfterBlocks: 100 });
+  const { ui, seen } = person(radio);
+  const { env } = macEnv(radio);
+  const diag = new Recorder();
+  env.diag = diag;
+  await install(env, ui);
+  ok(seen.done?.id === "installed", "finished after the retry");
+  ok(/WebUSB/.test(diag.facts.cable?.path || "") && diag.facts.cable.usbVendorId === 0x067b, "cable path recorded");
+  ok(diag.facts.reader?.baud === 115200 && diag.facts.reader.tries.length === 0, "no fast rates tried on Prolific");
+  const fl = diag.facts.flash || [];
+  ok(fl.length === 2 && fl[0].result === "failed" && fl[0].acked >= 99 && fl[0].acked < fl[0].blocks && fl[1].result === "sent", `both attempts (${fl.map((a) => `${a.result} ${a.acked}/${a.blocks}`).join(", ")})`);
+  ok(firmwareInTrace(diag).length === 0, "no firmware in the trace");
+});
+
+await scenario("diagnostics: a refused radio (wrong firmware line) says why", async () => {
+  const before = stockRadio();
+  before.set(Buffer.from("DM32.01.L01.048"), VERSION_AT);
+  const radio = new MockRadio(before);
+  const { ui } = person(radio);
+  const diag = new Recorder();
+  diag.flowStart("install");
+  try {
+    await install(envFor(radio, { diag }), ui);
+  } catch (e) {
+    diag.flowEnd("refused", e);
+  }
+  ok(diag.facts.radio?.version === "DM32.01.L01.048", "the version the radio reports");
+  const { by } = await diagFiles(diag);
+  ok(/install .*refused .*\[version\]/.test(by["summary.txt"]) && /Radio +firmware "DM32.01.L01.048"/.test(by["summary.txt"]), "summary says it was refused for the version");
+  ok(firmwareInTrace(diag).length === 0, "no firmware in the trace");
 });
 
 // --- the backup-file flows ---

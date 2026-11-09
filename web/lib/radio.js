@@ -46,6 +46,7 @@ function romFrame(cmd, body) {
 // Wait for the boot ROM as the radio powers on, load our reader and start it. Returns a kr.js Reader.
 // reader: { bin, load, entry } from the site's kraken_patch.json.
 export async function startReader(link, reader, { waitMs = 60000 } = {}) {
+  link.trace?.mode("raw");
   await link.discard();
   try {
     await link.waitFor(NOTIFY, waitMs);
@@ -61,11 +62,12 @@ export async function startReader(link, reader, { waitMs = 60000 } = {}) {
   for (let at = 0; at < bin.length; at += 0x100) {
     const words = bin.subarray(at, at + 0x100);
     const body = concat(be32(reader.load + at), be32(words.length / 4), words);
-    await link.write(romFrame(ROM_DOWNLOAD, body));
+    await link.write(romFrame(ROM_DOWNLOAD, body), `ROM DOWNLOAD reader.bin +0x${at.toString(16)}`);
     await expect(link, OK, 1500, "loading the reader");
   }
   await link.write(romFrame(ROM_RUN, be32(reader.entry)));
   await expect(link, OK, 1500, "starting the reader");
+  link.trace?.mode("framed"); // from here the radio may send flash contents: the trace keeps headers only
   const r = new Reader(link, { log: link.log });
   try {
     await r.hello(3000);
@@ -94,6 +96,7 @@ export async function speedUp(env, reader, { maxBaud = 2000000 } = {}) {
   const est = BASE_BAUD * 16 * reader.divisor;
   const clock = Math.abs(est - 24e6) / 24e6 < 0.01 ? 24e6 : est;
   const tries = [];
+  reader.speedTries = []; // what was tried and how it went, for the diagnostics
   for (let div = 1; div < reader.divisor; div++) {
     const baud = Math.round(clock / 16 / div);
     if (baud <= maxBaud && baud >= 230400) tries.push({ div, baud });
@@ -102,17 +105,23 @@ export async function speedUp(env, reader, { maxBaud = 2000000 } = {}) {
     try {
       await reader.request(0x02, concat(u8([div & 0xff, div >> 8]), u8([0xdc, 0x05])), 0x82, 1500); // BAUD div, 1500 ms
     } catch (e) {
-      if (e instanceof FrameError || e instanceof TimeoutError) break;
+      if (e instanceof FrameError || e instanceof TimeoutError) {
+        reader.speedTries.push({ baud, div, result: `BAUD refused (${e.message})` });
+        break;
+      }
       throw e;
     }
     let ok = false;
+    let why = "no PONG";
     try {
       reader.link = await env.reopen(baud);
       ok = await reader.ping();
     } catch (e) {
       if (e instanceof CancelledError) throw e;
       env.log(`${baud} baud: ${e.message}`);
+      why = e.message;
     }
+    reader.speedTries.push({ baud, div, result: ok ? "ok" : why });
     if (ok) {
       reader.baud = baud;
       return baud;
@@ -155,7 +164,10 @@ async function expectByte(link, want, ms, what) {
 }
 
 // Send a BFUV32-V2 update FILE (header + firmware area) to the radio's updater; it restarts the radio.
-export async function flashUpdate(link, file, { onProgress = () => {}, onPhase = () => {}, eraseMs = 30000, name = "kraken.bin" } = {}) {
+// stats (optional) is filled in as it goes: { model, blocks, acked, eraseMs, ms }, for the diagnostics.
+export async function flashUpdate(link, file, { onProgress = () => {}, onPhase = () => {}, eraseMs = 30000, name = "kraken.bin", stats = {} } = {}) {
+  const t0 = Date.now();
+  link.trace?.mode("raw"); // the updater only ever answers with status bytes
   await link.discard(100);
   // 'R': the updater answers 06. Retry a little: the person may click just before it is up.
   let greeted = false;
@@ -175,6 +187,7 @@ export async function flashUpdate(link, file, { onProgress = () => {}, onPhase =
   await expect(link, u8([0x4d, 0x01, 0x09]), 1500, "updater info");
   await link.write(u8([ACK]));
   await expect(link, ascii("BFUV32-V2"), 1500, "radio model");
+  stats.model = "BFUV32-V2";
   await link.write(ascii("E\0\0\0\0"));
   await expectByte(link, ACK, 1500, "updater mode");
   await link.write(ascii("1"));
@@ -188,20 +201,26 @@ export async function flashUpdate(link, file, { onProgress = () => {}, onPhase =
   await link.write(u8([SOH]));
   await expectByte(link, C, 1500, "file header");
   await link.write(concat(u8([0x00, 0xff]), info, u8([c0 >> 8, c0 & 0xff])));
+  const e0 = Date.now();
   await expectByte(link, ACK, eraseMs, "erasing");
+  stats.eraseMs = Date.now() - e0;
+  link.trace?.event(`updater erased the firmware area in ${stats.eraseMs} ms`);
   await expectByte(link, C, 1500, "erasing");
 
   onPhase("write");
   const body = file.subarray(0x100);
   const blocks = Math.ceil(body.length / BLOCK);
+  stats.blocks = blocks;
+  stats.acked = 0;
   for (let n = 1; n <= blocks; n++) {
     const block = new Uint8Array(BLOCK).fill(0xff); // the last block is padded with the erased value
     block.set(body.subarray((n - 1) * BLOCK, n * BLOCK));
     const k = crc16(block);
     await link.write(u8([STX]));
     await expectByte(link, C, 2000, `block ${n} of ${blocks}`);
-    await link.write(concat(u8([n & 0xff, 0xff - (n & 0xff)]), block, u8([k >> 8, k & 0xff])));
+    await link.write(concat(u8([n & 0xff, 0xff - (n & 0xff)]), block, u8([k >> 8, k & 0xff])), `block ${n} of ${blocks}`);
     await expectByte(link, ACK, 3000, `block ${n} of ${blocks}`);
+    stats.acked = n;
     onProgress(n / blocks);
   }
   onPhase("restart");
@@ -212,6 +231,8 @@ export async function flashUpdate(link, file, { onProgress = () => {}, onPhase =
     // every block was ACKed, so the firmware is written; the check after the restart says for sure
     if (!(e instanceof RadioError)) throw e;
     link.log(`no answer to EOT (${e.message}); every block was acknowledged`);
+    stats.eot = "no answer";
   }
+  stats.ms = Date.now() - t0;
   await sleep(300);
 }

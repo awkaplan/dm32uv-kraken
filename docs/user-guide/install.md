@@ -200,11 +200,31 @@ If you are stuck, open an issue on the
 [project page](https://github.com/awkaplan/dm32uv-kraken/issues) with what you did and what the tools
 printed.
 
+## When the web installer fails
+
+The web installer can save a **diagnostics file**: a zip with what the page did, your browser and
+computer, the cable, and what it learned about the radio. We need it to fix installer problems, because
+they depend on the browser, the computer and the cable.
+
+1. **Do not reload or close the page yet.** The file holds what happened since the page was opened.
+2. Click **Download diagnostics** at the bottom of the page, or **Save diagnostics** on the error screen.
+   You can click it at any moment, even while the installer is still working; it does not disturb it.
+3. Your browser saves `kraken-diagnostics-<date>-<time>.zip`, usually in your Downloads folder.
+4. Open a [web installer problem report](https://github.com/awkaplan/dm32uv-kraken/issues/new?template=web_installer.yml)
+   and attach the file. The form will not submit without it.
+
+The file has no firmware, no radio backup and no codeplug (channels, contacts and settings). It does have
+your browser and operating system versions and the cable's USB IDs, and it may have the name of a backup
+file you chose. `README.txt` inside it lists everything. Bug reports are public.
+
+Your radio is safe while you do this: the installer reads only, except while it installs, and an
+interrupted install can always be done again with the radio's updater.
+
 ## Other ways to install
 
 - **The web installer** ([../web-flasher.md](../web-flasher.md)) backs up and installs from Chrome or
   Edge, with no Python. It is experimental: installing and restoring with it have not yet been tested on
-  a radio.
+  a radio. If it stops or fails, see [When the web installer fails](#when-the-web-installer-fails).
 - **Baofeng's Windows update tool** speaks the same protocol. Nobody has yet tested whether it accepts a
   Kraken file.
 - **Sector-by-sector flashing over the cable** is how developers flash test builds. It is slower and

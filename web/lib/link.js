@@ -1,6 +1,7 @@
 // A byte link over a Web Serial port (or anything shaped like one: tests use a simulated radio).
 // Reads are exact-length with a deadline, so a dropped byte becomes a timeout and a retry, never a shifted
 // stream. The port stays open across the radio's power cycles: the USB-serial chip is in the cable.
+// trace (optional): a lib/diag.js Recorder that sees every byte both ways, for the diagnostics download.
 
 import { sleep } from "./bytes.js";
 
@@ -12,9 +13,10 @@ export class CancelledError extends Error {
 }
 
 export class Link {
-  constructor(port, { log = () => {} } = {}) {
+  constructor(port, { log = () => {}, trace = null } = {}) {
     this.port = port;
     this.log = log;
+    this.trace = trace;
     this.chunks = [];
     this.length = 0;
     this.wake = null;
@@ -26,6 +28,7 @@ export class Link {
   async open(baud = 115200) {
     await this.port.open({ baudRate: baud, dataBits: 8, stopBits: 1, parity: "none", flowControl: "none", bufferSize: 1 << 16 });
     this.baud = baud;
+    this.trace?.event(`port open at ${baud} baud`);
     this.writer = this.port.writable.getWriter();
     this.loop = this.readLoop();
   }
@@ -39,18 +42,25 @@ export class Link {
           const { value, done } = await this.reader.read();
           if (done) break;
           if (value && value.length) {
+            this.trace?.rx(value, this.baud);
             this.chunks.push(value);
             this.length += value.length;
             this.notify();
           }
         }
       } catch (e) {
-        if (!this.closing) this.log(`serial: ${e.name || "error"} ${e.message || ""} (continuing)`);
+        if (!this.closing) {
+          this.log(`serial: ${e.name || "error"} ${e.message || ""} (continuing)`);
+          this.trace?.event(`serial read error: ${e.name || "error"} ${e.message || ""}`);
+        }
       } finally {
         this.reader.releaseLock();
       }
     }
-    if (!this.closing) this.lost = new Error("The cable was disconnected.");
+    if (!this.closing) {
+      this.lost = new Error("The cable was disconnected.");
+      this.trace?.event("port lost: the cable was disconnected");
+    }
     this.notify();
   }
 
@@ -134,17 +144,21 @@ export class Link {
   // Throw away whatever has arrived, after letting stragglers in for ms
   async discard(ms = 0) {
     if (ms) await sleep(ms);
+    this.trace?.discarded(this.length);
     this.chunks = [];
     this.length = 0;
   }
 
-  async write(bytes) {
+  // what: a label for bytes the trace must not keep (firmware blocks); they are traced as length and CRC
+  async write(bytes, what) {
     this.check();
+    this.trace?.tx(bytes, this.baud, what);
     await this.writer.write(bytes);
   }
 
   async close() {
     this.closing = true;
+    this.trace?.event(`port close (was ${this.baud} baud)`);
     try {
       if (this.reader) await this.reader.cancel();
     } catch {}

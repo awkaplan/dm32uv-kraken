@@ -5,7 +5,9 @@ title: "[bug] "
 labels: bug
 ---
 
-<!-- Do not post callsigns, DMR IDs, locations, serial numbers or backup files you want kept private. -->
+<!-- A problem with the web installer (installing from Chrome or Edge)? Use "Web installer problem"
+     instead: it asks for the diagnostics file the page saves, which we need for those.
+     Do not post callsigns, DMR IDs, locations, serial numbers or backup files you want kept private. -->
 
 **Kraken release**
 <!-- The release you installed (the name on the Releases page), or the commit if you built it yourself. -->

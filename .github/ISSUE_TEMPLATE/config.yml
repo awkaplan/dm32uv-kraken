@@ -1,4 +1,6 @@
-blank_issues_enabled: true
+# No blank issues: every report goes through a form, so web installer problems always come with the
+# diagnostics file (web_installer.yml).
+blank_issues_enabled: false
 contact_links:
   - name: User guide
     url: https://github.com/awkaplan/dm32uv-kraken/blob/main/docs/user-guide/README.md

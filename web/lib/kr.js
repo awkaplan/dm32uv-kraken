@@ -51,22 +51,34 @@ export function frame(type, payload = new Uint8Array(0)) {
 export class FrameError extends Error {}
 
 // The next whole frame: { type, payload }. Skips noise before the sync bytes. FrameError on a bad CRC.
+// Each frame goes to the link's trace as its header only (lib/diag.js keeps no DATA payload).
 export async function readFrame(link, ms) {
   const deadline = Date.now() + ms;
   const left = () => Math.max(1, deadline - Date.now());
   let prev = -1;
+  let skipped = 0;
   for (;;) {
     const b = (await link.read(1, left()))[0];
     if (prev === SYNC[0] && b === SYNC[1]) break;
     prev = b;
+    skipped++;
   }
+  const noise = Math.max(0, skipped - 1);
   const head = await link.read(3, left());
   const len = rd16(head, 1);
-  if (len > CHUNK + 16) throw new FrameError(`frame too long (${len})`);
+  if (len > CHUNK + 16) {
+    link.trace?.frame({ type: head[0], len, ok: false, noise, why: "too long" });
+    throw new FrameError(`frame too long (${len})`);
+  }
   const rest = await link.read(len + 4, left());
   const body = concat(head, rest.subarray(0, len));
-  if (crc32(body) !== rd32(rest, len)) throw new FrameError("frame CRC mismatch");
-  return { type: head[0], payload: rest.subarray(0, len) };
+  if (crc32(body) !== rd32(rest, len)) {
+    link.trace?.frame({ type: head[0], len, ok: false, noise, why: "CRC mismatch" });
+    throw new FrameError("frame CRC mismatch");
+  }
+  const payload = rest.subarray(0, len);
+  link.trace?.frame({ type: head[0], len, payload, noise });
+  return { type: head[0], payload };
 }
 
 export class Reader {

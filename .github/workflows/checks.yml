@@ -82,13 +82,15 @@ jobs:
           node-version: 22
       - name: Syntax-check every JavaScript file
         # the flows test (tests/web_flasher_test.mjs) needs a build, so CI can only check that the page,
-        # its modules and the tools parse
+        # its modules and the tools parse, and run the tests that need no build
         run: |
           fail=0
           for f in $(git ls-files '*.js' '*.mjs'); do
             node --check "$f" || { echo "::error file=$f::does not parse"; fail=1; }
           done
           exit $fail
+      - name: Diagnostics download (zip writer and recorder)
+        run: node tests/web_diag_test.mjs
 
   hygiene:
     name: No firmware or personal data
