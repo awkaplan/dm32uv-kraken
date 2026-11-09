@@ -1,0 +1,17 @@
+# Standby tags QEMU frames (tools/qemu_poke.py format; tools/qemu_ui_run.sh with SPINOR=1 POKE=...).
+# Features are switched behind the UI's back, so only the maintenance-task redraw (krk_tags_tick) can show
+# them. Addresses: M and sqst from the build's kraken_ui2.elf (.bss.afsk / .bss.feat), the rest stock.
+# RX Monitor on (M.magic = "MON1") -> MN (white)
+25 18004c14 314e4f4d
+# Squelch Mode Normal (sqst: magic "SQL1", last_val 0, mode 1, dirty 0) -> SQ (white)
+32 18005118 314c515300000100
+# Dual watch engine held idle (as tests/data/sat_pokes.txt), or VOX would not act and VX stays hidden
+20 100 1 000400d8 00
+# The channel's VOX SW on (stock RAM mirror 0x3e9e4 bit 0; reads 00 in the factory data) -> VX (red), first
+40 0003e9e4 01
+# RX Monitor off again -> MN disappears
+60 18004c14 00000000
+25 r 18007a34 4
+36 r 18007a34 4
+50 r 18007a34 4
+70 r 18007a34 4

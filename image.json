@@ -1,0 +1,62 @@
+{
+ "_comment": [
+  "The DM-32UV Kraken image: patch manifests applied in order, each built on the previous one's output.",
+  "Paths are relative to /w inside the dm32uv-re Docker image. tools/build.sh mounts this repo at /w/dm32uv-unleashed",
+  "and the dm32uv-re checkout at /w/dm32/dm32uv-re, whatever the folders are called on the host.",
+  "tools/build_image.py reads this file. Add a patch by appending to 'patches' (and its claims file to",
+  "'allocation_files' if it is new)."
+ ],
+ "name": "kraken",
+ "base_image": "dm32/dm32uv-re/data/firmware/patching/progmem_stock_DP570UV_20260926_FULL.bin",
+ "allocation_files": [
+  "dm32uv-unleashed/patches/mi_rng/allocations.json",
+  "dm32uv-unleashed/allocations.json"
+ ],
+ "patches": [
+  {
+   "id": "F0a",
+   "manifest": "dm32uv-unleashed/patches/mi_rng/mi_rng.patch.json",
+   "test": {
+    "script": "dm32uv-unleashed/tests/mi_rng_test.py",
+    "patched_image_var": "PATCHED",
+    "args": [
+     "--noise-dependence",
+     "--measure-irq-off"
+    ],
+    "retries": 1,
+    "_note": "Phase B (booted, gdb) times out about 1 run in 3 on the mi_rng-only image too: emulator timing, not a patch fault. One retry."
+   }
+  },
+  {
+   "id": "kraken_ui (P3 F1 F2 F4 F6 P5)",
+   "manifest": "dm32uv-unleashed/patches/kraken_ui/kraken_ui.patch.json",
+   "test": {
+    "script": "dm32uv-unleashed/tests/kraken_ui_test.py",
+    "patched_image_var": "PATCHED",
+    "args": []
+   }
+  }
+ ],
+ "exclude_claims": [
+  {
+   "name": "ramdump_probe_code",
+   "file": "dm32/dm32uv-re/data/allocations.json",
+   "why": "dm32uv-re's live-RAM-capture probe handler (sector 0x030e1000) is not in this image: image.json patches are mi_rng and kraken_ui only, neither of which calls or writes it, and stock has 0xFF there. kraken_ui5_code (F3 DMR link) takes the sector (2026-10-30). Its SRAM claim ramdump_cursor stays reserved and untouched."
+  },
+  {
+   "name": "mi_rng_tap_buf",
+   "file": "dm32uv-unleashed/patches/mi_rng/allocations.json",
+   "why": "measurement-build-only claim (mi_rng_tap.patch.json); the production mi_rng in this image never touches 0x18005000-0x18007000. Our SRAM claims kraken_ui_state2/feat_state/ui3_state/bigbuf reuse that range (2026-10-29)."
+  },
+  {
+   "name": "snake_code",
+   "file": "dm32/dm32uv-re/data/allocations.json",
+   "why": "dm32uv-re's Snake example is not in this image and cannot be: it edits the same eleven menu sites as kraken_ui (P3 replaced it). Its sectors 0x030e8000-0x030ea000 are erased in our image; F13's blob kraken_ui4 uses them (2026-10-29)."
+  },
+  {
+   "name": "snake_state",
+   "file": "dm32/dm32uv-re/data/allocations.json",
+   "why": "Snake's SRAM (see snake_code); unused in this image. kraken_ui4_state takes 0x18007000-0x18007400 (2026-10-29)."
+  }
+ ]
+}

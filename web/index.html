@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The release this page was published from: tag and the SHA-256 of the two files it may use. Empty in a
+     local build; .github/workflows/pages.yml fills it in (tools/pin_web_release.py). -->
+<meta name="kraken-release" content="">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+<title>Kraken Installer</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <span class="mark" data-icon="radio"></span>
+    <span class="name">Kraken</span>
+    <span class="for">for the Baofeng DM-32UV</span>
+  </header>
+
+  <section id="home" class="card">
+    <h1>Install Kraken</h1>
+    <p class="lede">About 5 minutes. Your radio is backed up first, and nothing leaves this computer.</p>
+    <ul class="need">
+      <li><span data-icon="usb"></span>The USB programming cable</li>
+      <li><span data-icon="battery"></span>A charged battery</li>
+      <li><span data-icon="browser"></span>Chrome or Edge on a computer</li>
+      <li><span data-icon="chip"></span>Firmware <b>DM32.00.01.048</b> <span class="aside">(checked for you)</span></li>
+    </ul>
+    <p id="blocked" class="blocked" hidden></p>
+    <button id="start" class="primary big" disabled>Install Kraken</button>
+    <p class="hint">Chrome then asks which device to use. Pick your cable, usually <b>USB-Serial Controller</b>.</p>
+  </section>
+
+  <section id="flow" class="card flow" hidden aria-live="polite">
+    <ol id="bar" class="bar">
+      <li data-step="connect">Connect</li>
+      <li data-step="backup">Back up</li>
+      <li data-step="install">Install</li>
+      <li data-step="done">Done</li>
+    </ol>
+    <div id="icon" class="icon"></div>
+    <h2 id="title"></h2>
+    <div id="steps"></div>
+    <p id="note" class="note"></p>
+    <div id="progress-row" class="progress-row" hidden>
+      <progress id="progress" max="1"></progress>
+      <span id="progress-label"></span>
+    </div>
+    <p id="status" class="status"></p>
+    <label id="saved-row" class="saved-row" hidden><input type="checkbox" id="saved-box"> I saved the file</label>
+    <div class="buttons">
+      <button id="primary" class="primary" hidden></button>
+      <button id="secondary" hidden></button>
+    </div>
+    <button id="cancel" class="link" hidden>Cancel</button>
+  </section>
+
+  <details id="other" class="more">
+    <summary>Update or remove Kraken</summary>
+    <p>Choose the backup this page saved before Kraken was first installed.</p>
+    <input type="file" id="backup-file" accept=".bin">
+    <div class="buttons">
+      <button id="from-backup" disabled>Update Kraken</button>
+      <button id="restore" disabled>Restore stock firmware</button>
+    </div>
+  </details>
+
+  <footer>
+    <p>Unofficial. Not made or supported by Baofeng. Use at your own risk.</p>
+    <p id="release"></p>
+    <button id="show-log" class="link">Show log</button>
+    <div id="log-box" hidden>
+      <pre id="log"></pre>
+      <button id="copy-log" class="link">Copy log</button>
+    </div>
+  </footer>
+</main>
+</body>
+</html>

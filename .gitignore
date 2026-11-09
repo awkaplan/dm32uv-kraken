@@ -1,0 +1,21 @@
+# Build and emulator output
+out/
+
+# Your own radio backups, dumps and local notes: never commit these
+private/
+*.bak-*
+
+# Editor / OS / tool clutter
+.DS_Store
+__pycache__/
+*.pyc
+.claude/
+.mcp.json
+.vscode/
+.idea/
+*.swp
+node_modules/
+.venv/
+
+# CI checks dm32uv-re out here
+.deps/

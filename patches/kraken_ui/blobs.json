@@ -1,0 +1,73 @@
+{
+ "_comment": [
+  "Blobs of kraken_ui.patch.json. tools/gen_manifest.py expands this into the manifest's \"blobs\": the shared compiler/linker flags",
+  "come from defaults (opt = the optimisation level, replaced per blob), and each blob's defsym is built from its imports.",
+  "exports = the symbols a blob offers the others (every blob that imports the whole blob gets all of them);",
+  "imports[] = {from: blob, syms: [..]} for named symbols, or {from: blob, except: [..]} for all of its exports minus those it does not use."
+ ],
+ "defaults": {
+  "opt": "-O2",
+  "cflags": ["-Wall", "-ffreestanding", "-fno-tree-loop-distribute-patterns", "-ffunction-sections", "-fdata-sections"],
+  "ldflags": ["--gc-sections"]
+ },
+ "blobs": [
+ {
+  "name": "kraken_ui",
+  "sources": ["krk_core.c", "krk_about.c", "krk_rssi.c", "krk_grid.c", "krk_lastheard.c", "krk_rf.c", "krk_scope.c", "krk_optrow.c", "krk_stubs.S"],
+  "linker_script": "kraken_ui.ld",
+  "entry": "krk_item_ok",
+  "expect_entry": "0x030e4000",
+  "exports": ["krk_line", "krk_text", "krk_cat", "krk_catn", "krk_cati", "krk_catfix", "krk_pad", "krk_line_cached", "krk_fmt_age", "krk_uart_putc", "krk_uart_puts", "krk_hex", "krk_itoa", "krk_gps_get", "krk_channel_analog", "krk_channel_side", "krk_channel_flags", "krk_channel_mode", "krk_channel_freq", "krk_channel_on_selected", "krk_list_cells"]
+ },
+ {
+  "name": "kraken_ui3",
+  "sources": ["krk_sat.c", "krk_sat_tles.c", "krk_satrf.c", "krk_satscr.c", "krk_callsign.c"],
+  "linker_script": "kraken_ui3.ld",
+  "entry": "krk_sat_screen",
+  "expect_entry": "0x030f8000",
+  "imports": [
+   {"from": "kraken_ui"}
+  ],
+  "libgcc": true
+ },
+ {
+  "name": "kraken_ui2",
+  "sources": ["krk_ext.c", "krk_aprs_tx.c", "krk_aprs_menu.c", "krk_aprsrx.c", "krk_afsk.c", "krk_ax25.c", "krk_periodic.c", "krk_scramble.c", "krk_squelch.c", "krk_vox.c", "krk_ofstubs.S", "krk_txtrim.c", "krk_vframe.c", "krk_parrot_sm.c", "krk_parrot.c", "krk_cwid.c", "krk_band.c", "krk_bvcfg.c", "krk_tags.c"],
+  "linker_script": "kraken_ui2.ld",
+  "entry": "krk_ext_screens",
+  "expect_entry": "0x030ee000",
+  "imports": [
+   {"from": "kraken_ui"},
+   {"from": "kraken_ui", "syms": ["krk_screen_owner", "krk_tags_shown", "krk_popup", "krk_popup_draw", "krk_key_scan", "krk_opt_enter", "krk_opt_commit", "krk_run_screen"]},
+   {"from": "kraken_ui3", "syms": ["krk_sat_screen", "krk_sat_tick", "krk_callsign_screen", "krk_call_get", "krk_rec_csum", "krk_aprs_cfg_path", "krk_aprs_cfg_set_path", "krk_cwid_cfg", "krk_cwid_cfg_set", "krk_sat_active"]}
+  ],
+  "libgcc": true
+ },
+ {
+  "name": "kraken_ui4",
+  "sources": ["krk_bvscr.c", "krk_bvmsg.c", "krk_bv_modem.c", "krk_bv_frame.c", "krk_bv_sound.c", "krk_ambe.c"],
+  "opt": "-Os",
+  "linker_script": "kraken_ui4.ld",
+  "entry": "krk_bv_screen",
+  "expect_entry": "0x030e8000",
+  "imports": [
+   {"from": "kraken_ui", "except": ["krk_gps_get"]},
+   {"from": "kraken_ui", "syms": ["krk_key_scan"]},
+   {"from": "kraken_ui2", "syms": ["krk_vf_service", "krk_vf_tx_begin", "krk_vf_tx_end", "krk_vf_tx_quiet", "krk_vf_rx_sink", "krk_vf_release", "krk_vf_press", "krk_vf_ticks", "krk_vf_silence", "krk_vf_big_claim", "krk_vf_big_release", "krk_vf", "krk_fm_send_opt", "krk_on_selected_side", "krk_bv_cfg"]}
+  ],
+  "libgcc": true
+ },
+ {
+  "name": "kraken_ui5",
+  "sources": ["krk_dmrlink.c"],
+  "linker_script": "kraken_ui5.ld",
+  "entry": "krk_dmrlink_screen",
+  "expect_entry": "0x030e1000",
+  "imports": [
+   {"from": "kraken_ui", "except": ["krk_line", "krk_text", "krk_catn", "krk_catfix", "krk_pad", "krk_fmt_age", "krk_gps_get", "krk_channel_on_selected"]},
+   {"from": "kraken_ui2", "syms": ["krk_feat_end"]}
+  ],
+  "libgcc": true
+ }
+ ]
+}

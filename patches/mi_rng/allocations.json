@@ -1,0 +1,34 @@
+{
+ "_comment": [
+  "Flash and SRAM claims of the mi_rng patch (F0a), in dm32uv-re's data/allocations.json format.",
+  "Listed in image.json 'allocation_files'; tools/build_image.py passes it to build_manifest_patch.py --extra-allocations.",
+  "Kept apart from the repo's allocations.json because tools/gen_claims.py turns every claim there into a KRK_* macro.",
+  "mi_rng_tap_buf belongs to the measurement build only (mi_rng_tap.patch.json); image.json excludes it from the Kraken image."
+ ],
+ "allocations": [
+  {
+   "name": "mi_rng_code",
+   "space": "flash",
+   "start": "0x030e2000",
+   "end_exclusive": "0x030e3000",
+   "owner": "mi_rng patch: AES-256 CTR_DRBG replacing lcg_rand_next at the DMR-privacy MI draw (sector 226)",
+   "source": "patches/mi_rng/; dm32uv-re's docs/encryption.md section 6"
+  },
+  {
+   "name": "mi_rng_state",
+   "space": "sram",
+   "start": "0x18007400",
+   "end_exclusive": "0x18007600",
+   "owner": "mi_rng patch .bss: DRBG key/V, output buffer, AES key schedule and scratch (0x1d0 bytes used)",
+   "source": "patches/mi_rng/mi_rng.c struct mi_rng"
+  },
+  {
+   "name": "mi_rng_tap_buf",
+   "space": "sram",
+   "start": "0x18005000",
+   "end_exclusive": "0x18007000",
+   "owner": "mi_rng MEASUREMENT build only (mi_rng_tap.patch.json): ring buffer of raw noise samples for entropy measurement; unused by the production mi_rng build",
+   "source": "patches/mi_rng/mi_rng.c struct mi_rng_tap; tools/mi_rng_entropy.py"
+  }
+ ]
+}

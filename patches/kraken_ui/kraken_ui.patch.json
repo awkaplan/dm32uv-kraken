@@ -1,0 +1,2019 @@
+{
+ "_comment": [
+  "KRAKEN: an 11th top-level menu category whose sub-list hosts this project's screens.",
+  "Splice sites, expected bytes and table contents are Snake's (dm32uv-re tools/examples/snake/snake.patch.json,",
+  "docs/menu-system.md 'Adding an 11th category'); only the handlers and the placement differ.",
+  "This patch and Snake are mutually exclusive: they edit the same eleven sites."
+ ],
+ "name": "kraken_ui",
+ "description": "KRAKEN top-level menu category with a sub-list of patch screens (About, RSSI meter, ...).",
+ "allocations": [
+  "kraken_ui_code",
+  "kraken_ui_code2",
+  "kraken_ui_data",
+  "kraken_ui_state",
+  "kraken_ui2_state",
+  "kraken_afsk_state",
+  "kraken_ui_state2",
+  "kraken_feat_state",
+  "kraken_ui3_code",
+  "kraken_ui3_state",
+  "kraken_bigbuf",
+  "kraken_ui4_code",
+  "kraken_ui4_state",
+  "kraken_ui5_code"
+ ],
+ "symbols": {
+  "SUBTYPE_ICON_LIST": 2
+ },
+ "blobs": [
+  {
+   "name": "kraken_ui",
+   "sources": [
+    "krk_core.c",
+    "krk_about.c",
+    "krk_rssi.c",
+    "krk_grid.c",
+    "krk_lastheard.c",
+    "krk_rf.c",
+    "krk_scope.c",
+    "krk_optrow.c",
+    "krk_stubs.S"
+   ],
+   "cflags": [
+    "-O2",
+    "-Wall",
+    "-ffreestanding",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections"
+   ],
+   "ldflags": [
+    "--gc-sections"
+   ],
+   "linker_script": "kraken_ui.ld",
+   "entry": "krk_item_ok",
+   "expect_entry": "0x030e4000"
+  },
+  {
+   "name": "kraken_ui3",
+   "sources": [
+    "krk_sat.c",
+    "krk_sat_tles.c",
+    "krk_satrf.c",
+    "krk_satscr.c",
+    "krk_callsign.c"
+   ],
+   "cflags": [
+    "-O2",
+    "-Wall",
+    "-ffreestanding",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections"
+   ],
+   "ldflags": [
+    "--gc-sections"
+   ],
+   "linker_script": "kraken_ui3.ld",
+   "entry": "krk_sat_screen",
+   "expect_entry": "0x030f8000",
+   "defsym": {
+    "krk_line": "@kraken_ui:krk_line",
+    "krk_text": "@kraken_ui:krk_text",
+    "krk_cat": "@kraken_ui:krk_cat",
+    "krk_catn": "@kraken_ui:krk_catn",
+    "krk_cati": "@kraken_ui:krk_cati",
+    "krk_catfix": "@kraken_ui:krk_catfix",
+    "krk_pad": "@kraken_ui:krk_pad",
+    "krk_line_cached": "@kraken_ui:krk_line_cached",
+    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
+    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
+    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
+    "krk_hex": "@kraken_ui:krk_hex",
+    "krk_itoa": "@kraken_ui:krk_itoa",
+    "krk_gps_get": "@kraken_ui:krk_gps_get",
+    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
+    "krk_channel_side": "@kraken_ui:krk_channel_side",
+    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
+    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
+    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
+    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
+    "krk_list_cells": "@kraken_ui:krk_list_cells"
+   },
+   "libgcc": true
+  },
+  {
+   "name": "kraken_ui2",
+   "sources": [
+    "krk_ext.c",
+    "krk_aprs_tx.c",
+    "krk_aprs_menu.c",
+    "krk_aprsrx.c",
+    "krk_afsk.c",
+    "krk_ax25.c",
+    "krk_periodic.c",
+    "krk_scramble.c",
+    "krk_squelch.c",
+    "krk_vox.c",
+    "krk_ofstubs.S",
+    "krk_txtrim.c",
+    "krk_vframe.c",
+    "krk_parrot_sm.c",
+    "krk_parrot.c",
+    "krk_cwid.c",
+    "krk_band.c",
+    "krk_bvcfg.c",
+    "krk_tags.c"
+   ],
+   "cflags": [
+    "-O2",
+    "-Wall",
+    "-ffreestanding",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections"
+   ],
+   "ldflags": [
+    "--gc-sections"
+   ],
+   "linker_script": "kraken_ui2.ld",
+   "entry": "krk_ext_screens",
+   "expect_entry": "0x030ee000",
+   "defsym": {
+    "krk_line": "@kraken_ui:krk_line",
+    "krk_text": "@kraken_ui:krk_text",
+    "krk_cat": "@kraken_ui:krk_cat",
+    "krk_catn": "@kraken_ui:krk_catn",
+    "krk_cati": "@kraken_ui:krk_cati",
+    "krk_catfix": "@kraken_ui:krk_catfix",
+    "krk_pad": "@kraken_ui:krk_pad",
+    "krk_line_cached": "@kraken_ui:krk_line_cached",
+    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
+    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
+    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
+    "krk_hex": "@kraken_ui:krk_hex",
+    "krk_itoa": "@kraken_ui:krk_itoa",
+    "krk_gps_get": "@kraken_ui:krk_gps_get",
+    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
+    "krk_channel_side": "@kraken_ui:krk_channel_side",
+    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
+    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
+    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
+    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
+    "krk_list_cells": "@kraken_ui:krk_list_cells",
+    "krk_screen_owner": "@kraken_ui:krk_screen_owner",
+    "krk_tags_shown": "@kraken_ui:krk_tags_shown",
+    "krk_popup": "@kraken_ui:krk_popup",
+    "krk_popup_draw": "@kraken_ui:krk_popup_draw",
+    "krk_key_scan": "@kraken_ui:krk_key_scan",
+    "krk_opt_enter": "@kraken_ui:krk_opt_enter",
+    "krk_opt_commit": "@kraken_ui:krk_opt_commit",
+    "krk_run_screen": "@kraken_ui:krk_run_screen",
+    "krk_sat_screen": "@kraken_ui3:krk_sat_screen",
+    "krk_sat_tick": "@kraken_ui3:krk_sat_tick",
+    "krk_callsign_screen": "@kraken_ui3:krk_callsign_screen",
+    "krk_call_get": "@kraken_ui3:krk_call_get",
+    "krk_rec_csum": "@kraken_ui3:krk_rec_csum",
+    "krk_aprs_cfg_path": "@kraken_ui3:krk_aprs_cfg_path",
+    "krk_aprs_cfg_set_path": "@kraken_ui3:krk_aprs_cfg_set_path",
+    "krk_cwid_cfg": "@kraken_ui3:krk_cwid_cfg",
+    "krk_cwid_cfg_set": "@kraken_ui3:krk_cwid_cfg_set",
+    "krk_sat_active": "@kraken_ui3:krk_sat_active"
+   },
+   "libgcc": true
+  },
+  {
+   "name": "kraken_ui4",
+   "sources": [
+    "krk_bvscr.c",
+    "krk_bvmsg.c",
+    "krk_bv_modem.c",
+    "krk_bv_frame.c",
+    "krk_bv_sound.c",
+    "krk_ambe.c"
+   ],
+   "cflags": [
+    "-Os",
+    "-Wall",
+    "-ffreestanding",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections"
+   ],
+   "ldflags": [
+    "--gc-sections"
+   ],
+   "linker_script": "kraken_ui4.ld",
+   "entry": "krk_bv_screen",
+   "expect_entry": "0x030e8000",
+   "defsym": {
+    "krk_line": "@kraken_ui:krk_line",
+    "krk_text": "@kraken_ui:krk_text",
+    "krk_cat": "@kraken_ui:krk_cat",
+    "krk_catn": "@kraken_ui:krk_catn",
+    "krk_cati": "@kraken_ui:krk_cati",
+    "krk_catfix": "@kraken_ui:krk_catfix",
+    "krk_pad": "@kraken_ui:krk_pad",
+    "krk_line_cached": "@kraken_ui:krk_line_cached",
+    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
+    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
+    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
+    "krk_hex": "@kraken_ui:krk_hex",
+    "krk_itoa": "@kraken_ui:krk_itoa",
+    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
+    "krk_channel_side": "@kraken_ui:krk_channel_side",
+    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
+    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
+    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
+    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
+    "krk_list_cells": "@kraken_ui:krk_list_cells",
+    "krk_key_scan": "@kraken_ui:krk_key_scan",
+    "krk_vf_service": "@kraken_ui2:krk_vf_service",
+    "krk_vf_tx_begin": "@kraken_ui2:krk_vf_tx_begin",
+    "krk_vf_tx_end": "@kraken_ui2:krk_vf_tx_end",
+    "krk_vf_tx_quiet": "@kraken_ui2:krk_vf_tx_quiet",
+    "krk_vf_rx_sink": "@kraken_ui2:krk_vf_rx_sink",
+    "krk_vf_release": "@kraken_ui2:krk_vf_release",
+    "krk_vf_press": "@kraken_ui2:krk_vf_press",
+    "krk_vf_ticks": "@kraken_ui2:krk_vf_ticks",
+    "krk_vf_silence": "@kraken_ui2:krk_vf_silence",
+    "krk_vf_big_claim": "@kraken_ui2:krk_vf_big_claim",
+    "krk_vf_big_release": "@kraken_ui2:krk_vf_big_release",
+    "krk_vf": "@kraken_ui2:krk_vf",
+    "krk_fm_send_opt": "@kraken_ui2:krk_fm_send_opt",
+    "krk_on_selected_side": "@kraken_ui2:krk_on_selected_side",
+    "krk_bv_cfg": "@kraken_ui2:krk_bv_cfg"
+   },
+   "libgcc": true
+  },
+  {
+   "name": "kraken_ui5",
+   "sources": [
+    "krk_dmrlink.c"
+   ],
+   "cflags": [
+    "-O2",
+    "-Wall",
+    "-ffreestanding",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections"
+   ],
+   "ldflags": [
+    "--gc-sections"
+   ],
+   "linker_script": "kraken_ui5.ld",
+   "entry": "krk_dmrlink_screen",
+   "expect_entry": "0x030e1000",
+   "defsym": {
+    "krk_cat": "@kraken_ui:krk_cat",
+    "krk_cati": "@kraken_ui:krk_cati",
+    "krk_line_cached": "@kraken_ui:krk_line_cached",
+    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
+    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
+    "krk_hex": "@kraken_ui:krk_hex",
+    "krk_itoa": "@kraken_ui:krk_itoa",
+    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
+    "krk_channel_side": "@kraken_ui:krk_channel_side",
+    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
+    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
+    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
+    "krk_list_cells": "@kraken_ui:krk_list_cells",
+    "krk_feat_end": "@kraken_ui2:krk_feat_end"
+   },
+   "libgcc": true
+  }
+ ],
+ "data": [
+  {
+   "name": "krk_label",
+   "addr": "0x030e7000",
+   "parts": [
+    {
+     "string": "KRAKEN",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_catjmp",
+   "addr": "0x030e7020",
+   "why": "render-path table: ten stock case blocks + ours",
+   "parts": [
+    {
+     "stock_u32": "0x030aff74",
+     "count": 10,
+     "expect": [
+      "0x0303da4c",
+      "0x0303da9a",
+      "0x0303dae8",
+      "0x0303db72",
+      "0x0303dbf6",
+      "0x0303dc44",
+      "0x0303dc92",
+      "0x0303dccc",
+      "0x0303dd06",
+      "0x0303dd40"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_render_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_okjmp",
+   "addr": "0x030e7060",
+   "why": "OK-path table: ten stock 6-byte stubs + ours",
+   "parts": [
+    {
+     "stock_u32": "0x030afef0",
+     "count": 10,
+     "expect": [
+      "0x0303cdac",
+      "0x0303cdb2",
+      "0x0303cdb8",
+      "0x0303cdbe",
+      "0x0303cdc4",
+      "0x0303cdca",
+      "0x0303cdd0",
+      "0x0303cdd6",
+      "0x0303cddc",
+      "0x0303cde2"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_ok_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_itemjmp",
+   "addr": "0x030e70a0",
+   "why": "item-action table: ten stock case blocks + ours",
+   "parts": [
+    {
+     "stock_u32": "0x030aff18",
+     "count": 10,
+     "expect": [
+      "0x0303cf1c",
+      "0x0303cf68",
+      "0x0303cf70",
+      "0x0303cf78",
+      "0x0303cf80",
+      "0x0303cfbe",
+      "0x0303cfc6",
+      "0x0303d1b4",
+      "0x0303d2a0",
+      "0x0303d54c"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_item_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_labelarr_lang0",
+   "addr": "0x030e70e0",
+   "parts": [
+    {
+     "stock_u32": "0x030b7d68",
+     "count": 10
+    },
+    {
+     "u32": [
+      "@krk_label"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_labelarr_lang1",
+   "addr": "0x030e7120",
+   "parts": [
+    {
+     "stock_u32": "0x030b7d90",
+     "count": 10
+    },
+    {
+     "u32": [
+      "@krk_label"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_lbl_call",
+   "addr": "0x030e7190",
+   "why": "label of APRS item 10 (Callsign), an analog row (docs/aprs-submenu.md)",
+   "parts": [
+    {
+     "string": "Callsign",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_arr_zh",
+   "addr": "0x030e7620",
+   "why": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): items 8..12 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
+   "parts": [
+    {
+     "stock_u32": "0x030ba8e4",
+     "count": 8
+    },
+    {
+     "stock_u32": "0x030ba8e8",
+     "count": 1
+    },
+    {
+     "stock_u32": "0x030ba8fc",
+     "count": 1
+    },
+    {
+     "u32": [
+      "@krk_aprs_lbl_call",
+      "@krk_aprs_lbl_rx",
+      "@krk_aprs_lbl_mon"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_arr_en",
+   "addr": "0x030e7660",
+   "why": "stock APRS en strings + analog rows (descriptor lang 1), same layout as zh",
+   "parts": [
+    {
+     "stock_u32": "0x030ba904",
+     "count": 8
+    },
+    {
+     "stock_u32": "0x030ba908",
+     "count": 1
+    },
+    {
+     "stock_u32": "0x030ba91c",
+     "count": 1
+    },
+    {
+     "u32": [
+      "@krk_aprs_lbl_call",
+      "@krk_aprs_lbl_rx",
+      "@krk_aprs_lbl_mon"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_itemjmp",
+   "addr": "0x030e76a0",
+   "why": "APRS per-item jump table: 8 stock case blocks + 5 stub entries (items 8..12: Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor)",
+   "parts": [
+    {
+     "stock_u32": "0x030aff54",
+     "count": 8,
+     "expect": [
+      "0x0303d570",
+      "0x0303d5de",
+      "0x0303d634",
+      "0x0303d6a4",
+      "0x0303d72c",
+      "0x0303d756",
+      "0x0303d7d8",
+      "0x0303d848"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_aprs_item_stub",
+      "@kraken_ui:krk_aprs_item_stub",
+      "@kraken_ui:krk_aprs_item_stub",
+      "@kraken_ui:krk_aprs_item_stub",
+      "@kraken_ui:krk_aprs_item_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_calllog_lbl_lh",
+   "addr": "0x030e7240",
+   "why": "label of Call Log 4 (Last Heard), docs/calllog-submenu.md",
+   "parts": [
+    {
+     "string": "Last Heard",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_calllog_arr_zh",
+   "addr": "0x030e7250",
+   "why": "stock Call Log zh strings (descriptor 0x030b8060 lang 0: Missed, Answered, Sent, Delete) + item 4 Last Heard (docs/calllog-submenu.md)",
+   "parts": [
+    {
+     "stock_u32": "0x030b8040",
+     "count": 4,
+     "expect": [
+      "0x030bc554",
+      "0x030bc560",
+      "0x030bc56c",
+      "0x030bc578"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_calllog_lbl_lh"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_calllog_arr_en",
+   "addr": "0x030e7270",
+   "why": "stock Call Log en strings (descriptor lang 1) + item 4 Last Heard",
+   "parts": [
+    {
+     "stock_u32": "0x030b8050",
+     "count": 4,
+     "expect": [
+      "0x030bc584",
+      "0x030bc58c",
+      "0x030be258",
+      "0x030bc598"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_calllog_lbl_lh"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_lbl_rx",
+   "addr": "0x030e7290",
+   "why": "label of APRS item 11 (APRS RX), an analog row (docs/aprs-submenu.md)",
+   "parts": [
+    {
+     "string": "APRS RX",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_rs_lbl_trim",
+   "addr": "0x030e7840",
+   "why": "label of Radio Settings 4 (TX Power Trim), docs/settings-submenu.md; the level-4 header handler 0x03038720 draws it straight from the relocated array, so no title hook is needed",
+   "parts": [
+    {
+     "string": "TX Power Trim",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_rs_lbl_squelch",
+   "addr": "0x030e7850",
+   "why": "label of Radio Settings 5 (Squelch Mode), docs/settings-submenu.md; the level-4 header handler 0x03038720 draws it straight from the relocated array, so no title hook is needed",
+   "parts": [
+    {
+     "string": "Squelch Mode",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_rs_arr_zh",
+   "addr": "0x030e72c0",
+   "why": "stock Radio Settings zh strings (descriptor 0x030b8488 lang 0: Voice/Key/Display/Other Func) + items 4..6 (TX Power Trim, Squelch Mode, Freq Unlock)",
+   "parts": [
+    {
+     "stock_u32": "0x030b8468",
+     "count": 4,
+     "expect": [
+      "0x030bcbac",
+      "0x030bcaf8",
+      "0x030bcb04",
+      "0x030bcb10"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_rs_lbl_trim",
+      "@krk_rs_lbl_squelch",
+      "@krk_rs_lbl_unlock"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_rs_arr_en",
+   "addr": "0x030e72e0",
+   "why": "stock Radio Settings en strings (descriptor lang 1) + items 4..6 (TX Power Trim, Squelch Mode, Freq Unlock)",
+   "parts": [
+    {
+     "stock_u32": "0x030b8478",
+     "count": 4,
+     "expect": [
+      "0x030bcb1c",
+      "0x030bcb28",
+      "0x030bcb34",
+      "0x030bcb44"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_rs_lbl_trim",
+      "@krk_rs_lbl_squelch",
+      "@krk_rs_lbl_unlock"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_dmrlink",
+   "addr": "0x030e7300",
+   "why": "label of Channel Set 22 DMR Link (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "DMR Link",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_bv",
+   "addr": "0x030e7310",
+   "why": "label of Channel Set 23 Burst Voice (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Burst Voice",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_scron",
+   "addr": "0x030e7320",
+   "why": "label of Channel Set 24 Scrambler On/Off (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Scrambler On/Off",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_scrkey",
+   "addr": "0x030e7340",
+   "why": "label of Channel Set 25 Key (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Key",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_paron",
+   "addr": "0x030e7350",
+   "why": "label of Channel Set 26 Parrot On/Off (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Parrot On/Off",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_parplay",
+   "addr": "0x030e7360",
+   "why": "label of Channel Set 27 Replay Audio (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Replay Audio",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_parchk",
+   "addr": "0x030e7370",
+   "why": "label of Channel Set 28 Check (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Check",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_parclr",
+   "addr": "0x030e7380",
+   "why": "label of Channel Set 29 Clear Audio (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Clear Audio",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_lbl_parstat",
+   "addr": "0x030e7390",
+   "why": "label of Channel Set 30 Status (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook",
+   "parts": [
+    {
+     "string": "Status",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_vox_kids_zh",
+   "addr": "0x030e7810",
+   "why": "stock VOX child list, zh (descriptor 0x030b82b8 lang 0: VOX SW, Gain Level) + child 2 = stock's own VOX Delay string (Other Func zh array slot 4). The stock arrays are packed against their neighbours and the descriptor. The level-5 installer 0x030449ec and the level-6 header 0x03038b9e both follow the descriptor's count and pointer, so the third row and its title are data only",
+   "parts": [
+    {
+     "stock_u32": "0x030b82a8",
+     "count": 2,
+     "expect": [
+      "0x030bc870",
+      "0x030bc87c"
+     ]
+    },
+    {
+     "stock_u32": "0x030b8670",
+     "count": 1,
+     "expect": [
+      "0x030bcfe0"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_vox_kids_en",
+   "addr": "0x030e7820",
+   "why": "stock VOX child list, en (VOX SW, Gain Level) + child 2 = stock's VOX Delay string (Other Func en array slot 4)",
+   "parts": [
+    {
+     "stock_u32": "0x030b82b0",
+     "count": 2,
+     "expect": [
+      "0x030bc888",
+      "0x030bc890"
+     ]
+    },
+    {
+     "stock_u32": "0x030b86c4",
+     "count": 1,
+     "expect": [
+      "0x030bd0d4"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_of_lbl_cwid",
+   "addr": "0x030e7830",
+   "why": "label of Other Func item 11 (2026-11-05, docs/cw-id.md, docs/otherfunc-submenu.md). Stock never lists item 10 (Lone Worker) or 11 (Man Down): the generator skips them and their slots in both per-item tables are the no-op exits, so the Man Down slot is reused as the CW ID parent row with no table relocation. The level-5 header 0x03038994 reads 0x030b8708[lang].ptr[item], so the label also titles the child list",
+   "parts": [
+    {
+     "string": "CW ID",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_arr_zh",
+   "addr": "0x030e7420",
+   "why": "stock Channel Set zh strings (descriptor 0x030b89a0 lang 0, 22 rows Rx Frequency..APRS Receive) + items 22..30 (DMR Link, Burst Voice, Scrambler On/Off, Key, Parrot On/Off, Replay Audio, Check, Clear Audio, Status). The two stock arrays abut each other and the descriptor (zh+88 = en, en+88 = the descriptor), so neither can grow in place: both are relocated. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+   "parts": [
+    {
+     "stock_u32": "0x030b88f0",
+     "count": 22,
+     "expect": [
+      "0x030bd3f4",
+      "0x030bd400",
+      "0x030bd40c",
+      "0x030bd418",
+      "0x030bd420",
+      "0x030bd42c",
+      "0x030bd434",
+      "0x030bd43c",
+      "0x030bd444",
+      "0x030bd450",
+      "0x030bd45c",
+      "0x030bd468",
+      "0x030bd474",
+      "0x030afa00",
+      "0x030bd480",
+      "0x030bd48c",
+      "0x030bd498",
+      "0x03081fa4",
+      "0x030bd4a4",
+      "0x030bd4b4",
+      "0x030bd4c0",
+      "0x030bd4cc"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_cs_lbl_dmrlink",
+      "@krk_cs_lbl_bv",
+      "@krk_cs_lbl_scron",
+      "@krk_cs_lbl_scrkey",
+      "@krk_cs_lbl_paron",
+      "@krk_cs_lbl_parplay",
+      "@krk_cs_lbl_parchk",
+      "@krk_cs_lbl_parclr",
+      "@krk_cs_lbl_parstat"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_arr_en",
+   "addr": "0x030e74a0",
+   "why": "stock Channel Set en strings (descriptor lang 1), same layout as zh: 22 stock + 9 of ours. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+   "parts": [
+    {
+     "stock_u32": "0x030b8948",
+     "count": 22,
+     "expect": [
+      "0x030bd4d8",
+      "0x030bd4e8",
+      "0x030bd4f8",
+      "0x030bd504",
+      "0x030bd50c",
+      "0x030bd518",
+      "0x030bd524",
+      "0x030bd43c",
+      "0x030bd530",
+      "0x030bd540",
+      "0x030bd550",
+      "0x030bd55c",
+      "0x030bd56c",
+      "0x030bd57c",
+      "0x030bd588",
+      "0x030bd594",
+      "0x030bd5a4",
+      "0x03081fa4",
+      "0x030bd5b4",
+      "0x030bd5c4",
+      "0x030bd5cc",
+      "0x030bd5d8"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_cs_lbl_dmrlink",
+      "@krk_cs_lbl_bv",
+      "@krk_cs_lbl_scron",
+      "@krk_cs_lbl_scrkey",
+      "@krk_cs_lbl_paron",
+      "@krk_cs_lbl_parplay",
+      "@krk_cs_lbl_parchk",
+      "@krk_cs_lbl_parclr",
+      "@krk_cs_lbl_parstat"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_itemjmp",
+   "addr": "0x030e7520",
+   "why": "Channel Set ENTER jump table (OK on the row, event 0x1b): 22 stock case blocks of table_entry_select_and_index_list_build_toplevel_dispatch @0x03047324 + 9 stub entries (items 22..30). The stock table 0x030b0a18 is packed directly before 0x030b0a70 so it must be relocated; its only reference is the literal-pool word at 0x03047370. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+   "parts": [
+    {
+     "stock_u32": "0x030b0a18",
+     "count": 22,
+     "expect": [
+      "0x03047374",
+      "0x03047374",
+      "0x03047414",
+      "0x0304749c",
+      "0x030474e2",
+      "0x030474ea",
+      "0x03047598",
+      "0x0304760e",
+      "0x03047666",
+      "0x030476cc",
+      "0x03047780",
+      "0x030477f4",
+      "0x0304787e",
+      "0x030478da",
+      "0x03047988",
+      "0x030479e8",
+      "0x03047a2a",
+      "0x03047a88",
+      "0x03047ae8",
+      "0x03047bbc",
+      "0x03047c1a",
+      "0x03047c96"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui2:krk_cs_bv_kids_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub",
+      "@kraken_ui:krk_cs_item_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_cs_okjmp",
+   "addr": "0x030e75a0",
+   "why": "Channel Set COMMIT jump table (OK INSIDE a row's option level, event 0x22): 22 stock case blocks of 0x0304dc8c + 9 stub entries (items 22..30). MEASURED 2026-11-03: the committing OK runs 0x0303a57c -> bsr 0x0304e560 -> jump table 0x030b11c4[1] = 0x0304e5aa -> bsr 0x0304dc8c, which re-reads the level-3 row and dispatches it through THIS table - unlike Radio Settings (0x030b11c4[0] = a pure no-op), so the row never has to be latched. The stock table 0x030b116c is immediately followed by 0x030b11c4 so it must be relocated; its only reference is the literal-pool word at 0x0304dcc0. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+   "parts": [
+    {
+     "stock_u32": "0x030b116c",
+     "count": 22,
+     "expect": [
+      "0x0304dcc4",
+      "0x0304dcc4",
+      "0x0304dedc",
+      "0x0304e416",
+      "0x0304df24",
+      "0x0304df96",
+      "0x0304dff0",
+      "0x0304e030",
+      "0x0304e044",
+      "0x0304e12a",
+      "0x0304e14e",
+      "0x0304e168",
+      "0x0304e20c",
+      "0x0304e232",
+      "0x0304e23c",
+      "0x0304e254",
+      "0x0304e294",
+      "0x0304e2ae",
+      "0x0304e2c6",
+      "0x0304e2e0",
+      "0x0304e2f8",
+      "0x0304e3fe"
+     ]
+    },
+    {
+     "u32": [
+      "@kraken_ui:krk_cs_ok_stub",
+      "0x0304e254",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken_ui:krk_cs_ok_stub"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_aprs_lbl_mon",
+   "addr": "0x030e76e0",
+   "why": "label of APRS item 12 (RX Monitor), an analog row (docs/aprs-submenu.md)",
+   "parts": [
+    {
+     "string": "RX Monitor",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_gnss_lbl_grid",
+   "addr": "0x030e7700",
+   "why": "label of GNSS 5 (GPS Grid), docs/gnss-submenu.md; the title handler 0x030386e8 draws it from the relocated array",
+   "parts": [
+    {
+     "string": "GPS Grid",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  },
+  {
+   "name": "krk_gnss_arr_zh",
+   "addr": "0x030e7720",
+   "why": "stock GNSS zh strings (descriptor 0x030b7e28 lang 0: GNSS On/Off, GNSS Info, Time Zone, Disp Format, GNSS Mode) + item 5 GPS Grid",
+   "parts": [
+    {
+     "stock_u32": "0x030b7e00",
+     "count": 5,
+     "expect": [
+      "0x030bc1dc",
+      "0x030bc1e8",
+      "0x030bc1f4",
+      "0x030bc1fc",
+      "0x030bc208"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_gnss_lbl_grid"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_gnss_arr_en",
+   "addr": "0x030e7760",
+   "why": "stock GNSS en strings (descriptor lang 1) + item 5 GPS Grid",
+   "parts": [
+    {
+     "stock_u32": "0x030b7e14",
+     "count": 5,
+     "expect": [
+      "0x030bc214",
+      "0x030bc220",
+      "0x030bc22c",
+      "0x030bc238",
+      "0x030bc244"
+     ]
+    },
+    {
+     "u32": [
+      "@krk_gnss_lbl_grid"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "krk_rs_lbl_unlock",
+   "addr": "0x030e7860",
+   "why": "label of Radio Settings 6 (Freq Unlock), docs/settings-submenu.md; the level-4 header handler 0x03038720 draws it straight from the relocated array, so no title hook is needed",
+   "parts": [
+    {
+     "string": "Freq Unlock",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
+  }
+ ],
+ "splices": [
+  {
+   "name": "menu_append_hook",
+   "addr": "0x03049dcc",
+   "expect": "a3 05 00 00",
+   "why": "br16 0x304a112 ; bkpt -> bsr trampoline (appends category index 10)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_menu_append"
+   }
+  },
+  {
+   "name": "menu_append_hook24",
+   "addr": "0x03049e0a",
+   "expect": "59 13 40 82",
+   "why": "idx24 (VFO-mode top list): `lrw r2,[0x3049fec]; ld.b r2,(r2,0)` -> bsr stub that appends index 10 then re-executes both (krk_stubs.S)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_menu_append24"
+   }
+  },
+  {
+   "name": "render_bound",
+   "addr": "0x0303da02",
+   "expect": "09 3a",
+   "bytes": "0a 3a"
+  },
+  {
+   "name": "render_table_ptr",
+   "addr": "0x0303da48",
+   "expect_u32": "0x030aff74",
+   "u32": "@krk_catjmp"
+  },
+  {
+   "name": "ok_bound",
+   "addr": "0x0303cd8e",
+   "expect": "09 3a",
+   "bytes": "0a 3a"
+  },
+  {
+   "name": "ok_table_ptr",
+   "addr": "0x0303cda8",
+   "expect_u32": "0x030afef0",
+   "u32": "@krk_okjmp"
+  },
+  {
+   "name": "item_bound",
+   "addr": "0x0303ced8",
+   "expect": "09 3a",
+   "bytes": "0a 3a"
+  },
+  {
+   "name": "item_table_ptr",
+   "addr": "0x0303cf18",
+   "expect_u32": "0x030aff18",
+   "u32": "@krk_itemjmp"
+  },
+  {
+   "name": "lang0_label_ptr",
+   "addr": "0x030b7db8",
+   "expect_u32": "0x030b7d68",
+   "u32": "@krk_labelarr_lang0"
+  },
+  {
+   "name": "lang0_label_count",
+   "addr": "0x030b7dbc",
+   "expect_u8": "0x0a",
+   "u8": "0x0b"
+  },
+  {
+   "name": "lang1_label_ptr",
+   "addr": "0x030b7dc0",
+   "expect_u32": "0x030b7d90",
+   "u32": "@krk_labelarr_lang1"
+  },
+  {
+   "name": "txtrim_interp",
+   "addr": "0x0300db66",
+   "why": "F6: freq_calibration_apply_all's bsr freq_calibration_interpolate_selected, whose r0 is stored as the PA drive byte (st.b r0,(r5,0x28) next). Wrapper calls it and scales r0; caller uses only r4/r5 after; r15 saved by the prologue.",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:freq_calibration_interpolate_selected"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_txtrim_interp"
+   }
+  },
+  {
+   "name": "aprs_bearing_hemisphere",
+   "addr": "0x03063a04",
+   "expect": "46 98 40 b8",
+   "why": "Stock APRS popup bearing/distance ignore N/S/E/W: stub rewrites W/S stack doubles to 360-x before calc/distance (docs/aprs-stock-gaps.md B.6). Displaced `ld.w r2,(sp,0x18); st.w r2,(sp,0)` re-executed in the stub; r15 saved by the caller's push.",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_bearing"
+   }
+  },
+  {
+   "name": "lh_call_start",
+   "addr": "0x030208ba",
+   "why": "F1: rxvoice_task_entry flag-0x2 block (every accepted voice header). bsr to a no-arg byte read; the caller uses only r0 after it (docs/last-heard-hooks.md).",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:dmr_call_setup_block_d_byte5_read"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_lh_start"
+   }
+  },
+  {
+   "name": "lh_call_end",
+   "addr": "0x03020984",
+   "why": "F1: same task, flag-0x4 block: bsr modem_control_state_stop (void(void)); after it only r4/r5/r9 (callee-saved) and fresh r0/r1.",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:modem_control_state_stop"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_lh_end"
+   }
+  },
+  {
+   "name": "lh_alias",
+   "addr": "0x0305edd8",
+   "why": "F1: event_flags9_dispatch_and_name_encode copies the decoded talker alias with memcpy_bytes_iram(dst, src, 0x20); only r4 (callee-saved) is used after.",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:memcpy_bytes_iram"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_lh_alias"
+   }
+  },
+  {
+   "name": "lang1_label_count",
+   "addr": "0x030b7dc4",
+   "expect_u8": "0x0a",
+   "u8": "0x0b"
+  },
+  {
+   "name": "aprs_render_hook",
+   "addr": "0x0303dd40",
+   "expect": "72 10 43 d8",
+   "why": "render case block of APRS (category 9) in menu_screen_render_entry_variant: `lrw r3,[settings]; ld.b r2,(r3,0x30)` -> bsr krk_aprs_render (installs count/ptr/subtype and the per-mode index list; r0-r3/r12 dead here, r4-r6/r15 saved by the prologue), then aprs_render_tail jumps over the rest of the block to the shared tail 0x0303dd78",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_aprs_render"
+   }
+  },
+  {
+   "name": "aprs_render_tail",
+   "addr": "0x0303dd44",
+   "expect": "30 00",
+   "bytes": "1a 04",
+   "why": "br16 0x0303dd78 (imm10 = (0x0303dd78-0x0303dd44)/2 = 0x1a) over the dead remainder of the block"
+  },
+  {
+   "name": "aprs_desc_zh_ptr",
+   "addr": "0x030ba924",
+   "expect_u32": "0x030ba8e4",
+   "u32": "@krk_aprs_arr_zh",
+   "why": "APRS sub-list descriptor (category 9), docs/aprs-submenu.md"
+  },
+  {
+   "name": "aprs_desc_zh_count",
+   "addr": "0x030ba928",
+   "expect_u8": "0x08",
+   "u8": "0x0d"
+  },
+  {
+   "name": "aprs_desc_en_ptr",
+   "addr": "0x030ba92c",
+   "expect_u32": "0x030ba904",
+   "u32": "@krk_aprs_arr_en"
+  },
+  {
+   "name": "aprs_desc_en_count",
+   "addr": "0x030ba930",
+   "expect_u8": "0x08",
+   "u8": "0x0d"
+  },
+  {
+   "name": "aprs_item_bound",
+   "addr": "0x0303d556",
+   "expect": "07 3a",
+   "bytes": "0c 3a",
+   "why": "cmphsi r2,8 -> cmphsi r2,13 (raw imm = value-1): items 8..12 are ours"
+  },
+  {
+   "name": "aprs_item_table_ptr",
+   "addr": "0x0303d56c",
+   "expect_u32": "0x030aff54",
+   "u32": "@krk_aprs_itemjmp",
+   "why": "pool word loaded by the lrw at 0x0303d55a"
+  },
+  {
+   "name": "aprs_mode_hook",
+   "addr": "0x03057aa8",
+   "expect": "43 eb 30 00",
+   "why": "channel_change_apply_dispatcher: `cmpnei r3,0x30` of the DMR-only test that sets [0x40078] bit 0 (APRS active on this channel) -> bsr stub that re-executes it and also accepts nibble 0 (analog FM), leaving the stock `bt clear` at 0x03057aac to act on C (krk_stubs.S krk_hook_aprs_mode)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_aprs_mode"
+   }
+  },
+  {
+   "name": "aprs_tick_hook",
+   "addr": "0x03054888",
+   "expect": "58 11 40 82",
+   "why": "ui_periodic_maintenance_task_loop: start of the GPS-fix-or-fixed-position gate (`lrw r2,[0x38c6c]; ld.b r2,(r2,0)`) before `bsr 0x030625bc` (APRS periodic tick) -> bsr krk_hook_aprs_tick, which applies that gate and calls the stock tick on digital channels and runs the AFSK beacon on analog ones; r0-r3 dead here, r15 saved by the prologue",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_aprs_tick"
+   }
+  },
+  {
+   "name": "aprs_tick_tail",
+   "addr": "0x0305488c",
+   "expect": "42 e4 40 20 88 74 22 e9 07 00 63 e4 04 20 cc 74 03 e9 04 00 00 e0 8e 6e",
+   "bytes": "0c 04 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c 03 6c",
+   "why": "br16 0x030548a4 (imm10 = (0x030548a4-0x0305488c)/2 = 0x0c) over the rest of the displaced gate and the stock tick call, then nop16 (mov r0,r0) filler"
+  },
+  {
+   "name": "aprs_send_now_hook",
+   "addr": "0x030158b8",
+   "why": "manual Upload Beacon (programmable key path 0x03015824): bsr 0x03062510 (stock DMR APRS send, void(void)) -> krk_hook_aprs_send_now: AFSK on an analog channel, the stock send on a digital one; nothing live after it (pop follows)",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:gps_display_refresh_and_notify"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_aprs_send_now"
+   }
+  },
+  {
+   "name": "chan_commit_end_hook",
+   "addr": "0x03030550",
+   "expect": "ee d9 00 20",
+   "why": "commit_channel_record_dual_vfo @0x030303bc, the single writer of the live channel struct 0x3e1dc (it also stores a per-side copy at 0x3e358 / 0x3e21c, choosing the side by `get_current_mode_state2() == 0 ? selected : loaded`): all of its paths end at the shared epilogue `ld.w r15,(sp,0); addi sp,sp,0x14; rts`. The 4-byte `ld.w r15,(sp,0)` -> bsr krk_commit_end_stub, which runs krk_hook_chan_commit (snapshot of rx/tx/flags8 per side + the side the struct now describes, docs/dual-watch.md) and re-executes the load. r0-r3/r12/r13 are dead at the epilogue; r15 is restored by the stub",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_commit_end_stub"
+   }
+  },
+  {
+   "name": "maint_tick_hook",
+   "addr": "0x030547ae",
+   "why": "ui_periodic_maintenance_task_loop: `bsr 0x03068224` (call_hold_led_debounce_dual_timer_tick, void(void); r0-r3 dead after it) -> krk_hook_maint_tick, which makes the stock call first and then runs the feature ticks (krk_periodic.c: F12 scrambler, F10 Doppler)",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:call_hold_led_debounce_dual_timer_tick"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_maint_tick"
+   }
+  },
+  {
+   "name": "bg_tick_hook",
+   "addr": "0x03013f48",
+   "why": "F14 RX Monitor. main_ui_background_task_loop (task init, prio 30, one pass per OS tick): the last call of every pass, `bsr 0x030546dc` (ui_tick_prescaler_post, void(void)), then `br32 0x03013a56` to the OSFlagPend. -> krk_hook_bg_tick, which makes the stock call first and then runs the monitor (krk_periodic.c, krk_aprsrx.c krk_mon_tick); returns at once unless the Monitor is switched on",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:ui_tick_prescaler_post"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_bg_tick"
+   }
+  },
+  {
+   "name": "sq_write_hook",
+   "addr": "0x0300de86",
+   "why": "F11: hw_register_0x78_write_from_byte_pair (0x0300de78, `movi r0,0x78; or r1,r3; bsr 0x0002c2f4; pop {r15}`) is the single funnel of every stock REG_78H write (channel apply, squelch-menu change, TX end); stock bytes 80 e2 37 f2 = bsr fd6818_reg_write -> bsr krk_hook_sq_write(0x78, word), which passes the write through unchanged (squelch mode Off, digital, level 0) or writes the noise pair instead (docs/noise-squelch.md 6.3); nothing is live after the call but the saved lr that `pop` restores",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:fd6818b_reg_write"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_sq_write"
+   }
+  },
+  {
+   "name": "calllog_desc_zh_ptr",
+   "addr": "0x030b8060",
+   "expect_u32": "0x030b8040",
+   "u32": "@krk_calllog_arr_zh",
+   "why": "Call Log sub-list descriptor (category 4), docs/calllog-submenu.md; the arrays are read only through it"
+  },
+  {
+   "name": "calllog_desc_zh_count",
+   "addr": "0x030b8064",
+   "expect_u8": "0x04",
+   "u8": "0x05"
+  },
+  {
+   "name": "calllog_desc_en_ptr",
+   "addr": "0x030b8068",
+   "expect_u32": "0x030b8050",
+   "u32": "@krk_calllog_arr_en"
+  },
+  {
+   "name": "calllog_desc_en_count",
+   "addr": "0x030b806c",
+   "expect_u8": "0x04",
+   "u8": "0x05"
+  },
+  {
+   "name": "calllog_gen_render",
+   "addr": "0x0303dc06",
+   "why": "Call Log render case block 0x0303dbf6 (fresh entry, depth 1): menu_option_list_dispatch(5, 0x3e5f8, 0x3e5fa) -> krk_hook_gen (stock generator, then our rows from menu_hosts.json). Void; after it the block reloads r3 and uses nothing else",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_gen"
+   }
+  },
+  {
+   "name": "calllog_gen_entry2",
+   "addr": "0x03036b62",
+   "why": "second Call Log entry path (history push at 0x03036b40, depth 14): same generator call; after it only fresh r2/r3 and calls",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_gen"
+   }
+  },
+  {
+   "name": "calllog_gen_entry3",
+   "addr": "0x0303ee3e",
+   "why": "third Call Log entry path (rebuilds the list and puts the cursor on item r4): generator(5, r5, r6); after it only r4/r5 (callee-saved) and fresh registers",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_gen"
+   }
+  },
+  {
+   "name": "calllog_item_hook",
+   "addr": "0x0303cf98",
+   "expect": "60 e8 6d 04",
+   "why": "Call Log item-action compare chain (0x0303cf80): `bt32 0x0303d872` after `cmpnei r3,3` -> bsr krk_calllog_item_stub (C and r3 live: item 3 -> stock 0x0303cfb6, item 4 -> Last Heard, else the tail). The following `br 0x0303cfb6` becomes dead",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_calllog_item_stub"
+   }
+  },
+  {
+   "name": "parrot_tx3",
+   "addr": "0x030de60a",
+   "expect": "ff e3 87 44",
+   "why": "IRAM 0x2e9ea: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. LIVE (variant [0x4988a]==0, [0x49888]==1). The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+   }
+  },
+  {
+   "name": "parrot_tx4",
+   "addr": "0x030de710",
+   "expect": "ff e3 04 44",
+   "why": "IRAM 0x2eaf0: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. LIVE (same variant, other phase). The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+   }
+  },
+  {
+   "name": "parrot_tx1",
+   "addr": "0x030de2e0",
+   "expect": "ff e3 1c 46",
+   "why": "IRAM 0x2e6c0: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. Dead variant ([0x4988a] has no setter), hooked so a future stock path cannot bypass the layer. The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+   }
+  },
+  {
+   "name": "parrot_tx2",
+   "addr": "0x030de440",
+   "expect": "ff e3 6c 45",
+   "why": "IRAM 0x2e820: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. Dead variant, second phase, hooked for the same reason. The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+   }
+  },
+  {
+   "name": "parrot_rx",
+   "addr": "0x030de984",
+   "expect": "ff e3 b4 42",
+   "why": "IRAM 0x2ed64: stock `bsr 0x172cc` (copy 27 bytes modem window -> 0x46b38; r0=r11=0, r1=lrw 0x46b38, r2=27) in the vocoder RX task (prio 15), the only live read site. krk_vf_rx_hook calls it first, then the RX sink. After the site only r4/r8 (callee-saved) are used and r3/r1/r13 are reloaded. +0x30afc20: IRAM pc encoding.",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vf_rx_hook + 0x30afc20"
+   }
+  },
+  {
+   "name": "opt_ok_hook",
+   "addr": "0x0303ab42",
+   "expect": "1c 30 01 31 ff e3 bf d9",
+   "why": "OK (second handler 0x0303a770) at a level-2 screen for a category the chain does not know (id >= 10: KRAKEN): stock sets mode 0x1c (`movi r0,28; movi r1,1; bsr 0x03035ec4`, 8 bytes). -> bsr krk_opt_ok, which commits an option row and shows the stock Setting-is-OK popup, else does the stock set-mode itself. The function is a case of a handler whose prologue saved r4/r15 and whose epilogue (0x0303ab4a) pops them (docs/stock-option-level.md 2.5)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_opt_ok"
+   },
+   "fill": "03 6c"
+  },
+  {
+   "name": "opt_title_hook",
+   "addr": "0x030385f4",
+   "expect": "64 13 00 e8 6c 04",
+   "why": "title of the level-2 screen (menu_field_value_display_dispatch 0x03038528, case 0x030385c4: category id >= 10 -> `lrw r3,0x030b1458 (empty string); br 0x03038ece` which draws r3 centered in the header) -> bsr krk_title_stub, which loads r3 = krk_opt_title() and jumps to 0x03038ece (docs/stock-option-level.md 2.4)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_title_stub"
+   },
+   "fill": "03 6c"
+  },
+  {
+   "name": "aprs_opt_ok_hook",
+   "addr": "0x0304d81c",
+   "expect": "47 3b 14 08",
+   "why": "stock APRS (category 9) OK handler 0x0304d6c0, last item test `cmpnei r3,7; bt 0x0304d846` (r3 = level-2 item; items 0..6 were matched above and end in the epilogue) -> bsr krk_aprs_ok_stub: item 7 falls through to the stock block at 0x0304d820, items >= 8 (rows we append, docs/aprs-submenu.md) are committed by krk_aprs_opt_ok when they are option rows (docs/stock-option-level.md 2.6)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_aprs_ok_stub"
+   }
+  },
+  {
+   "name": "opt_numtitle_hook",
+   "addr": "0x0303bb30",
+   "expect": "7c 11 83 d1 83 08",
+   "why": "header of the stock text-entry screen (subtype 8, edit flag [0x3e31e] bit 6): `lrw r3,0x030ba280; ldr.w r3,(r3,r12<<2)` (the 'Input ID' string of the language) -> bsr krk_numtitle_stub, which returns r3 = krk_num_title() with r0-r2 kept (docs/stock-option-level.md 3.4)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_numtitle_stub"
+   },
+   "fill": "03 6c"
+  },
+  {
+   "name": "rs_desc_zh_ptr",
+   "addr": "0x030b8488",
+   "expect_u32": "0x030b8468",
+   "u32": "@krk_rs_arr_zh",
+   "why": "Radio Settings sub-list descriptor (Settings category 5, item 0), docs/settings-submenu.md; the arrays are read only through it and by the level-4 header handler, which indexes the same array"
+  },
+  {
+   "name": "rs_desc_zh_count",
+   "addr": "0x030b848c",
+   "expect_u8": "0x04",
+   "u8": "0x07"
+  },
+  {
+   "name": "rs_desc_en_ptr",
+   "addr": "0x030b8490",
+   "expect_u32": "0x030b8478",
+   "u32": "@krk_rs_arr_en"
+  },
+  {
+   "name": "rs_desc_en_count",
+   "addr": "0x030b8494",
+   "expect_u8": "0x04",
+   "u8": "0x07"
+  },
+  {
+   "name": "rs_gen_hook",
+   "addr": "0x030423b8",
+   "why": "Radio Settings entry block 0x030423a8: menu_option_list_dispatch(20, 0x3e5f8, 0x3e5fa) -> krk_hook_gen (stock generator, then our rows from menu_hosts.json). The only call site of mode 20 in the image; void, and after it the block reloads r3 from a literal",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_gen"
+   }
+  },
+  {
+   "name": "rs_item_hook",
+   "addr": "0x030431e6",
+   "expect": "82 08 62 04",
+   "why": "Radio Settings enter chain 0x030431cc: `bt16 0x030432ea; br16 0x030432ac` after `cmpnei r3,3` -> bsr krk_rs_item_stub (C and r3 live: item 3 -> stock 0x030432ac, item 4 -> our row, else the epilogue)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_rs_item_stub"
+   }
+  },
+  {
+   "name": "settings_opt_ok_hook",
+   "addr": "0x0304e5a0",
+   "expect": "23 30 01 31 ff e3 90 3c",
+   "why": "OK *inside* the option level of a row appended to stock Radio Settings. MEASURED 2026-11-03: opening a row and committing a value are different key events in different functions - the open OK runs 0x0303a770 (category-5 edge 0x0303ab38), the committing OK runs 0x0303a57c -> bsr 0x0304e560 -> jump table 0x030b11c4 entry 0 (Radio Settings) = here. Stock here is a pure no-op (`movi r0,35; movi r1,1; bsr 0x03035ec4` = set_mode(0x23,1), 8 bytes) reached by nothing else: the literal 0x0304e5a0 occurs only in its own table slot, and stock Radio Settings rows commit via 0x0304fab4 instead, so no stock behaviour is lost. Breakpoint-confirmed to fire exactly once, only on the committing OK. The frame (0x0304e560) pushes r15 ONLY, so krk_settings_ok_stub saves r4 itself and jumps to the epilogue 0x0304e83a rather than returning",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_settings_ok_stub"
+   },
+   "fill": "03 6c"
+  },
+  {
+   "name": "cs_desc_zh_ptr",
+   "addr": "0x030b89a0",
+   "expect_u32": "0x030b88f0",
+   "u32": "@krk_cs_arr_zh",
+   "why": "Channel Set sub-list descriptor (Settings category 5, level-2 item 1), docs/chanset-submenu.md. The literal 0x030b89a0 occurs at five sites (0x30387c4, 0x303ba8c, 0x303c1d8, 0x303c3fc, 0x3042534) and every one of them loads the DESCRIPTOR, so editing it in place covers all readers - including the level-4 header handler, which gives the new rows their titles for free"
+  },
+  {
+   "name": "cs_desc_zh_count",
+   "addr": "0x030b89a4",
+   "expect_u8": "0x16",
+   "u8": "0x1f",
+   "why": "Channel Set row count: stock 22, now 31 for the 9 rows we append (DMR Link, Burst Voice, Scrambler On/Off, Key, Parrot On/Off, Replay Audio, Check, Clear Audio, Status). A plain count here, not the value-1 encoding the cmphsi bounds use"
+  },
+  {
+   "name": "cs_desc_en_ptr",
+   "addr": "0x030b89a8",
+   "expect_u32": "0x030b8948",
+   "u32": "@krk_cs_arr_en"
+  },
+  {
+   "name": "cs_desc_en_count",
+   "addr": "0x030b89ac",
+   "expect_u8": "0x16",
+   "u8": "0x1f",
+   "why": "Channel Set row count: stock 22, now 31 for the 9 rows we append (DMR Link, Burst Voice, Scrambler On/Off, Key, Parrot On/Off, Replay Audio, Check, Clear Audio, Status). A plain count here, not the value-1 encoding the cmphsi bounds use"
+  },
+  {
+   "name": "cs_gen_hook",
+   "addr": "0x03042406",
+   "why": "Channel Set row generator: menu_option_list_dispatch(6, 0x3e5f8, 0x3e5fa) @0x030493f8 (body menu_option_gen_idx6 @0x03049930, a 21-arm CPS/channel-mode visibility chain) -> krk_hook_gen, which calls the stock generator FIRST so all its gating keeps working and only then appends our rows (menu_hosts.json). This is the MENU-TREE call site; the second mode-6 call at 0x0303e294 belongs to a different wizard that installs cells from descriptor 0x030b8150 (CTC/DCS) and never reads 0x030b89a0, so it is deliberately NOT hooked. Void; after it the block reloads r3",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_hook_gen"
+   }
+  },
+  {
+   "name": "cs_item_bound",
+   "addr": "0x03047332",
+   "expect": "15 3a",
+   "bytes": "1e 3a",
+   "why": "ENTER dispatch bound of table_entry_select_and_index_list_build_toplevel_dispatch @0x03047324: cmphsi r2,22 -> cmphsi r2,31 (raw immediate = value - 1; a 16-bit cmphsi tops out at 32, which tools/gen_menu_hosts.py enforces), so level-3 items 22..30 reach our table entries instead of the out-of-range exit 0x03047cf4. MEASURED in QEMU (docs/nested-submenu.md): this dispatcher is the one the OK on a level-3 row reaches, and it is reached at that depth only"
+  },
+  {
+   "name": "cs_item_table_ptr",
+   "addr": "0x03047370",
+   "expect_u32": "0x030b0a18",
+   "u32": "@krk_cs_itemjmp",
+   "why": "literal-pool word loaded by the lrw at 0x03047338 (the table's sole reference image-wide)"
+  },
+  {
+   "name": "cs_ok_bound",
+   "addr": "0x0304dc9a",
+   "expect": "15 3b",
+   "bytes": "1e 3b",
+   "why": "COMMIT dispatch bound of 0x0304dc8c: cmphsi r3,22 -> cmphsi r3,31 (raw immediate = value - 1). Its out-of-range target 0x0304e416 is NOT an epilogue (it is the stock numeric / Channel-Name path), so a row of ours must never fall out through the bound. MEASURED in QEMU (docs/nested-submenu.md): this is where the OK pressed at any level BELOW a level-3 row arrives, which is also why a nested child list cannot open its own option level from here - docs/nested-submenu.md"
+  },
+  {
+   "name": "cs_ok_table_ptr",
+   "addr": "0x0304dcc0",
+   "expect_u32": "0x030b116c",
+   "u32": "@krk_cs_okjmp",
+   "why": "literal-pool word loaded by the lrw at 0x0304dca0 (the table's sole reference image-wide)"
+  },
+  {
+   "name": "gnss_desc_zh_ptr",
+   "addr": "0x030b7e28",
+   "expect_u32": "0x030b7e00",
+   "u32": "@krk_gnss_arr_zh",
+   "why": "GNSS sub-list descriptor (category 8), docs/gnss-submenu.md; the arrays are read only through it (readers 0x030386fc, 0x0303dd10, 0x0303f270)"
+  },
+  {
+   "name": "gnss_desc_zh_count",
+   "addr": "0x030b7e2c",
+   "expect_u8": "0x05",
+   "u8": "0x06"
+  },
+  {
+   "name": "gnss_desc_en_ptr",
+   "addr": "0x030b7e30",
+   "expect_u32": "0x030b7e14",
+   "u32": "@krk_gnss_arr_en"
+  },
+  {
+   "name": "gnss_desc_en_count",
+   "addr": "0x030b7e34",
+   "expect_u8": "0x05",
+   "u8": "0x06"
+  },
+  {
+   "name": "gnss_item_hook",
+   "addr": "0x0303d4a8",
+   "expect": "44 3b e4 09",
+   "why": "GNSS item-action compare chain (case block 0x0303d2a0): `cmpnei r3,4; bt16 0x0303d872` -> bsr krk_gnss_item_stub, which redoes the compare (item 4 -> stock block 0x0303d4ac, item 5 -> GPS Grid, else the tail). r3 = item here (items 0..3 were diverted above). The GNSS list has NO generator: the render block builds it sequentially from the descriptor count",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui:krk_gnss_item_stub"
+   }
+  },
+  {
+   "name": "vox_kids_zh_ptr",
+   "addr": "0x030b82b8",
+   "expect_u32": "0x030b82a8",
+   "u32": "@krk_vox_kids_zh",
+   "why": "VOX child-list descriptor (Other Func item 3), docs/otherfunc-submenu.md: two literal users, the level-5 installer (0x03044af0) and the level-6 header (0x03038cf0), both through this descriptor"
+  },
+  {
+   "name": "vox_kids_zh_count",
+   "addr": "0x030b82bc",
+   "expect_u8": "0x02",
+   "u8": "0x03",
+   "why": "VOX children: VOX SW, Gain Level, and now VOX Delay (it was Other Func row 4)"
+  },
+  {
+   "name": "vox_kids_en_ptr",
+   "addr": "0x030b82c0",
+   "expect_u32": "0x030b82b0",
+   "u32": "@krk_vox_kids_en"
+  },
+  {
+   "name": "vox_kids_en_count",
+   "addr": "0x030b82c4",
+   "expect_u8": "0x02",
+   "u8": "0x03"
+  },
+  {
+   "name": "of_item11_lbl_zh",
+   "addr": "0x030b868c",
+   "expect_u32": "0x030bd030",
+   "u32": "@krk_of_lbl_cwid",
+   "why": "Other Func zh label array slot 11 (stock: Man Down, never listed) -> CW ID"
+  },
+  {
+   "name": "of_item11_lbl_en",
+   "addr": "0x030b86e0",
+   "expect_u32": "0x030bc1d0",
+   "u32": "@krk_of_lbl_cwid",
+   "why": "Other Func en label array slot 11 (stock: Man Down, never listed) -> CW ID"
+  },
+  {
+   "name": "of_item11_enter",
+   "addr": "0x030b09bc",
+   "expect_u32": "0x03045082",
+   "u32": "@kraken_ui2:krk_of_cwid_kids_stub",
+   "why": "Other Func level-5 init table 0x030b0990, slot 11 (stock: the no-op exit) -> installs the CW ID child list (CW ID SW, Interval, Callsign), as 0x030449ec does for VOX (slot 3). Runs on every render of the level, including the re-render after a child commits"
+  },
+  {
+   "name": "of_item11_ok",
+   "addr": "0x030b1338",
+   "expect_u32": "0x030500a4",
+   "u32": "0x0304fec8",
+   "why": "Other Func level-5 OK table 0x030b130c, slot 11 (stock: the popup-and-pop tail) -> stock's own VOX arm 0x0304fec8 = set_mode(0x2a,1); br 0x030500ac. It tests neither the row nor the child, so level 6 opens for any child, and the level-6 init hook decides what it is"
+  },
+  {
+   "name": "of_gen_hook",
+   "addr": "0x030432e6",
+   "why": "Other Func row generator: menu_option_list_dispatch(21, 0x3e5f8, 0x3e5fa) (body 0x03049c00), the only call with mode 21 -> krk_hook_of_gen, which calls the stock generator and then takes item 4 (VOX Delay, now a VOX child) out of the list: on an analog channel item 11 (CW ID) takes its place, elsewhere the rows after it move up",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:menu_option_list_dispatch"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_of_gen"
+   }
+  },
+  {
+   "name": "of_l6_enter_hook",
+   "addr": "0x0304623c",
+   "expect": "43 3b 7c 08",
+   "why": "level-6 option init 0x03045fd8 (Settings > Radio Settings > Other Func > row > child): `cmpnei r3,3; bt16 0x03046336` on the level-4 item -> bsr krk_of_l6_enter_stub (r3 = item, lr = 0x03046240 = stock's VOX arm, which reloads r3). The stub returns there for VOX children 0 and 1 and ends at the epilogue 0x03046336 after installing our option level for VOX child 2 and the CW ID children",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_of_l6_enter_stub"
+   }
+  },
+  {
+   "name": "of_l6_ok_hook",
+   "addr": "0x0305102e",
+   "expect": "60 e8 2c 03",
+   "why": "level-6 commit menu_confirm_apply_dispatcher 0x03050de8: `bt32 0x03051686` after `cmpnei r3,3` on the level-4 item -> bsr krk_of_l6_ok_stub (r3 = item, lr = 0x03051032 = stock's VOX arm). Stock treats every non-zero VOX child as Gain Level, so child 2 MUST be taken here or its cursor would be stored as the gain",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_of_l6_ok_stub"
+   }
+  },
+  {
+   "name": "of_l6_title_hook",
+   "addr": "0x03038c32",
+   "expect": "43 3b 3e 09",
+   "why": "level-6 header 0x03038b9e: `cmpnei r3,3; bt16 0x03038eb0` (blank) on the level-4 item -> bsr krk_of_l6_title_stub (r3 = item, lr = 0x03038c36 = stock's VOX lookup, which titles child 2 from the relocated array). The CW ID children get their label; everything else the blank string as before",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_of_l6_title_stub"
+   }
+  },
+  {
+   "name": "vox_sq_read_hook",
+   "addr": "0x0300f2c2",
+   "why": "VOX (krk_vox.c): vfo_display_state_nibble_bits_check @0x0300f2a4 (= stock_rx_active) is the ONLY caller of reg_0xc_bit1_read @0x0300eb44, stock's one read of sq_out. In the VOX engine's sense word (txon|micin|afout) that bit reads 1, so stock lit the RX LED, opened audio (an audible tick per window), latched RX-active ~60 s after a hot phase and dropped the UI to its call screen. Stock bytes ff e3 41 fc = bsr reg_0xc_bit1_read -> bsr krk_vox_sq_read, which returns 0 during a sense window and 150 ms after it, else performs the original read (docs/otherfunc-submenu.md).",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:reg_0xc_bit1_read"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_vox_sq_read"
+   }
+  },
+  {
+   "name": "band_load_hook",
+   "addr": "0x0305f384",
+   "why": "Freq Unlock (krk_band.c, docs/freq-unlock.md): radio_boot_full_init_sequence's call of rf_config_load_from_flash_block2, the only one; it fills the RX/keypad band table 0x38470 -> krk_hook_band_load, which runs it and then, when the unlock record says ON, writes the wide edges. Runs before startup_channel01_frequency_load_and_validate",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:rf_config_load_from_flash_block2"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_band_load"
+   }
+  },
+  {
+   "name": "band_check_hook_1",
+   "addr": "0x03036f34",
+   "why": "Freq Unlock: menu_numeric_setting_commit_with_range_check's call of frequency_band_range_check_and_status_set(rx, tx) (one of its four stock calls) -> krk_hook_band_check, which runs it and, while unlocked, rewrites 0x3e31b bit 4 (TX on the UHF PA) and bit 5 (TX not allowed) from the wide TX range",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:frequency_band_range_check_and_status_set"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_band_check"
+   }
+  },
+  {
+   "name": "band_check_hook_2",
+   "addr": "0x030381ea",
+   "why": "Freq Unlock: screen_enter_apply_channel_and_rf_mode's call of frequency_band_range_check_and_status_set(rx, tx) (one of its four stock calls) -> krk_hook_band_check, which runs it and, while unlocked, rewrites 0x3e31b bit 4 (TX on the UHF PA) and bit 5 (TX not allowed) from the wide TX range",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:frequency_band_range_check_and_status_set"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_band_check"
+   }
+  },
+  {
+   "name": "band_check_hook_3",
+   "addr": "0x03057820",
+   "why": "Freq Unlock: channel_change_apply_dispatcher's call of frequency_band_range_check_and_status_set(rx, tx) (one of its four stock calls) -> krk_hook_band_check, which runs it and, while unlocked, rewrites 0x3e31b bit 4 (TX on the UHF PA) and bit 5 (TX not allowed) from the wide TX range",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:frequency_band_range_check_and_status_set"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_band_check"
+   }
+  },
+  {
+   "name": "band_check_hook_4",
+   "addr": "0x03057906",
+   "why": "Freq Unlock: channel_change_apply_dispatcher's call of frequency_band_range_check_and_status_set(rx, tx) (one of its four stock calls) -> krk_hook_band_check, which runs it and, while unlocked, rewrites 0x3e31b bit 4 (TX on the UHF PA) and bit 5 (TX not allowed) from the wide TX range",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:frequency_band_range_check_and_status_set"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_band_check"
+   }
+  },
+  {
+   "name": "cs_l5_enter_hook",
+   "addr": "0x03045094",
+   "expect": "0c 3a f1 09",
+   "why": "Channel Set level-5 init 0x03045084 (render 0x0303cb54 -> 0x0304547c, Settings item 1; docs/chanset-submenu.md 8): `cmphsi r2,13; bt16 0x03045478` on r2 = level-3 row - 3, the bound of its 13-entry table 0x030b09e4 (rows 3..15) -> bsr krk_cs_l5_enter_stub: stock rows return to the table jump at 0x03045098 (r2 kept), every other row runs krk_cs_l5_enter (the Burst Voice children: an option level, or the screen) and leaves through the epilogue 0x03045478. The only branch into the pair is the fall-through; r15 is saved by the prologue (push r4-r7, r15)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_cs_l5_enter_stub"
+   }
+  },
+  {
+   "name": "cs_l5_ok_hook",
+   "addr": "0x0305031a",
+   "expect": "4f 3b 79 08",
+   "why": "Channel Set level-5 OK 0x030500b0 (0x03036420 -> 0x03050414, Settings item 1): the last test of its compare chain on r3 = level-3 row, `cmpnei r3,15; bt16 0x0305040e` (reached from `cmpnei r3,13; bt 0x0305031a`) -> bsr krk_cs_l5_ok_stub: row 15 returns into stock's arm at 0x0305031e (it reloads r3), every other row runs krk_cs_l5_ok (commit a Burst Voice child) and leaves through the epilogue 0x0305040e. r15 saved by the prologue (push r4, r15)",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_cs_l5_ok_stub"
+   }
+  },
+  {
+   "name": "cs_l5_title_hook",
+   "addr": "0x03038ab8",
+   "expect": "4f 3b f1 09",
+   "why": "level-5 header 0x03038994, Channel Set arm 0x03038a7a: `cmpnei r3,15; bt16 0x03038e9c` (blank) on r3 = level-3 row, the only branch to 0x03038e9c (docs/nested-submenu.md 4) -> bsr krk_cs_l5_title_stub: row 15 returns into stock's lookup at 0x03038abc, every other row draws krk_cs_l5_title() through the draw tail 0x03038ece or stock's blank. r15 saved by 0x03038528's prologue (push r4, r15), popped by the tail",
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_cs_l5_title_stub"
+   }
+  },
+  {
+   "name": "standby_bottom_hook",
+   "addr": "0x030195d2",
+   "why": "Standby tags (krk_tags.c, docs/standby-tags.md). standby_screen_refresh_with_statusbar @0x030195cc (push; bsr display_draw_status_bar; bsr standby_screen_refresh; pop), the only path that draws the standby bottom line (boot, Back from a menu, end of a call, popups): `bsr 0x03018e64` (void(void); r0-r3 dead after it, the pop follows) -> krk_hook_standby_bottom, which makes the stock call first and then draws the tags in x 60..199 of rows 290..319",
+   "expect_branch": {
+    "kind": "bsr",
+    "target": "@stock:standby_screen_refresh"
+   },
+   "branch": {
+    "kind": "bsr",
+    "target": "@kraken_ui2:krk_hook_standby_bottom"
+   }
+  }
+ ],
+ "asserts": [
+  {
+   "name": "idx24_literal",
+   "addr": "0x03049fec",
+   "expect_u32": "0x0003fdc0"
+  },
+  {
+   "name": "band_lit_uhf_lo",
+   "addr": "0x0300d7fc",
+   "expect_u32": "0x02625a00"
+  },
+  {
+   "name": "band_lit_uhf_hi",
+   "addr": "0x0300d800",
+   "expect_u32": "0x02cd29c0"
+  },
+  {
+   "name": "band_lit_vhf_hi",
+   "addr": "0x0300d804",
+   "expect_u32": "0x010980c0"
+  },
+  {
+   "name": "band_lit_am_lo",
+   "addr": "0x0300d808",
+   "expect_u32": "0x00a4cb80"
+  },
+  {
+   "name": "band_lit_keymsgq",
+   "addr": "0x030131d8",
+   "expect_u32": "0x00038d70"
+  }
+ ],
+ "allow_occupied": [
+  {
+   "start": "0x030de000",
+   "end_exclusive": "0x030df000",
+   "justification": "F9 parrot: five 4-byte bsr splices in the tail of the IRAM load image (flash 0x030bfc20..0x030decb8 is copied verbatim to IRAM 0x10000.. at every boot, docs/parrot-tx.md section 1) redirect the vocoder tasks' modem-window copies (IRAM 0x2e6c0/0x2e820/0x2e9ea/0x2eaf0 write, 0x2ed64 read) to krk_vf_tx_hook/krk_vf_rx_hook. Not the forbidden sector 0x030c6000. Branch targets carry +0x30afc20 because the CPU executes them at the IRAM address."
+  }
+ ]
+}

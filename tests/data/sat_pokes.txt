@@ -1,0 +1,5 @@
+# F10 QEMU frames: a GPS fix + UTC clock in stock's RMC buffer, and dual watch held off (poke format: tools/qemu_poke.py)
+# RMC: 2026-10-29 12:00:00 UTC at 41.714 N 72.727 W (frozen: the screen advances it with the OS tick)
+12 38c79 text:$GNRMC,120000.00,A,4142.8500,N,07243.6200,W,0.0,0.0,291026,,,A*57
+12 150 2 38c6c 40
+12 150 2 400d8 00

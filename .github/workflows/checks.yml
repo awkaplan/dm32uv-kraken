@@ -1,0 +1,136 @@
+name: Checks
+
+# The checks that can run without the stock firmware. The full build and the QEMU tests need the stock
+# image and the C-SKY toolchain image, so they are not run here: tools/build.sh on your own machine is
+# still the pull request gate (CONTRIBUTING.md).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # dm32uv-re supplies the patch API headers the host tests compile against. Pinned so a change there
+  # cannot break CI here unnoticed; bump it when this repo starts using newer headers.
+  DM32UV_RE_REF: 92afa3e5c3300ef1cd86fa53dcd2d4b3a6f16b2d
+
+jobs:
+  generated:
+    name: Generated files are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the generators' outputs
+        # fails if menu_hosts.json, hooks.json, blobs.json or allocations.json changed without a regenerate,
+        # or a generated file was edited by hand
+        run: |
+          python3 tools/gen_menu_hosts.py --check
+          python3 tools/gen_manifest.py --check
+          python3 tools/gen_claims.py --check
+
+  host-tests:
+    name: Host tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the dm32uv-re patch API headers
+        uses: actions/checkout@v4
+        with:
+          repository: awkaplan/dm32uv-re
+          ref: ${{ env.DM32UV_RE_REF }}
+          path: .deps/dm32uv-re
+          sparse-checkout: tools/include
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        # sgp4 for test_sat.py; skyfield for its independent cross-check
+        run: pip install sgp4==2.27 skyfield==1.55
+      - name: Run tests/test_*.py
+        env:
+          DM32UV_RE: ${{ github.workspace }}/.deps/dm32uv-re
+        run: |
+          fail=0
+          for t in tests/test_*.py; do
+            echo "::group::$t"
+            if ! python3 "$t"; then
+              echo "::error file=$t::$t failed"
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  web-syntax:
+    name: Web installer parses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Syntax-check every JavaScript file
+        # the flows test (tests/web_flasher_test.mjs) needs a build, so CI can only check that the page,
+        # its modules and the tools parse
+        run: |
+          fail=0
+          for f in $(git ls-files '*.js' '*.mjs'); do
+            node --check "$f" || { echo "::error file=$f::does not parse"; fail=1; }
+          done
+          exit $fail
+
+  hygiene:
+    name: No firmware or personal data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the range check reads every commit of the push or pull request
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the tree
+        env:
+          KRAKEN_DENYLIST: ${{ secrets.KRAKEN_DENYLIST }}
+        run: python3 tools/check_repo_hygiene.py
+      - name: Check every commit
+        # a file added in one commit and deleted in the next is still in the history once merged.
+        # Pull requests from forks get no secrets, so the denylist part is skipped for them.
+        env:
+          KRAKEN_DENYLIST: ${{ secrets.KRAKEN_DENYLIST }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "No earlier commit to compare with (new branch, force push or manual run): tree check only."
+            exit 0
+          fi
+          python3 tools/check_repo_hygiene.py --range "$BASE..$HEAD"
+
+  docs-links:
+    name: Docs links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check relative links and anchors in the Markdown
+        # offline: only links inside the repo and their #anchors are checked, so the result never depends
+        # on another website being up
+        uses: lycheeverse/lychee-action@v2
+        with:
+          lycheeVersion: v0.24.2
+          fail: true
+          args: >-
+            --offline --include-fragments --no-progress
+            --exclude-path private --exclude-path out --exclude-path .deps
+            './**/*.md'

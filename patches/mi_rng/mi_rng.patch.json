@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Patch manifest for build_manifest_patch.py. One blob (mi_rng.c) and one splice: the",
+    "`bsr lcg_rand_next` inside dmr_privacy_key_load_and_mi_draw's MI draw loop becomes a `bsr` to",
+    "the blob. See README.md and docs/encryption.md."
+  ],
+  "name": "mi_rng",
+  "description": "DMR privacy MI from an AES-256 CTR_DRBG seeded from ADC + timer noise, replacing unseeded libc rand().",
+  "allocations": ["mi_rng_code", "mi_rng_state"],
+
+  "blobs": [
+    {
+      "name": "mi_rng",
+      "sources": ["mi_rng.c"],
+      "cflags": ["-O2", "-Wall", "-ffreestanding", "-fno-tree-loop-distribute-patterns", "-ffunction-sections", "-fdata-sections"],
+      "ldflags": ["--gc-sections"],
+      "linker_script": "mi_rng.ld",
+      "entry": "mi_rng_entry",
+      "expect_entry": "0x030e2000"
+    }
+  ],
+
+  "splices": [
+    {
+      "name": "mi_draw",
+      "why": "Each of the six iterations of the MI fill loop calls lcg_rand_next and stores the low byte (st.b r0,(r5,0) at 0x0305caf0). The caller uses only r0, r4, r5 after the call, and r4/r5 are callee-saved, so a handler that returns the byte in r0 is a drop-in.",
+      "addr": "0x0305caec",
+      "expect_branch": {"kind": "bsr", "target": "@stock:lcg_rand_next"},
+      "branch": {"kind": "bsr", "target": "@mi_rng"}
+    }
+  ]
+}

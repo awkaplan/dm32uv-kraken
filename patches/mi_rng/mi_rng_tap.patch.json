@@ -1,0 +1,52 @@
+{
+  "_comment": [
+    "MEASUREMENT build of mi_rng: same code and hook, compiled with -DMI_RNG_SAMPLE_TAP so every raw",
+    "noise record is copied to a ring buffer at SRAM 0x18005000 (claim mi_rng_tap_buf) for a live-RAM capture.",
+    "It REPLACES the production build (same sectors); it is for measuring entropy, never for use. See README.md."
+  ],
+  "name": "mi_rng_tap",
+  "description": "mi_rng with the raw ADC/timer samples tapped to SRAM 0x18005000 for entropy measurement (not for use).",
+  "allocations": [
+    "mi_rng_code",
+    "mi_rng_state",
+    "mi_rng_tap_buf"
+  ],
+  "blobs": [
+    {
+      "name": "mi_rng",
+      "sources": [
+        "mi_rng.c"
+      ],
+      "cflags": [
+        "-O2",
+        "-Wall",
+        "-ffreestanding",
+        "-fno-tree-loop-distribute-patterns",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-DMI_RNG_SAMPLE_TAP"
+      ],
+      "ldflags": [
+        "--gc-sections"
+      ],
+      "linker_script": "mi_rng_tap.ld",
+      "entry": "mi_rng_entry",
+      "expect_entry": "0x030e2000"
+    }
+  ],
+  "splices": [
+    {
+      "name": "mi_draw",
+      "why": "Each of the six iterations of the MI fill loop calls lcg_rand_next and stores the low byte (st.b r0,(r5,0) at 0x0305caf0). The caller uses only r0, r4, r5 after the call, and r4/r5 are callee-saved, so a handler that returns the byte in r0 is a drop-in.",
+      "addr": "0x0305caec",
+      "expect_branch": {
+        "kind": "bsr",
+        "target": "@stock:lcg_rand_next"
+      },
+      "branch": {
+        "kind": "bsr",
+        "target": "@mi_rng"
+      }
+    }
+  ]
+}

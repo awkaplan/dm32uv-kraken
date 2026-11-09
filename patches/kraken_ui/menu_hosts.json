@@ -1,0 +1,689 @@
+{
+ "_comment": [
+  "Rows this project appends to STOCK sub-lists, one entry per host menu. tools/gen_menu_hosts.py turns this into the host-owned",
+  "entries of kraken_ui.patch.json (labels, label arrays, descriptor pointers/counts, relocated dispatch jump tables and their",
+  "cmphsi bounds) and into krk_menu_rows.h (KRK_<HOST>_FIRST/_MAX/_GEN_MODE/_ITEM_<ROW>/_ROWS for krk_core.c, krk_ext.c, krk_stubs.S).",
+  "The build runs the script with --check and fails while either output is stale.",
+  "",
+  "Adding a row to an existing host: append it to that host's rows (key, label, screen = a C initializer for its struct krk_screen",
+  "pointer), run tools/gen_menu_hosts.py, rebuild. Rows of an extension-blob host (APRS, Radio Settings, Channel Set) live in",
+  "krk_ext.c's table, so the screen must be linked in blob 2 or be referenced by its blob origin (KRK_EXT4_LO, KRK_EXT5_LO).",
+  "An option row (.opt) needs a commit path: APRS, Radio Settings and Channel Set have one; Call Log and GNSS take screens only.",
+  "",
+  "Adding a host: its splice SITES (the generator call, the item-action compare chain or jump table, the commit) are reverse-engineering",
+  "work and stay hand-written in the manifest and krk_stubs.S; this file covers everything that follows from the row list.",
+  "Fields: descriptor = the stock {u32 strings, u8 count, u8 subtype} x 2 languages; stock = its arrays (expect_* checked at build);",
+  "arrays_at / labels_at / jump_tables[].at = where the relocated copies go in the kraken_ui_data claim (overlaps are rejected);",
+  "gen_mode = the menu_option_list_dispatch mode whose list krk_hook_gen appends to (omit when the descriptor count alone lists the rows);",
+  "gen_sites = the call sites of that generator (each a stock `bsr menu_option_list_dispatch`, name/addr/why) that become `bsr krk_hook_gen`;",
+  "why = 'why' text templates for the generated entries ({stock} {n} {total} {first} {last} {items} {labels}; label: also {item} {label}).",
+  "",
+  "Beyond plain hosts: the 'cat' host is the 11th top-level category (naming overrides, no_header, three jump_tables) and 'nests' holds the",
+  "Other Func parents (a per-slot 4-splice template) and the VOX child-list descriptor. See docs/menu-hosts.md section 3."
+ ],
+ "data_claim": {
+  "start": "0x030e7000",
+  "end_exclusive": "0x030e8000"
+ },
+ "hosts": [
+  {
+   "id": "cat",
+   "pfx": "krk",
+   "menu": "KRAKEN (11th top-level category)",
+   "no_header": true,
+   "descriptor": "0x030b7db8",
+   "stock": {
+    "count": 10,
+    "zh": "0x030b7d68",
+    "en": "0x030b7d90"
+   },
+   "arrays_at": {
+    "zh": "0x030e70e0",
+    "en": "0x030e7120"
+   },
+   "arr_names": {
+    "zh": "krk_labelarr_lang0",
+    "en": "krk_labelarr_lang1"
+   },
+   "desc_names": {
+    "zh": "lang0_label",
+    "en": "lang1_label"
+   },
+   "rows": [
+    {
+     "key": "kraken",
+     "label": "KRAKEN",
+     "label_name": "krk_label",
+     "label_at": "0x030e7000"
+    }
+   ],
+   "jump_tables": [
+    {
+     "key": "catjmp",
+     "at": "0x030e7020",
+     "stock": "0x030aff74",
+     "expect": [
+      "0x0303da4c",
+      "0x0303da9a",
+      "0x0303dae8",
+      "0x0303db72",
+      "0x0303dbf6",
+      "0x0303dc44",
+      "0x0303dc92",
+      "0x0303dccc",
+      "0x0303dd06",
+      "0x0303dd40"
+     ],
+     "stub": "kraken_ui:krk_render_stub",
+     "bound": {
+      "name": "render_bound",
+      "addr": "0x0303da02",
+      "op": "3a"
+     },
+     "ptr": {
+      "name": "render_table_ptr",
+      "addr": "0x0303da48"
+     }
+    },
+    {
+     "key": "okjmp",
+     "at": "0x030e7060",
+     "stock": "0x030afef0",
+     "expect": [
+      "0x0303cdac",
+      "0x0303cdb2",
+      "0x0303cdb8",
+      "0x0303cdbe",
+      "0x0303cdc4",
+      "0x0303cdca",
+      "0x0303cdd0",
+      "0x0303cdd6",
+      "0x0303cddc",
+      "0x0303cde2"
+     ],
+     "stub": "kraken_ui:krk_ok_stub",
+     "bound": {
+      "name": "ok_bound",
+      "addr": "0x0303cd8e",
+      "op": "3a"
+     },
+     "ptr": {
+      "name": "ok_table_ptr",
+      "addr": "0x0303cda8"
+     }
+    },
+    {
+     "key": "itemjmp",
+     "at": "0x030e70a0",
+     "stock": "0x030aff18",
+     "expect": [
+      "0x0303cf1c",
+      "0x0303cf68",
+      "0x0303cf70",
+      "0x0303cf78",
+      "0x0303cf80",
+      "0x0303cfbe",
+      "0x0303cfc6",
+      "0x0303d1b4",
+      "0x0303d2a0",
+      "0x0303d54c"
+     ],
+     "stub": "kraken_ui:krk_item_stub",
+     "bound": {
+      "name": "item_bound",
+      "addr": "0x0303ced8",
+      "op": "3a"
+     },
+     "ptr": {
+      "name": "item_table_ptr",
+      "addr": "0x0303cf18"
+     }
+    }
+   ],
+   "why": {
+    "catjmp": "render-path table: ten stock case blocks + ours",
+    "okjmp": "OK-path table: ten stock 6-byte stubs + ours",
+    "itemjmp": "item-action table: ten stock case blocks + ours"
+   }
+  },
+  {
+   "id": "aprs",
+   "menu": "APRS (category 9)",
+   "descriptor": "0x030ba924",
+   "stock": {
+    "count": 8,
+    "zh": "0x030ba8e4",
+    "en": "0x030ba904"
+   },
+   "arrays_at": {
+    "zh": "0x030e7620",
+    "en": "0x030e7660"
+   },
+   "labels_at": "0x030e77a0",
+   "rows": [
+    {
+     "key": "path",
+     "label": "Upload ID",
+     "screen": "&krk_aprs_path_screen",
+     "stock_label": {
+      "zh": "0x030ba8e8",
+      "en": "0x030ba908"
+     }
+    },
+    {
+     "key": "upload",
+     "label": "Upload Beacon",
+     "screen": "&krk_aprs_upload_screen",
+     "stock_label": {
+      "zh": "0x030ba8fc",
+      "en": "0x030ba91c"
+     }
+    },
+    {
+     "key": "call",
+     "label": "Callsign",
+     "screen": "&krk_callsign_screen",
+     "label_at": "0x030e7190"
+    },
+    {
+     "key": "rx",
+     "label": "APRS RX",
+     "screen": "&krk_aprsrx_screen",
+     "label_at": "0x030e7290"
+    },
+    {
+     "key": "mon",
+     "label": "RX Monitor",
+     "screen": "&krk_monitor_row",
+     "label_at": "0x030e76e0"
+    }
+   ],
+   "jump_tables": [
+    {
+     "key": "itemjmp",
+     "at": "0x030e76a0",
+     "stock": "0x030aff54",
+     "expect": [
+      "0x0303d570",
+      "0x0303d5de",
+      "0x0303d634",
+      "0x0303d6a4",
+      "0x0303d72c",
+      "0x0303d756",
+      "0x0303d7d8",
+      "0x0303d848"
+     ],
+     "stub": "kraken_ui:krk_aprs_item_stub",
+     "bound": {
+      "name": "aprs_item_bound",
+      "addr": "0x0303d556",
+      "op": "3a"
+     },
+     "ptr": {
+      "name": "aprs_item_table_ptr",
+      "addr": "0x0303d56c"
+     }
+    }
+   ],
+   "why": {
+    "arr_zh": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): {items} ({labels}). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
+    "desc_zh_ptr": "APRS sub-list descriptor (category 9), docs/aprs-submenu.md",
+    "arr_en": "stock APRS en strings + analog rows (descriptor lang 1), same layout as zh",
+    "itemjmp": "APRS per-item jump table: {stock} stock case blocks + {n} stub entries ({items}: {labels})",
+    "aprs_item_bound": "cmphsi r2,{stock} -> cmphsi r2,{total} (raw imm = value-1): {items} are ours",
+    "aprs_item_table_ptr": "pool word loaded by the lrw at 0x0303d55a",
+    "label": "label of APRS item {item} ({label}), an analog row (docs/aprs-submenu.md)"
+   },
+   "_note": "each APRS label is pinned where it was first placed (label_at); a new APRS row without label_at is packed from labels_at"
+  },
+  {
+   "id": "calllog",
+   "menu": "Call Log (category 4)",
+   "gen_mode": 5,
+   "gen_sites": [
+    {
+     "name": "calllog_gen_render",
+     "addr": "0x0303dc06",
+     "why": "Call Log render case block 0x0303dbf6 (fresh entry, depth 1): menu_option_list_dispatch(5, 0x3e5f8, 0x3e5fa) -> krk_hook_gen (stock generator, then our rows from menu_hosts.json). Void; after it the block reloads r3 and uses nothing else"
+    },
+    {
+     "name": "calllog_gen_entry2",
+     "addr": "0x03036b62",
+     "why": "second Call Log entry path (history push at 0x03036b40, depth 14): same generator call; after it only fresh r2/r3 and calls"
+    },
+    {
+     "name": "calllog_gen_entry3",
+     "addr": "0x0303ee3e",
+     "why": "third Call Log entry path (rebuilds the list and puts the cursor on item r4): generator(5, r5, r6); after it only r4/r5 (callee-saved) and fresh registers"
+    }
+   ],
+   "descriptor": "0x030b8060",
+   "stock": {
+    "count": 4,
+    "zh": "0x030b8040",
+    "en": "0x030b8050",
+    "expect_zh": [
+     "0x030bc554",
+     "0x030bc560",
+     "0x030bc56c",
+     "0x030bc578"
+    ],
+    "expect_en": [
+     "0x030bc584",
+     "0x030bc58c",
+     "0x030be258",
+     "0x030bc598"
+    ]
+   },
+   "arrays_at": {
+    "zh": "0x030e7250",
+    "en": "0x030e7270"
+   },
+   "labels_at": "0x030e7240",
+   "rows": [
+    {
+     "key": "lh",
+     "label": "Last Heard",
+     "screen": "&krk_lastheard_screen"
+    }
+   ],
+   "why": {
+    "arr_zh": "stock Call Log zh strings (descriptor 0x030b8060 lang 0: Missed, Answered, Sent, Delete) + {items} {labels} (docs/calllog-submenu.md)",
+    "desc_zh_ptr": "Call Log sub-list descriptor (category 4), docs/calllog-submenu.md; the arrays are read only through it",
+    "arr_en": "stock Call Log en strings (descriptor lang 1) + {items} {labels}",
+    "label": "label of Call Log {item} ({label}), docs/calllog-submenu.md"
+   }
+  },
+  {
+   "id": "gnss",
+   "menu": "GNSS (category 8)",
+   "descriptor": "0x030b7e28",
+   "stock": {
+    "count": 5,
+    "zh": "0x030b7e00",
+    "en": "0x030b7e14",
+    "expect_zh": [
+     "0x030bc1dc",
+     "0x030bc1e8",
+     "0x030bc1f4",
+     "0x030bc1fc",
+     "0x030bc208"
+    ],
+    "expect_en": [
+     "0x030bc214",
+     "0x030bc220",
+     "0x030bc22c",
+     "0x030bc238",
+     "0x030bc244"
+    ]
+   },
+   "arrays_at": {
+    "zh": "0x030e7720",
+    "en": "0x030e7760"
+   },
+   "labels_at": "0x030e7700",
+   "rows": [
+    {
+     "key": "grid",
+     "label": "GPS Grid",
+     "screen": "&krk_grid_screen"
+    }
+   ],
+   "why": {
+    "arr_zh": "stock GNSS zh strings (descriptor 0x030b7e28 lang 0: GNSS On/Off, GNSS Info, Time Zone, Disp Format, GNSS Mode) + {items} {labels}",
+    "desc_zh_ptr": "GNSS sub-list descriptor (category 8), docs/gnss-submenu.md; the arrays are read only through it (readers 0x030386fc, 0x0303dd10, 0x0303f270)",
+    "arr_en": "stock GNSS en strings (descriptor lang 1) + {items} {labels}",
+    "label": "label of GNSS {item} ({label}), docs/gnss-submenu.md; the title handler 0x030386e8 draws it from the relocated array"
+   }
+  },
+  {
+   "id": "rs",
+   "menu": "Radio Settings (Settings item 0)",
+   "gen_mode": 20,
+   "gen_sites": [
+    {
+     "name": "rs_gen_hook",
+     "addr": "0x030423b8",
+     "why": "Radio Settings entry block 0x030423a8: menu_option_list_dispatch(20, 0x3e5f8, 0x3e5fa) -> krk_hook_gen (stock generator, then our rows from menu_hosts.json). The only call site of mode 20 in the image; void, and after it the block reloads r3 from a literal"
+    }
+   ],
+   "descriptor": "0x030b8488",
+   "stock": {
+    "count": 4,
+    "zh": "0x030b8468",
+    "en": "0x030b8478",
+    "expect_zh": [
+     "0x030bcbac",
+     "0x030bcaf8",
+     "0x030bcb04",
+     "0x030bcb10"
+    ],
+    "expect_en": [
+     "0x030bcb1c",
+     "0x030bcb28",
+     "0x030bcb34",
+     "0x030bcb44"
+    ]
+   },
+   "arrays_at": {
+    "zh": "0x030e72c0",
+    "en": "0x030e72e0"
+   },
+   "labels_at": "0x030e7840",
+   "rows": [
+    {
+     "key": "trim",
+     "label": "TX Power Trim",
+     "screen": "&krk_txtrim_screen"
+    },
+    {
+     "key": "squelch",
+     "label": "Squelch Mode",
+     "screen": "&krk_squelch_screen"
+    },
+    {
+     "key": "unlock",
+     "label": "Freq Unlock",
+     "screen": "&krk_band_screen"
+    }
+   ],
+   "why": {
+    "arr_zh": "stock Radio Settings zh strings (descriptor 0x030b8488 lang 0: Voice/Key/Display/Other Func) + {items} ({labels})",
+    "desc_zh_ptr": "Radio Settings sub-list descriptor (Settings category 5, item 0), docs/settings-submenu.md; the arrays are read only through it and by the level-4 header handler, which indexes the same array",
+    "arr_en": "stock Radio Settings en strings (descriptor lang 1) + {items} ({labels})",
+    "label": "label of Radio Settings {item} ({label}), docs/settings-submenu.md; the level-4 header handler 0x03038720 draws it straight from the relocated array, so no title hook is needed"
+   }
+  },
+  {
+   "id": "cs",
+   "menu": "Channel Set (Settings item 1)",
+   "gen_mode": 6,
+   "gen_sites": [
+    {
+     "name": "cs_gen_hook",
+     "addr": "0x03042406",
+     "why": "Channel Set row generator: menu_option_list_dispatch(6, 0x3e5f8, 0x3e5fa) @0x030493f8 (body menu_option_gen_idx6 @0x03049930, a 21-arm CPS/channel-mode visibility chain) -> krk_hook_gen, which calls the stock generator FIRST so all its gating keeps working and only then appends our rows (menu_hosts.json). This is the MENU-TREE call site; the second mode-6 call at 0x0303e294 belongs to a different wizard that installs cells from descriptor 0x030b8150 (CTC/DCS) and never reads 0x030b89a0, so it is deliberately NOT hooked. Void; after it the block reloads r3"
+    }
+   ],
+   "descriptor": "0x030b89a0",
+   "stock": {
+    "count": 22,
+    "zh": "0x030b88f0",
+    "en": "0x030b8948",
+    "expect_zh": [
+     "0x030bd3f4",
+     "0x030bd400",
+     "0x030bd40c",
+     "0x030bd418",
+     "0x030bd420",
+     "0x030bd42c",
+     "0x030bd434",
+     "0x030bd43c",
+     "0x030bd444",
+     "0x030bd450",
+     "0x030bd45c",
+     "0x030bd468",
+     "0x030bd474",
+     "0x030afa00",
+     "0x030bd480",
+     "0x030bd48c",
+     "0x030bd498",
+     "0x03081fa4",
+     "0x030bd4a4",
+     "0x030bd4b4",
+     "0x030bd4c0",
+     "0x030bd4cc"
+    ],
+    "expect_en": [
+     "0x030bd4d8",
+     "0x030bd4e8",
+     "0x030bd4f8",
+     "0x030bd504",
+     "0x030bd50c",
+     "0x030bd518",
+     "0x030bd524",
+     "0x030bd43c",
+     "0x030bd530",
+     "0x030bd540",
+     "0x030bd550",
+     "0x030bd55c",
+     "0x030bd56c",
+     "0x030bd57c",
+     "0x030bd588",
+     "0x030bd594",
+     "0x030bd5a4",
+     "0x03081fa4",
+     "0x030bd5b4",
+     "0x030bd5c4",
+     "0x030bd5cc",
+     "0x030bd5d8"
+    ]
+   },
+   "arrays_at": {
+    "zh": "0x030e7420",
+    "en": "0x030e74a0"
+   },
+   "labels_at": "0x030e7300",
+   "rows": [
+    {
+     "key": "dmrlink",
+     "label": "DMR Link",
+     "screen": "(const struct krk_screen *)KRK_EXT5_LO"
+    },
+    {
+     "key": "bv",
+     "label": "Burst Voice",
+     "screen": "(const struct krk_screen *)KRK_EXT4_LO",
+     "stubs": {
+      "itemjmp": "kraken_ui2:krk_cs_bv_kids_stub",
+      "okjmp": "0x0304e254"
+     },
+     "stubs_why": "2026-11-06: a nest parent (docs/chanset-submenu.md 8). Its level-4 init entry installs the child list (Burst Voice, Mode, Key-up Lead, Relay Capture; krk_bvcfg.c); its commit entry is stock's row-15 arm 0x0304e254 = set_mode(0x23, 1), which opens level 5 for any child. The screen stays the row's `screen`: krk_hook_gen lists the row only while blob ui4 is flashed"
+    },
+    {
+     "key": "scron",
+     "label": "Scrambler On/Off",
+     "screen": "&krk_scramble_on_screen"
+    },
+    {
+     "key": "scrkey",
+     "label": "Key",
+     "screen": "&krk_scrkey_row"
+    },
+    {
+     "key": "paron",
+     "label": "Parrot On/Off",
+     "screen": "&krk_parrot_arm_screen"
+    },
+    {
+     "key": "parplay",
+     "label": "Replay Audio",
+     "screen": "&krk_parrot_play_screen"
+    },
+    {
+     "key": "parchk",
+     "label": "Check",
+     "screen": "&krk_parrot_check_screen"
+    },
+    {
+     "key": "parclr",
+     "label": "Clear Audio",
+     "screen": "&krk_parrot_clear_screen"
+    },
+    {
+     "key": "parstat",
+     "label": "Status",
+     "screen": "&krk_parrot_status_screen"
+    }
+   ],
+   "jump_tables": [
+    {
+     "key": "itemjmp",
+     "at": "0x030e7520",
+     "stock": "0x030b0a18",
+     "expect": [
+      "0x03047374",
+      "0x03047374",
+      "0x03047414",
+      "0x0304749c",
+      "0x030474e2",
+      "0x030474ea",
+      "0x03047598",
+      "0x0304760e",
+      "0x03047666",
+      "0x030476cc",
+      "0x03047780",
+      "0x030477f4",
+      "0x0304787e",
+      "0x030478da",
+      "0x03047988",
+      "0x030479e8",
+      "0x03047a2a",
+      "0x03047a88",
+      "0x03047ae8",
+      "0x03047bbc",
+      "0x03047c1a",
+      "0x03047c96"
+     ],
+     "stub": "kraken_ui:krk_cs_item_stub",
+     "bound": {
+      "name": "cs_item_bound",
+      "addr": "0x03047332",
+      "op": "3a"
+     },
+     "ptr": {
+      "name": "cs_item_table_ptr",
+      "addr": "0x03047370"
+     }
+    },
+    {
+     "key": "okjmp",
+     "at": "0x030e75a0",
+     "stock": "0x030b116c",
+     "expect": [
+      "0x0304dcc4",
+      "0x0304dcc4",
+      "0x0304dedc",
+      "0x0304e416",
+      "0x0304df24",
+      "0x0304df96",
+      "0x0304dff0",
+      "0x0304e030",
+      "0x0304e044",
+      "0x0304e12a",
+      "0x0304e14e",
+      "0x0304e168",
+      "0x0304e20c",
+      "0x0304e232",
+      "0x0304e23c",
+      "0x0304e254",
+      "0x0304e294",
+      "0x0304e2ae",
+      "0x0304e2c6",
+      "0x0304e2e0",
+      "0x0304e2f8",
+      "0x0304e3fe"
+     ],
+     "stub": "kraken_ui:krk_cs_ok_stub",
+     "bound": {
+      "name": "cs_ok_bound",
+      "addr": "0x0304dc9a",
+      "op": "3b"
+     },
+     "ptr": {
+      "name": "cs_ok_table_ptr",
+      "addr": "0x0304dcc0"
+     }
+    }
+   ],
+   "why": {
+    "arr_zh": "stock Channel Set zh strings (descriptor 0x030b89a0 lang 0, {stock} rows Rx Frequency..APRS Receive) + {items} ({labels}). The two stock arrays abut each other and the descriptor (zh+88 = en, en+88 = the descriptor), so neither can grow in place: both are relocated. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+    "desc_zh_ptr": "Channel Set sub-list descriptor (Settings category 5, level-2 item 1), docs/chanset-submenu.md. The literal 0x030b89a0 occurs at five sites (0x30387c4, 0x303ba8c, 0x303c1d8, 0x303c3fc, 0x3042534) and every one of them loads the DESCRIPTOR, so editing it in place covers all readers - including the level-4 header handler, which gives the new rows their titles for free",
+    "desc_zh_count": "Channel Set row count: stock {stock}, now {total} for the {n} rows we append ({labels}). A plain count here, not the value-1 encoding the cmphsi bounds use",
+    "arr_en": "stock Channel Set en strings (descriptor lang 1), same layout as zh: {stock} stock + {n} of ours. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+    "desc_en_count": "Channel Set row count: stock {stock}, now {total} for the {n} rows we append ({labels}). A plain count here, not the value-1 encoding the cmphsi bounds use",
+    "itemjmp": "Channel Set ENTER jump table (OK on the row, event 0x1b): {stock} stock case blocks of table_entry_select_and_index_list_build_toplevel_dispatch @0x03047324 + {n} stub entries ({items}). The stock table 0x030b0a18 is packed directly before 0x030b0a70 so it must be relocated; its only reference is the literal-pool word at 0x03047370. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+    "cs_item_bound": "ENTER dispatch bound of table_entry_select_and_index_list_build_toplevel_dispatch @0x03047324: cmphsi r2,{stock} -> cmphsi r2,{total} (raw immediate = value - 1; a 16-bit cmphsi tops out at 32, which tools/gen_menu_hosts.py enforces), so level-3 {items} reach our table entries instead of the out-of-range exit 0x03047cf4. MEASURED in QEMU (docs/nested-submenu.md): this dispatcher is the one the OK on a level-3 row reaches, and it is reached at that depth only",
+    "cs_item_table_ptr": "literal-pool word loaded by the lrw at 0x03047338 (the table's sole reference image-wide)",
+    "okjmp": "Channel Set COMMIT jump table (OK INSIDE a row's option level, event 0x22): {stock} stock case blocks of 0x0304dc8c + {n} stub entries ({items}). MEASURED 2026-11-03: the committing OK runs 0x0303a57c -> bsr 0x0304e560 -> jump table 0x030b11c4[1] = 0x0304e5aa -> bsr 0x0304dc8c, which re-reads the level-3 row and dispatches it through THIS table - unlike Radio Settings (0x030b11c4[0] = a pure no-op), so the row never has to be latched. The stock table 0x030b116c is immediately followed by 0x030b11c4 so it must be relocated; its only reference is the literal-pool word at 0x0304dcc0. 2026-11-03: the four relocated tables abutted one another at their old addresses, so they were MOVED here",
+    "cs_ok_bound": "COMMIT dispatch bound of 0x0304dc8c: cmphsi r3,{stock} -> cmphsi r3,{total} (raw immediate = value - 1). Its out-of-range target 0x0304e416 is NOT an epilogue (it is the stock numeric / Channel-Name path), so a row of ours must never fall out through the bound. MEASURED in QEMU (docs/nested-submenu.md): this is where the OK pressed at any level BELOW a level-3 row arrives, which is also why a nested child list cannot open its own option level from here - docs/nested-submenu.md",
+    "cs_ok_table_ptr": "literal-pool word loaded by the lrw at 0x0304dca0 (the table's sole reference image-wide)",
+    "label": "label of Channel Set {item} {label} (docs/chanset-submenu.md). The level-4 header handler 0x03038720 special-cases category 5 and, for level-2 item 1, reads lrw a3,[0x30387c4] = 0x030b89a0 then desc[lang].ptr[row], so relocating the label arrays titles the row in both languages with no title hook"
+   }
+  }
+ ],
+ "nests": [
+  {
+   "id": "of",
+   "menu": "Other Func",
+   "slot_base": {
+    "zh": "0x030b8660",
+    "en": "0x030b86b4",
+    "enter": "0x030b0990",
+    "ok": "0x030b130c"
+   },
+   "ok_to": "0x0304fec8",
+   "why": {
+    "lbl": "Other Func {lang} label array slot {slot} (stock: {stock_name}, never listed) -> {label}"
+   },
+   "items": [
+    {
+     "slot": 11,
+     "label": "CW ID",
+     "label_name": "krk_of_lbl_cwid",
+     "label_at": "0x030e7830",
+     "label_why": "label of Other Func item 11 (2026-11-05, docs/cw-id.md, docs/otherfunc-submenu.md). Stock never lists item 10 (Lone Worker) or 11 (Man Down): the generator skips them and their slots in both per-item tables are the no-op exits, so the Man Down slot is reused as the CW ID parent row with no table relocation. The level-5 header 0x03038994 reads 0x030b8708[lang].ptr[item], so the label also titles the child list",
+     "stock_name": "Man Down",
+     "stock_zh": "0x030bd030",
+     "stock_en": "0x030bc1d0",
+     "stub": "kraken_ui2:krk_of_cwid_kids_stub",
+     "stock_enter": "0x03045082",
+     "enter_why": "Other Func level-5 init table 0x030b0990, slot 11 (stock: the no-op exit) -> installs the CW ID child list (CW ID SW, Interval, Callsign), as 0x030449ec does for VOX (slot 3). Runs on every render of the level, including the re-render after a child commits",
+     "stock_ok": "0x030500a4",
+     "ok_why": "Other Func level-5 OK table 0x030b130c, slot 11 (stock: the popup-and-pop tail) -> stock's own VOX arm 0x0304fec8 = set_mode(0x2a,1); br 0x030500ac. It tests neither the row nor the child, so level 6 opens for any child, and the level-6 init hook decides what it is"
+    }
+   ],
+   "child_lists": [
+    {
+     "id": "vox_kids",
+     "descriptor": "0x030b82b8",
+     "stock_count": 2,
+     "zh": {
+      "name": "krk_vox_kids_zh",
+      "at": "0x030e7810",
+      "stock": "0x030b82a8",
+      "expect": [
+       "0x030bc870",
+       "0x030bc87c"
+      ],
+      "extra": {
+       "stock": "0x030b8670",
+       "expect": [
+        "0x030bcfe0"
+       ]
+      },
+      "why": "stock VOX child list, zh (descriptor 0x030b82b8 lang 0: VOX SW, Gain Level) + child 2 = stock's own VOX Delay string (Other Func zh array slot 4). The stock arrays are packed against their neighbours and the descriptor. The level-5 installer 0x030449ec and the level-6 header 0x03038b9e both follow the descriptor's count and pointer, so the third row and its title are data only",
+      "ptr_why": "VOX child-list descriptor (Other Func item 3), docs/otherfunc-submenu.md: two literal users, the level-5 installer (0x03044af0) and the level-6 header (0x03038cf0), both through this descriptor",
+      "count_why": "VOX children: VOX SW, Gain Level, and now VOX Delay (it was Other Func row 4)"
+     },
+     "en": {
+      "name": "krk_vox_kids_en",
+      "at": "0x030e7820",
+      "stock": "0x030b82b0",
+      "expect": [
+       "0x030bc888",
+       "0x030bc890"
+      ],
+      "extra": {
+       "stock": "0x030b86c4",
+       "expect": [
+        "0x030bd0d4"
+       ]
+      },
+      "why": "stock VOX child list, en (VOX SW, Gain Level) + child 2 = stock's VOX Delay string (Other Func en array slot 4)"
+     }
+    }
+   ]
+  }
+ ]
+}

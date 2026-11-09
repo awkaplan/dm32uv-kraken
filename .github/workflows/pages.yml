@@ -1,0 +1,91 @@
+name: Web installer
+
+# Publishes the web installer to GitHub Pages from a release: the page (web/) as it is at the release's
+# tag, plus the two files the build writes and the release carries, kraken_patch.json and
+# kraken_reader.bin. CI does not build them itself (the build needs the stock firmware and the C-SKY
+# toolchain image), so the live installer is always exactly a released build. Runs when a release is
+# published, or by hand (Actions > Web installer > Run workflow) for any release.
+# One-time setup, once the repository is public: tools/setup_pages.sh. See docs/web-flasher.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (empty: the latest release)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick the release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          if [ -z "$TAG" ]; then
+            TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing the web installer from release $TAG"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Assemble the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release \
+            --pattern kraken_patch.json --pattern kraken_reader.bin
+          mkdir _site
+          cp -R web/. _site/
+          cp release/kraken_patch.json _site/kraken_patch.json
+          cp release/kraken_reader.bin _site/reader.bin
+          touch _site/.nojekyll
+
+      - name: Pin the page to this release
+        # the page will use only files with these hashes (web/app.js, releasePin)
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: python3 tools/pin_web_release.py _site --tag "$TAG"
+
+      - name: Check the site
+        run: node tools/check_web_site.mjs _site --release
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    # GitHub Pages is not available while the repository is private: the site is assembled and checked,
+    # and this job is skipped
+    if: ${{ !github.event.repository.private }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
