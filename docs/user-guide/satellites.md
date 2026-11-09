@@ -13,6 +13,9 @@ channel's RX and TX frequencies to follow the Doppler shift, and puts the channe
 contact has been made yet (the satellites were idle), and transmitting through a satellite has not been tested.
 **Where:** **Menu > KRAKEN > Satellites** (opens on any channel; tracking needs an analog channel)
 
+![Satellite pass list](img/satellites.png)
+*Emulator screenshot (no GPS fix, so no passes are predicted).*
+
 ### Built-in satellites
 
 | Name | Downlink (radio RX), MHz | Uplink (radio TX), MHz | Uplink tone | Note |

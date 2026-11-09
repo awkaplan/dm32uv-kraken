@@ -12,6 +12,9 @@ to compare antennas, find a signal's direction, or check a repeater's input.
 **Status:** works on hardware.
 **Where:** **Menu > KRAKEN > RSSI Meter** (any channel)
 
+![RSSI Meter screen](img/rssi-meter.png)
+*Emulator screenshot (no radio signal, so readings are empty).*
+
 ### Using it
 1. From standby press `OK`, select **KRAKEN**, then **RSSI Meter**, and press `OK`.
 2. Watch the readings. They update on their own.
@@ -55,6 +58,9 @@ graph. Use it to find activity near your frequency or to see how wide a signal i
 
 **Status:** works on hardware.
 **Where:** **Menu > KRAKEN > Band Scope** (analog channels only)
+
+![Band Scope screen](img/band-scope.png)
+*Emulator screenshot (no radio signal, so readings are empty).*
 
 ### Using it
 1. Select an analog channel (or analog VFO) in the band you want to look at.
@@ -239,6 +245,9 @@ How it works: [../dmr-ber.md](../dmr-ber.md), [../chanset-submenu.md](../chanset
 ## About
 
 **Where:** **Menu > KRAKEN > About** (any channel)
+
+![About screen](img/about.png)
+*Emulator screenshot.*
 
 It shows the Kraken name, the stock firmware it is built on (`base DM32.00.01.048`) and a short list of
 patches. Press `Back` to leave.

@@ -28,6 +28,9 @@ fit anywhere else are in a new **KRAKEN** category at the end of the top menu.
 
 ## Where everything is
 
+![The KRAKEN category](img/kraken-menu.png)
+*Emulator screenshot of **Menu > KRAKEN**.*
+
 Press `OK` (MENU) from standby to open the menu. Rows marked *analog* appear only on an analog channel.
 Rows marked *digital* appear only on a digital channel.
 

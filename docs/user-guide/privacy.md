@@ -41,6 +41,9 @@ transmission. It never changes in the middle of a call.
 
 ### Scrambler Fmt
 
+![Scrambler Fmt option list](img/scrambler-fmt.png)
+*Emulator screenshot.*
+
 The scrambler chip has separate send and receive key slots, and its maker does not document how the key
 number should be loaded into them. This row picks one of four ways. It does not change how strong the
 scrambler is. It only decides which other radios you can talk to.

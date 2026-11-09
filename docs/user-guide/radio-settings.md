@@ -16,6 +16,9 @@ range work, such as two radios on the same bench.
 **Status:** works on hardware; the menu layout described here is newer and has only been checked in the emulator.
 **Where:** **Menu > Settings > Radio Settings > TX Power Trim** (any channel)
 
+![Radio Settings list with the Kraken rows TX Power Trim, Squelch Mode and Freq Unlock](img/radio-settings.png)
+*Emulator screenshot. The last three rows are Kraken's.*
+
 ### Using it
 1. Open **Menu > Settings > Radio Settings > TX Power Trim**. The list is titled `TX Power Trim` and the dot
    marks the current value.
@@ -91,6 +94,9 @@ against the noise with a station on the air.
 
 **Status:** works on hardware; the menu layout described here is newer and has only been checked in the emulator.
 **Where:** **Menu > KRAKEN > Squelch Survey** (any channel; the readings are most useful on analog)
+
+![Squelch Survey screen](img/squelch-survey.png)
+*Emulator screenshot (no radio signal, so readings are empty).*
 
 ### Using it
 1. Select the channel you want to look at, then open **Menu > KRAKEN > Squelch Survey**.
