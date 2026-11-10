@@ -1,7 +1,7 @@
 # DM-32UV Kraken
 
 Kraken is add-on firmware for the Baofeng DM-32UV handheld radio. It keeps the stock firmware
-(`DM32.00.01.048`) and everything it does, and adds features found on pricier radios.
+(`DM32.00.01.048`, `DM32.01.L01.048` or `DM32.01.01.049`) and everything it does, and adds features found on pricier radios.
 
 ## Features
 
@@ -11,7 +11,7 @@ Kraken is add-on firmware for the Baofeng DM-32UV handheld radio. It keeps the s
   Maidenhead grid from GPS.
 - **Satellites:** pass prediction and Doppler tracking for FM amateur satellites.
 - **Parrot and Burst Voice:** record a DMR call and replay it, or send it as a fast data burst on analog.
-- **VOX that works** (stock shows VOX in the menu but never implemented it), and periodic CW ID.
+- **VOX that works** (stock shows VOX in the menu but never implemented it), an experimental two-radio repeater, and periodic CW ID.
 - **Radio settings:** finer TX power steps, noise-based squelch, wider frequency range (behind a warning).
 - **DMR privacy:** a 16-bit scrambler, and real random numbers for stock DMR encryption.
 
@@ -29,14 +29,16 @@ diagnostics** at the bottom of the page and attach the file to a
 
 To install by hand instead:
 
-1. Download `kraken_update_BFUV32-V2.bin` from
-   [Releases](https://github.com/awkaplan/dm32uv-kraken/releases).
+1. Check your radio's firmware (Menu > Device Info), then build the update file named after it,
+   `kraken_<firmware>_update_BFUV32-V2.bin` ([docs/building.md](docs/building.md)). Releases do not include it,
+   because it contains Baofeng's stock firmware.
 2. Follow [Installing Kraken](docs/user-guide/install.md). It covers the backup, the install with the
    radio's own updater, and going back to stock.
 3. Read the [user guide](docs/user-guide/README.md) for what's new and where to find it.
 
-Only for radios that show firmware `DM32.00.01.048`. You need the USB programming cable and a computer
-with Python.
+For radios that show firmware `DM32.00.01.048`, `DM32.01.L01.048` or `DM32.01.01.049`. Kraken has been tested on a
+radio only on `DM32.00.01.048` so far; the other two are tested in the emulator. You need the USB programming cable and
+a computer with Python.
 
 ## Legal and safety
 
@@ -57,9 +59,11 @@ with Python.
 - New code is C, built for the radio's C-SKY CK803S CPU. It calls stock display, menu, RTOS and radio
   functions at their known addresses.
 - New menu rows reuse the stock menu engine, option lists and popups, so they look and behave like stock.
-- The build produces one patched image and one update file, `kraken_update_BFUV32-V2.bin`, in
-  Baofeng's official `BFUV32-V2` format. The radio's own bootloader installs it. The updater rewrites
-  only the main firmware area, so one file fits every radio on `DM32.00.01.048`.
+- The build produces one patched image and one update file per stock firmware build, in Baofeng's official
+  `BFUV32-V2` format. The radio's own bootloader installs it. The updater rewrites only the main firmware area, so one
+  file fits every radio on the same firmware. Kraken is written against `DM32.00.01.048`; the `DM32.01.L01.048` and
+  `DM32.01.01.049` builds come from a checked translation of every stock address
+  ([docs/firmware-builds.md](docs/firmware-builds.md)).
 - Every build boots the patched image in QEMU and runs the tests.
 
 The stock firmware, its reverse-engineering corpus, the patch tools and the Docker build image are in
@@ -75,7 +79,8 @@ cd dm32uv-kraken
 tools/build.sh                                   # build + all tests
 ```
 
-The update file is written to `out/kraken/kraken_update_BFUV32-V2.bin`. Details, options and the other
+The update files are written to `out/kraken/updates/`, one per firmware (they contain Baofeng's stock firmware, so
+releases do not carry them). Details, options and the other
 outputs: [docs/building.md](docs/building.md).
 
 ### Repository layout

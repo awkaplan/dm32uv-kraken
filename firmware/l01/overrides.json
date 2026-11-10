@@ -1,0 +1,53 @@
+{
+ "_comment": [
+  "Translations into DM32.01.L01.048 that tools/fwmap.py cannot prove by itself, each checked by hand against both images",
+  "(side-by-side disassembly; docs/firmware-builds.md section 4 has the method). tools/gen_fw_maps.py takes them as given.",
+  "Remove an entry when the address is no longer used; the generator says so."
+ ],
+ "overrides": {
+  "0x0003bd2d": {
+   "to": "0x0003bd2d",
+   "why": "RX call state block 0x3bd2c (Last Heard: class at +1). L01 removed one variable here, the voice recorder's state byte 0x3bd38 (only the recorder functions reference it), so the -4 shift starts at 0x3bd3c. The block below it is unchanged: dialog_state_get_field_03020df8/03020e28 and radio_mode_classify_from_status_bytes are byte-identical in L01 (0x03020190, 0x030201c0, 0x03020198) and read +0, +1, +4 and +8 from the same base 0x3bd2c."
+  },
+  "0x0003bd30": {
+   "to": "0x0003bd30",
+   "why": "RX call state block 0x3bd2c, destination at +4: read as (0x3bd2c, 4) by dialog_state_get_field_03020e28, identical in L01 at 0x030201c0 with the same base (see 0x0003bd2d)."
+  },
+  "0x0003bd34": {
+   "to": "0x0003bd34",
+   "why": "RX call state block 0x3bd2c, source at +8: read as (0x3bd2c, 8) by dialog_state_get_field_03020df8, identical in L01 at 0x03020190 with the same base (see 0x0003bd2d)."
+  },
+  "0x03038ab8": {
+   "to": "0x03037b76",
+   "why": "cs_l5_title_hook: level-5 header, Channel Set arm. L01 0x03037b54-0x03037b80 is the same code as 048 0x03038a96-0x03038ac2 (same registers, literals to the same tables) except that the br32 to the draw tail at 0x03038aac is a br16 in L01, which moves the window by 2 bytes; the site `cmpnei r3,15; bt16 blank` is at 0x03037b76 and its bt16 reaches 0x03037f1a, the L01 blank block. The draw tail (0x03037f4c) is `addi sp,0x18; pop l0,lr` as in 048, so the stub's stack assumptions hold."
+  },
+  "0x03038e9c": {
+   "to": "0x03037f1a",
+   "why": "CS_L5_BLANK: 048's 15 `lrw r3,blank; br16 tail` blocks 0x03038e94-0x03038ecc are at 0x03037f12-0x03037f4a in L01 (-0xf82), the same count, loading the same empty string, branching to the same draw tail 0x03037f4c; the bt16 of the cs_l5 site (0x03037b78) reaches 0x03037f1a."
+  },
+  "0x03038eb0": {
+   "to": "0x03037f2e",
+   "why": "L6_TITLE_BLANK: the blank block at +0x1c in the same run (see 0x03038e9c); the L01 of_l6_title_hook site 0x03037cf0 `cmpnei r3,3; bt16` reaches exactly 0x03037f2e."
+  },
+  "0x0303ab42": {
+   "to": "0x03039928",
+   "why": "opt_ok_hook: the default arm of the second OK handler (048 0x0303a770). 048 tests the level-1 category for 4,0,1,2,3,6,7,8,9,5 and sends anything else (KRAKEN, id 10) to `movi r0,28; movi r1,1; bsr set_mode` at 0x0303ab42. L01 dropped the Record arm (id 6): its chain ends `cmpnei r3,5; bt16 0x03039928`, the same 8 bytes (bsr to set_mode, 0x03034e18 in L01). Unlike 048 the L01 handler has no stack slot (epilogue `pop lr` at 0x03039930); krk_opt_ok is a plain C call that reads only globals, and since L01 also sends id 6 here it now turns that category away (krk_optrow.c)."
+  },
+  "0x0303dc92": {
+   "to": "0x0303c8a6",
+   "why": "render-path jump table (048 0x030aff74, copied into krk_catjmp), entry 6 = Record's render case block. L01 removed it: its table 0x030add24 has the shared render tail 0x0303c8a6 in that slot (the same tail entry 9's block ends in), so Record renders nothing. The copied table is L01's own; this is only the build's check of entry 6."
+  },
+  "0x0303dccc": {
+   "to": "0x0303c7fa",
+   "why": "render-path jump table entry 7 = Roaming's render case block: L01 0x0303c7fa is the same 0x3a bytes as 048 0x0303dccc (same registers and literals, its bsr to the list renderer and its br16 to the shared tail translated); the table entry in L01 points at it."
+  },
+  "0x0303cfc6": {
+   "to": "0x0303c3de",
+   "why": "item-action jump table (048 0x030aff18, copied into krk_itemjmp), entry 6 = Record's item block. L01 removed it: its table 0x030adcc8 has the shared item-dispatch tail 0x0303c3de (048 0x0303d872, STOCK_CASE_TAIL) in that slot."
+  },
+  "0x0303d1b4": {
+   "to": "0x0303bd2a",
+   "why": "item-action jump table entry 7 = Roaming's item block: L01 0x0303bd2a is the same code as 048 0x0303d1b4 except that one scratch register is r1 instead of r2 (movi/incf pair); its branches and call translate. The table entry in L01 points at it."
+  }
+ }
+}

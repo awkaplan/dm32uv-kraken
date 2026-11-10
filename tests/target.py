@@ -21,7 +21,7 @@ import tempfile
 import types
 
 import mi_rng_test as m
-from build_artifacts import RE_TOOLS
+from build_artifacts import COMPOSE, RE_TOOLS
 from gdb_rsp import read_mem
 
 CANARY = 0x5A5A0000
@@ -30,6 +30,13 @@ CANARY = 0x5A5A0000
 # ---- memory
 def w8(c, a, v):
     m.wmem(c, a, bytes([v & 0xFF]))
+
+
+def open_category(c, cat=10):
+    """The menu state of an open top-level category CAT (10 = KRAKEN; 6 = Record, which krk_opt_title / krk_opt_ok turn
+    away). The category is the top-level list 0x3e641 at the highlighted row 0x3e4e9."""
+    w8(c, 0x3E4E9, 0)
+    w8(c, 0x3E641, cat)
 
 
 def w16(c, a, v):
@@ -66,7 +73,7 @@ def nodelay(c):
 def halted_machine(patched, port=None):
     """The combined image composed for QEMU and started halted at reset. Yields the gdb client; QEMU is killed on exit."""
     w = tempfile.mkdtemp(prefix="halted_")
-    subprocess.run([sys.executable, str(RE_TOOLS / "compose_qemu_image.py"), "--patched", str(patched), "--out", w + "/img.bin", "--iram-out"],
+    subprocess.run([*COMPOSE, "--patched", str(patched), "--out", w + "/img.bin", "--iram-out"],
                    check=True, capture_output=True)
     old = os.environ.get("DM32_GDB_PORT")
     if port is not None:

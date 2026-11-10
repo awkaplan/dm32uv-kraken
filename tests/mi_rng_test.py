@@ -62,6 +62,17 @@ PATCHED = PATCH_OUT / "progmem_MI_RNG_patched.bin"
 ELF = PATCH_OUT / "build/mi_rng.elf"
 FLASH = DM32UV_RE / "data/firmware/patching/progmem_stock_DP570UV_20260926_FULL.bin"
 IRAM = DM32UV_RE / "data/firmware/IRAM_dm32.00.01.048.bin"
+# Another stock firmware build (docs/firmware-builds.md): build_image.py runs tools/fw_translate.py's copy of this file
+# with DM32_FW set; the stock image is then that build's (its image.json), and QEMU images are composed through
+# tools/re_tool.py with that build's QEMU-only patch sites.
+FW = os.environ.get("DM32_FW") or None
+if FW:
+    import json as _json
+    FLASH = pathlib.Path(os.environ.get("DM32_WS") or REPO_ROOT.parent) / \
+        _json.loads((REPO_ROOT / "image.json").read_text())["base_image"]
+_TOOLS = next((p / "tools" for p in pathlib.Path(__file__).resolve().parents if (p / "tools/re_tool.py").exists()), None)
+COMPOSE = [sys.executable, str(_TOOLS / "re_tool.py"), "--fw", FW, "compose_qemu_image"] if FW else \
+    [sys.executable, str(DM32UV_RE / "tools/src/dm32_patch_tools/compose_qemu_image.py")]
 
 SENTINEL = 0x000169D4          # br16 . in IRAM (the ALPU-failure while(1)); never reached when bypassed
 STACK_A = 0x0002F800           # phase A: above the IRAM load image, nothing else runs
@@ -126,7 +137,7 @@ def layout(sym):
 
 
 def compose(workdir):
-    subprocess.run([sys.executable, str(HERE / "compose_qemu_image.py"), "--patched", str(PATCHED),
+    subprocess.run([*COMPOSE, "--patched", str(PATCHED),
                     "--out", workdir + "/img.bin", "--iram-out"], check=True, capture_output=True)
     # compose_qemu_image writes a ZERO sram.bin, but the AES S-box and Rcon live in SRAM init data
     # (flash 0x03072000.. -> SRAM 0x18000800.., S-box at 0x1800119c): build it as crypto_kat.py does.

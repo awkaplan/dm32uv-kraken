@@ -18,12 +18,12 @@ import struct
 import subprocess
 
 import mi_rng_test as m
-from build_artifacts import EXT_TABLE, REPO, STOCK_IMG, krk_define, krk_ext_ranges
+from build_artifacts import EXT_TABLE, REPO, STOCK_IMG, krk_define, krk_ext_ranges, stock_is
 from build_patch import decode_branch
 from gdb_rsp import read_mem
 from qemu_menu import (CELL_COUNT, CELL_CUR, CELL_ICON, CELL_IDX, CELL_PTR, CELL_SUB, CELL_VIS, CURSOR, EDIT_BUF, EDIT_CUR, EDIT_FLAGS, EDIT_FRESH, EDIT_LEN,
                        HIST, L2, L3_LIST, L3_ROW, OS_TICKS, PATHS, ROW, SLOT, TOP, TOPROW, Boot, keys, run_scenarios)
-from target import cstr, fcall, r32, w32
+from target import cstr, fcall, open_category, r32, w32
 
 STOCK_MARKS, STOCK_OK_POPUP, STOCK_SETMODE, STOCK_EMPTY = 0x03041598, 0x0303A4DC, 0x03035EC4, 0x030B1458
 SEMP, SEMQ, SCANK, LCDR, FILL, POP, QPEND, DLY = 0x0300C500, 0x0300C53C, 0x03013660, 0x0301CAD0, 0x03017F54, 0x03036C00, 0x0306A1B8, 0x0300C4BC
@@ -58,8 +58,8 @@ def static_checks(img, s, elf):
     # the stock bytes the three splices replace (and the table the title hook sits behind) are what the traces saw
     stock = STOCK_IMG.read_bytes()
     sb = lambda a, n: stock[a - 0x3000000:a - 0x3000000 + n]
-    m.report(sb(0x0303AB42, 8) == bytes.fromhex("1c3001 31ffe3bfd9".replace(" ", "")), "stock 0x0303ab42: movi r0,28; movi r1,1; bsr 0x03035ec4 (set mode 0x1c)")
-    m.report(sb(0x030385F4, 6) == bytes.fromhex("641300e86c04"), "stock 0x030385f4: lrw r3,[0x030b1458]; br 0x03038ece (empty header for category >= 10)")
+    m.report(stock_is(0x0303AB42, "1c3001 31ffe3bfd9"), "stock 0x0303ab42: movi r0,28; movi r1,1; bsr 0x03035ec4 (set mode 0x1c)")
+    m.report(stock_is(0x030385F4, "641300e86c04"), "stock 0x030385f4: lrw r3,[0x030b1458]; br 0x03038ece (empty header for category >= 10)")
     m.report(sb(0x0304D81C, 4) == bytes.fromhex("473b1408"), "stock 0x0304d81c: cmpnei r3,7; bt 0x0304d846 (category 9: items >= 8 do nothing)")
 
 
@@ -112,6 +112,10 @@ def unit_checks(c, s, s2, dwc):
              f"mon_opt: title 'RX Monitor', 2 options {[cstr(c, p_) for p_ in labs]}, getter mon_get, setter mon_set")
 
     m.wmem(c, ROW, bytes([row_mon]))
+    open_category(c, 6)                 # another category (Record, which DM32.01.L01.048 routes to the same default arm)
+    _, p, abi, _ = fcall(c, s["krk_opt_title"])
+    m.report(abi and p == STOCK_EMPTY, "krk_opt_title with another category open (id 6): the stock empty header string")
+    open_category(c)
     _, p, abi, _ = fcall(c, s["krk_opt_title"])
     m.report(abi and cstr(c, p) == b"Scrambler Fmt", f"krk_opt_title on a KRAKEN option row (Scrambler Fmt): {cstr(c, p)!r}")
     m.wmem(c, ROW, bytes([row_plain]))
@@ -403,6 +407,7 @@ def check_scrambler_rows(c, s, s2, dwc, SCR, rows, rec, calls):
     # dynamic title_fn (the live key in the header) is not shown there (docs/nested-submenu.md 4).
     for k, want in (("fmt", b"Scrambler Fmt"),):
         m.wmem(c, ROW, bytes([row[k]]))
+        open_category(c)
         _, p_, abi, _ = fcall(c, s["krk_opt_title"])
         m.report(abi and cstr(c, p_) == want and len(want) <= 19, f"krk_opt_title, {k} row: {cstr(c, p_)!r}")
     # scr_on_title itself still works and is still wired to the opt: call it directly.
@@ -474,12 +479,14 @@ def check_scrambler_rows(c, s, s2, dwc, SCR, rows, rec, calls):
         state(key=0x1234, on=1, fmt=(f + 1) & 3)
         calls.clear()
         m.wmem(c, CURSOR, bytes([f]))
+        open_category(c)                # a KRAKEN row: cs_open() above left Channel Set open
         _, _, abi, _ = fcall(c, s["krk_opt_ok"], fakes=fk)
         m.report(abi and [t for t, *_ in calls] == ["marks", "popup", "restore"] and rd()[2] == f and r32(c, REG) == want,
                  f"OK on Scrambler Fmt fmt{f}: fmt {rd()[2]}, register {r32(c, REG):#010x} (want {want:#010x}), no warning popup")
     state(key=0x1234, on=0, fmt=0)
     calls.clear()
     m.wmem(c, CURSOR, bytes([2]))
+    open_category(c)
     fcall(c, s["krk_opt_ok"], fakes=fk)
     m.report(rd()[2] == 2 and r32(c, REG) == 0, "fmt changed while Off: stored, register stays 0")
     # numeric entry: enter

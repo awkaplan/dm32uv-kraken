@@ -12,7 +12,9 @@
 //   instruction per line, no explanations the person does not need to act.
 //   ui.lockCancel(on)                  optional: true while the firmware area is being replaced
 //
-// env: { patch, reader, requestPort(), log } (patch and reader loaded and checked before any flow), and
+// env: { bundle, reader, requestPort(), log } (bundle: image.js loadPatch of kraken_patch.json, one entry per stock
+// firmware build; it and the reader are loaded and checked before any flow). Each flow sets env.patch to the build it
+// works on: the radio's (install) or the backup's (from a backup, and the radio must then be on the same build). And
 // for the Mac's Prolific cables: platform ('mac' | 'other') and usbDevice(filter, prompt) -> a WebUSB device.
 // env.diag (optional): a lib/diag.js Recorder. It gets the cable traffic and the facts below (never flash
 // contents), for the page's "Download diagnostics".
@@ -23,8 +25,9 @@
 
 import { addr, equal, sha256 } from "./bytes.js";
 import {
-  APP, FLASH_SIZE, SECTOR, UNIT, VERSION_SPOTS, BOOT_MAGIC, CheckError,
-  classify, krakenUpdate, quickChecks, stockUpdate, expectedFlash, versionOf, findVersion, isFirmware, wrongVersionMessage,
+  APP, FLASH_SIZE, SECTOR, UNIT, BOOT_MAGIC, CheckError,
+  classify, krakenUpdate, quickChecks, stockUpdate, expectedFlash, findVersion, isFirmware, wrongVersionMessage,
+  selectBuild, versionSpots,
 } from "./image.js";
 import { Link } from "./link.js";
 import { crc32 } from "./kr.js";
@@ -143,10 +146,13 @@ async function connect(session, env, ui, { askOff = true } = {}) {
   note(env, "reader", { version: reader.version, divisor: reader.divisor, baud, maxBaud: cableMaxBaud(usb), tries: reader.speedTries || [] });
   const head = new Uint8Array(FLASH_SIZE);
   await reader.read(head, 0, SECTOR);
-  // The sector of each known version spot (DM32.00.01.048's, and others' to name them in a refusal)
-  for (const s of new Set(VERSION_SPOTS.map((a) => a & ~(SECTOR - 1)))) await reader.read(head, s, SECTOR);
-  const checks = quickChecks(head, env.patch);
-  const found = findVersion(head);
+  // The sector of each build's version spot (and of known unsupported builds', to name them in a refusal)
+  const spots = versionSpots(env.bundle);
+  for (const s of new Set(spots.map((a) => a & ~(SECTOR - 1)))) await reader.read(head, s, SECTOR);
+  const radioBuild = selectBuild(env.bundle, head);
+  if (!env.patch) env.patch = radioBuild;          // install: the radio's build; from a backup: the backup's already
+  const checks = quickChecks(head, env.patch, env.bundle);
+  const found = findVersion(head, spots);
   merge(env, "radio", {
     version: found.version,
     versionAt: found.at >= 0 ? addr(found.at) : undefined,
@@ -156,7 +162,10 @@ async function connect(session, env, ui, { askOff = true } = {}) {
   const bad = checks.find((c) => !c.ok);
   if (bad) {
     if (bad.id === "version") {
-      throw new CheckError("version", `${wrongVersionMessage(found.version, env.patch, "This radio")} Nothing was changed.`);
+      if (radioBuild && env.patch && radioBuild !== env.patch) {
+        throw new CheckError("version", `This radio has ${radioBuild.firmware}, but that backup is of ${env.patch.firmware}. Use a backup of this radio. Nothing was changed.`);
+      }
+      throw new CheckError("version", `${wrongVersionMessage(found.version, env.bundle, "This radio")} Nothing was changed.`);
     }
     throw new CheckError(bad.id, "This doesn\u2019t look like a DM-32UV. Nothing was changed.");
   }
@@ -214,19 +223,40 @@ async function backup(reader, sums, ui, env) {
 }
 
 async function checkBackupFile(img, env, ui) {
-  note(env, "backupFile", { size: img.length, sha256: await sha256(img), version: img.length === FLASH_SIZE ? versionOf(img) : undefined });
+  const spots = versionSpots(env.bundle);
+  note(env, "backupFile", { size: img.length, sha256: await sha256(img), version: img.length === FLASH_SIZE ? findVersion(img, spots).version : undefined });
   const ok = img.length === FLASH_SIZE && equal(img.subarray(0, 4), BOOT_MAGIC);
   ui.check("file", "File is a 1 MB DM-32UV program-memory backup", ok);
   if (!ok) throw new CheckError("file", "That file isn\u2019t a DM-32UV backup from this page.");
-  const v = versionOf(img);
-  const vok = isFirmware(img, env.patch);
-  ui.check("file-version", `Backup is of ${env.patch.firmware}`, vok, vok ? undefined : `The backup reports ${v || "no version"}.`);
-  if (!vok) throw new CheckError("file-version", wrongVersionMessage(v, env.patch, "That backup"));
+  const v = findVersion(img, spots).version;
+  env.patch = selectBuild(env.bundle, img);
+  const vok = !!env.patch;
+  ui.check("file-version", vok ? `Backup is of ${env.patch.firmware}` : "Backup is of a firmware Kraken supports", vok,
+    vok ? undefined : `The backup reports ${v || "no version"}.`);
+  if (!vok) throw new CheckError("file-version", wrongVersionMessage(v, env.bundle, "That backup"));
 }
 
 // Flash FILE with the updater, then check it by sector CRCs. Loops on failure: the updater can always be
 // entered again. low: the radio's flash below 0x0300C000 if known (the updater never writes there).
 async function flashAndVerify(session, env, ui, file, { low, what }) {
+  // Kraken on a build that has not been tested on a real radio yet (firmware/firmwares.json radio_tested): say so, once,
+  // and go on only if the person accepts the risk. Putting stock back needs no warning.
+  if (what === "Kraken" && env.patch.radio_tested !== true) {
+    const go = await ui.ask({
+      id: "untested-firmware",
+      icon: "alert",
+      title: `Kraken on ${env.patch.firmware} is unstable`,
+      steps: [
+        "It has been tested only in an emulator, not on a real radio. It may not work.",
+        "Install it at your own risk.",
+        "Your backup can put stock firmware back: Update or remove Kraken > Restore stock firmware.",
+      ],
+      button: "Install at my own risk",
+      secondary: "Cancel",
+    });
+    note(env, "untestedWarning", { firmware: env.patch.firmware, accepted: go !== "secondary" });
+    if (go === "secondary") throw new CheckError("stopped", "Stopped. Nothing was written to the radio.");
+  }
   for (;;) {
     ui.phase("install");
     await ui.ask({
@@ -321,6 +351,7 @@ const DONE_KRAKEN = [
 
 // The one-button flow: check, back up, save, patch, flash, check again
 export async function install(env, ui) {
+  env.patch = null;                                // chosen from the radio when it connects
   const session = await openSession(env, ui);
   try {
     ui.phase("check");
@@ -352,6 +383,7 @@ export async function install(env, ui) {
 }
 
 async function fileFlow(env, ui, backupImg, { makeFile, what, done }) {
+  env.patch = null;                                // chosen from the backup
   const session = await openSession(env, ui);
   try {
     ui.phase("check");

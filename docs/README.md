@@ -2,7 +2,8 @@
 
 Notes for people who build, change or study Kraken. Radio owners want the [user guide](user-guide/README.md).
 
-Addresses are of stock `DM32.00.01.048` unless a note says otherwise. Many notes start with a status line
+Addresses are of stock `DM32.00.01.048` (the reference build) unless a note says otherwise; the L01 and 049 builds are
+translated from it ([firmware-builds.md](firmware-builds.md)). Many notes start with a status line
 (static research, QEMU-verified, or tested on a radio); the code may have moved on since. The user guide
 and [feature-status.md](feature-status.md) have the current feature status.
 
@@ -21,6 +22,7 @@ The stock firmware corpus, patch tools and Docker build image these notes refer 
 | Doc | What it covers |
 |---|---|
 | [building.md](building.md) | Set up dm32uv-re and the Docker image, run `tools/build.sh`, what the outputs are |
+| [firmware-builds.md](firmware-builds.md) | The three stock firmware builds (048, L01, 049): how they differ, the checked address map, adding addresses |
 | [flashing.md](flashing.md) | The update file format and the radio's updater; sector-by-sector flashing for test builds |
 | [web-flasher.md](web-flasher.md) | The web installer: backs up, patches in the browser and flashes over Web Serial, so no stock firmware is published |
 | [user-guide/install.md](user-guide/install.md) | Installing and going back to stock, step by step for radio owners |

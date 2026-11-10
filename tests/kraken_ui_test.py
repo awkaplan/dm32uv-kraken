@@ -22,7 +22,7 @@ import sys
 import threading
 import traceback
 
-from build_artifacts import EXT_TABLE, HOOK_TBL, PATCHED, REPO, STOCK_IMG, TBL_SLOTS, elf, syms, krk_define, krk_ext_ranges  # first: puts the tool directories on sys.path
+from build_artifacts import EXT_TABLE, HOOK_TBL, PATCHED, REPO, STOCK_IMG, TBL_SLOTS, elf, syms, krk_define, krk_ext_ranges, stock_is  # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from build_patch import decode_branch
 from claims import claim
@@ -58,7 +58,7 @@ def check_small_features(c, s, s2, img):
     SCR, CC, FLAGS8, CIPHER = 0x1100038C, 0x11000384, 0x3E1E4, 0x33824
 
     print("== F12 scrambler: stock bytes and the shared maint hook (no new splice)")
-    m.report(sb(0x030547AE) == bytes.fromhex("00e03b9d"), f"stock bytes at 0x030547ae: {sb(0x030547AE).hex(' ')} (want 00 e0 3b 9d)")
+    m.report(stock_is(0x030547AE, "00e03b9d"), f"stock bytes at 0x030547ae: {sb(0x030547AE).hex(' ')} (want 00 e0 3b 9d)")
     kind, half = decode_branch(pb(0x030547AE))
     m.report(kind == "bsr" and 0x030547AE + half * 2 == s2["krk_hook_maint_tick"], "maint hook -> krk_hook_maint_tick (F12 rides on it)")
     st = s2["scr_st"]
@@ -177,7 +177,7 @@ def check_small_features(c, s, s2, img):
     OKK, HASH, STAR, UPK = 0x03, 0x0E, 0x0D, 0x02
 
     print("== F11 squelch mode: stock bytes and splice")
-    m.report(sb(0x0300DE86) == bytes.fromhex("80e237f2"), f"stock bytes at 0x0300de86: {sb(0x0300DE86).hex(' ')} (want 80 e2 37 f2)")
+    m.report(stock_is(0x0300DE86, "80e237f2"), f"stock bytes at 0x0300de86: {sb(0x0300DE86).hex(' ')} (want 80 e2 37 f2)")
     kind, half = decode_branch(pb(0x0300DE86))
     m.report(kind == "bsr" and 0x0300DE86 + half * 2 == s2["krk_hook_sq_write"], f"sq_write_hook: {kind} -> {0x0300DE86 + half * 2:#x} (want {s2['krk_hook_sq_write']:#x})")
     sq = s2["sqst"]
@@ -747,7 +747,7 @@ def main():
 
     print("== splices")
     for name, a, want in (("txtrim_interp", 0x0300DB66, s2["krk_hook_txtrim_interp"]),
-                          ("menu_append_hook", 0x03049DCC, s["krk_menu_append"]),
+                          ("menu_append_hook", 0x03049DCA, s["krk_menu_append"]),
                           # analog APRS auto beacon (v39, docs/aprs-submenu.md section 7)
                           ("aprs_mode_hook", 0x03057AA8, s["krk_hook_aprs_mode"]),
                           ("aprs_tick_hook", 0x03054888, s2["krk_hook_aprs_tick"]),
@@ -1030,8 +1030,10 @@ def main():
         def run_append(fn, stop, items):
             m.wmem(c, CUR, struct.pack("<H", len(items)))
             m.wmem(c, BUF, bytes(items) + b"\xEE" * 8)
-            # r0 must survive (dispatcher return value); r4/r5 point at the count and the item buffer
-            res = call_via(c, fn, (0x1234,), stop=None if stop == m.SENTINEL else stop, resume=False, regs={4: CUR, 5: BUF}, canary=range(6, 12))
+            # r0 must survive (dispatcher return value); r4/r5 point at the count and the item buffer; r3 = the count, as stock
+            # leaves it at both sites (idx23's stub redoes stock's store of it)
+            res = call_via(c, fn, (0x1234,), stop=None if stop == m.SENTINEL else stop, resume=False,
+                           regs={3: len(items), 4: CUR, 5: BUF}, canary=range(6, 12))
             r = res.regs
             n = struct.unpack("<H", read_mem(c, CUR, 2))[0]
             got = list(read_mem(c, BUF, n))

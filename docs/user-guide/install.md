@@ -1,11 +1,18 @@
 # Installing Kraken
 
-Kraken comes as one update file, `kraken_update_BFUV32-V2.bin`. It works on any DM-32UV that runs stock
-firmware `DM32.00.01.048`. You install it with the radio's own built-in updater, the same way as an
-official Baofeng update.
+Kraken comes as one update file for each stock firmware it supports:
 
-**Status:** the update file is built and checked by simulation on every build. Installing it with the
-radio's updater has been tested on one radio so far.
+| Your radio's firmware | The file to use |
+|---|---|
+| `DM32.00.01.048` | `kraken_DM32.00.01.048_update_BFUV32-V2.bin` |
+| `DM32.01.L01.048` (Baofeng's public download) | `kraken_DM32.01.L01.048_update_BFUV32-V2.bin` |
+| `DM32.01.01.049` (on radios sold from late 2025) | `kraken_DM32.01.01.049_update_BFUV32-V2.bin` |
+
+You install it with the radio's own built-in updater, the same way as an official Baofeng update.
+
+**Status:** each update file is built and checked by simulation on every build. Installing it with the radio's
+updater has been tested on one radio running `DM32.00.01.048` so far. The `DM32.01.L01.048` and `DM32.01.01.049`
+versions have been tested only in an emulator, not yet on a real radio.
 
 **At your own risk.** Kraken is an unofficial modification, not made or supported by Baofeng. Installing
 it may void your warranty. Read [What stays untouched](#what-stays-untouched) and keep your backup.
@@ -24,10 +31,11 @@ it is what you use to go back to stock.
 
 ## What you need
 
-- A DM-32UV that shows **`DM32.00.01.048`** as its firmware version (step 1 shows how to check).
-  Do not install Kraken on any other version. Baofeng's public download is a different build line,
-  `DM32.01.L01.048`, and cross-flashing between the two lines is reported to brick the radio. It can be
-  recovered, but it is not something you want to do.
+- A DM-32UV that shows **`DM32.00.01.048`**, **`DM32.01.L01.048`** or **`DM32.01.01.049`** as its firmware
+  version (step 1 shows how to check). Use only the file for that version. The updater does not check: the file
+  for another version would replace your radio's firmware with a different firmware line, and that is reported to
+  brick the radio. It can be recovered, but it is not something you want to do. Do not install Kraken on any other
+  version.
 - The radio's USB programming cable (the one the programming software, CPS, uses).
 - A computer with Windows, macOS or Linux.
 - About 30 minutes.
@@ -36,22 +44,22 @@ it is what you use to go back to stock.
 
 ### The update file
 
-Download `kraken_update_BFUV32-V2.bin` from the **Releases** page of the Kraken project:
-[github.com/awkaplan/dm32uv-kraken/releases](https://github.com/awkaplan/dm32uv-kraken/releases).
-Pick the newest release and download the `.bin` file listed under **Assets**.
+The update files contain Baofeng's stock firmware, so the Kraken releases do not include them. The easy way is the
+[web installer](https://awkaplan.github.io/dm32uv-kraken/), which builds the file in your browser from your own
+radio's backup. To install by hand, build the file for your radio's firmware (the table above; step 1 shows how to
+read the version): see [Building Kraken](../building.md). It is written to `out/kraken/updates/`. Below, `KRAKEN.bin`
+stands for its name.
 
-You can also build the file yourself; see [Building Kraken](../building.md).
-
-Each release lists a SHA-256 checksum for the file. A checksum is a fingerprint: if yours matches, the
-download is complete and unchanged. To check it, open a terminal (see below) in the download folder and run:
+The build writes a SHA-256 checksum beside the file. A checksum is a fingerprint: if yours matches, the file is
+complete and unchanged. To check it, open a terminal (see below) in that folder and run:
 
 | System | Command |
 |---|---|
-| Windows | `certutil -hashfile kraken_update_BFUV32-V2.bin SHA256` |
-| macOS | `shasum -a 256 kraken_update_BFUV32-V2.bin` |
-| Linux | `sha256sum kraken_update_BFUV32-V2.bin` |
+| Windows | `certutil -hashfile KRAKEN.bin SHA256` |
+| macOS | `shasum -a 256 KRAKEN.bin` |
+| Linux | `sha256sum KRAKEN.bin` |
 
-The long string it prints must match the one on the release page.
+The long string it prints must match the one in the `.sha256` file beside it.
 
 ### A terminal
 
@@ -85,7 +93,7 @@ from his repository:
 2. Click the green **Code** button, then **Download ZIP**.
 3. Unzip it. The tools are in the `python/` folder: `C7000_read_progmem.py` (backup) and
    `DM32_firmware_loader.py` (install).
-4. Copy `kraken_update_BFUV32-V2.bin` into that `python/` folder, and open your terminal there.
+4. Copy your update file (`KRAKEN.bin`) into that `python/` folder, and open your terminal there.
 
 ### The serial port
 
@@ -105,8 +113,9 @@ On Linux, if you get "permission denied", add yourself to the `dialout` group
 
 ## 1. Read your firmware version
 
-Turn the radio on. Press `OK` (MENU), open **Device Info** and check that `Firmware Ver:` reads
-`DM32.00.01.048`. If it shows anything else, stop here.
+Turn the radio on. Press `OK` (MENU), open **Device Info** and read `Firmware Ver:`. It must be one of
+`DM32.00.01.048`, `DM32.01.L01.048` or `DM32.01.01.049`, and the update file you downloaded must have exactly that
+version in its name. If it shows anything else, stop here.
 
 ## 2. Turn the radio off and connect the cable
 
@@ -146,7 +155,7 @@ back to stock later.
    (`SK1` is one of the side keys next to `PTT`; the radio's manual shows which.)
 3. Run the loader:
    ```
-   python3 DM32_firmware_loader.py PORT kraken_update_BFUV32-V2.bin
+   python3 DM32_firmware_loader.py PORT KRAKEN.bin
    ```
    It prints `Official Baofeng firmware detected.` and erases the firmware area, which takes about
    15 seconds. It then sends the file with a percentage count and restarts the radio.
@@ -156,14 +165,14 @@ back to stock later.
 
 - The radio starts normally. It must not show `Incorrect HW version` or any other error.
 - Press `OK` (MENU). The menu has a new **KRAKEN** category at the end.
-- **Device Info** still shows `DM32.00.01.048`. Kraken keeps the stock version string.
-  **Menu > KRAKEN > About** shows `DM-32UV Kraken`.
+- **Device Info** still shows the same version as before (for example `DM32.00.01.048`). Kraken keeps the stock
+  version string. **Menu > KRAKEN > About** shows `DM-32UV Kraken` and, below it, that version.
 
 Then see the [user guide](README.md) for what's new and where to find it.
 
 ## Updating to a newer Kraken
 
-Install the newer `kraken_update_BFUV32-V2.bin` exactly the same way (step 4). Your Kraken settings are
+Install the newer update file for your firmware exactly the same way (step 4). Your Kraken settings are
 kept, including the callsign, Freq Unlock, Burst Voice and CW ID settings.
 
 ## Going back to stock

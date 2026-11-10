@@ -9,7 +9,8 @@ block. It never touches the boot header and Baofeng loader (0x03000000-0x0300AFF
 radio on the same firmware line; see docs/flashing.md.
 
   build   IMAGE -> UPDATE.bin (+ .sha256), after these checks:
-            - IMAGE is 1 MiB with the boot header, on the DM32.00.01.048 line (version string at 0xADAA0);
+            - IMAGE is 1 MiB with the boot header, on the DM32.00.01.048 line (version string at 0xADAA0), or with
+              --firmware on that build's line (its version string where firmware/firmwares.json says);
             - IMAGE equals --base below 0x0300B000 (the updater cannot deliver changes there);
             - the file fits the updater's size limit (0xF4002 bytes, header included);
             - no linked section (--maps) ends past the last non-FF byte: the upload tool pads the last
@@ -38,7 +39,7 @@ UNIT = 0xB000                # per-unit sector 0x0300B000
 SECTOR = 0x1000
 BLOCK = 0x400                # updater block size
 SIZE_LIMIT = 0xF4002         # bootloader refuses a declared size above this (literal @0x030047c4)
-VERSION_AT = 0xADAA0
+VERSION_AT = 0xADAA0         # the reference build's; --firmware picks another build's (firmware/firmwares.json)
 VERSION = b"DM32.00.01.048"
 HEADER = b"BFUV32-V2" + b"\xff" * (0xFD - 9) + b"END"
 assert len(HEADER) == 0x100
@@ -50,6 +51,15 @@ def sha(b):
 
 def die(msg):
     sys.exit(f"REFUSED: {msg}")
+
+
+def use_firmware(key):
+    """Check images against another build in firmware/firmwares.json (its version string and where it keeps it)."""
+    global VERSION, VERSION_AT
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import fwreg
+    fw = fwreg.get(key)
+    VERSION, VERSION_AT = fw["version"].encode(), int(fw["version_at"], 16) - FLASH_BASE
 
 
 def check_image(img, what):
@@ -96,8 +106,18 @@ def parse_file(data):
     return data[0x100:]
 
 
+def detect_firmware(img):
+    """The build in firmware/firmwares.json whose version string IMG has at that build's own place, or None."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import fwreg
+    return next((f["id"] for f in fwreg.firmwares() if len(img) == SIZE and fwreg.version_of(img, f)), None)
+
+
 def cmd_build(a):
     img = open(a.image, "rb").read()
+    fw = a.firmware or detect_firmware(img)
+    if fw:
+        use_firmware(fw)
     base = open(a.base, "rb").read()
     check_image(img, a.image)
     check_image(base, a.base)
@@ -181,6 +201,8 @@ def main():
     b.add_argument("--out", required=True)
     b.add_argument("--maps", nargs="*", default=[], help="linker maps of every blob in the image")
     b.add_argument("--official-sample", help="an official BFUV32-V2 file to compare the header with (optional)")
+    b.add_argument("--firmware", help="the stock firmware build (id or version in firmware/firmwares.json); default: "
+                                      "the build whose version string IMAGE has at that build's own place")
     v = sub.add_parser("verify")
     v.add_argument("file", help="the BFUV32-V2 update file that was flashed")
     v.add_argument("dump", help="1 MiB read-back of the radio afterwards")

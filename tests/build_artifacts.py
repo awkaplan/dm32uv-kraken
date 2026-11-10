@@ -4,7 +4,8 @@ Importing this module also puts the project's tool directories on sys.path (the 
 dm32uv-re's gdb_rsp, build_patch and QEMU drivers), so a test file needs no sys.path lines of its own.
 
   elf(n)                  the n-th kraken_ui blob's ELF (1 = kraken_ui.elf, 2 = kraken_ui2.elf, ...) in this build's
-                          out/kraken/steps/*_kraken_ui/build/. Looked up at call time, so nothing is cached across
+                          out/kraken/steps/*_kraken_ui/build/ ($DM32_KRAKEN_OUT instead of out/kraken when set: build_image.py
+                          sets it to its --out, so a variant image's tests read that build's ELFs). Looked up at call time, so nothing is cached across
                           builds (a stale steps dir feeds stale symbols: delete out/kraken/steps/* if values look a few
                           bytes off).
   syms(n_or_path, sizes=False)
@@ -17,27 +18,76 @@ dm32uv-re's gdb_rsp, build_patch and QEMU drivers), so a test file needs no sys.
   EXT_MAX, TBL_SLOTS, HOOK_TBL
                           the extension screen table (0x030ee000) size, the number of slots that follow it (APRS, Radio
                           Settings, Channel Set) and the address of the hook table behind them.
-  STOCK_IMG, DATACHIP     the stock image (image.json's base_image) and the factory-defaults datachip beside it.
+  STOCK_IMG, DATACHIP     the stock image (image.json's base_image) and dm32uv-re's factory-defaults datachip.
+  COMPOSE, FW             the command that composes a QEMU image for this build, and the build's id (None: the reference).
 """
 import json
+import os
 import pathlib
 import re
 import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
-WS = REPO.parent
-TESTS = REPO / "tests"
-OUT = REPO / "out/kraken"
+# For another firmware build the tests run from tools/fw_translate.py's copy, out/fw/<id>/tests/, whose parent mirrors
+# the repo (patches/, image.json, allocations.json); build_image.py then sets DM32_FW to the build and DM32_WS to the
+# folder above the repo (docs/firmware-builds.md).
+WS = pathlib.Path(os.environ.get("DM32_WS") or REPO.parent)
+TESTS = pathlib.Path(__file__).resolve().parent
+OUT = pathlib.Path(os.environ.get("DM32_KRAKEN_OUT") or REPO / "out/kraken")     # build_image.py sets it to its --out
 PATCHED = OUT / "progmem_KRAKEN_patched.bin"
-RE_TOOLS = WS / "dm32/dm32uv-re/tools/src/dm32_patch_tools"
+RE_ROOT = pathlib.Path(os.environ.get("DM32UV_RE") or WS / "dm32/dm32uv-re")
+RE_TOOLS = RE_ROOT / "tools/src/dm32_patch_tools"
 for _p in (RE_TOOLS, TESTS):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
+FW = os.environ.get("DM32_FW") or None
+KRAKEN_TOOLS = next(p / "tools" for p in pathlib.Path(__file__).resolve().parents if (p / "tools/re_tool.py").exists())
+# compose_qemu_image for this build: dm32uv-re's script directly, or through tools/re_tool.py (the build's QEMU-only
+# patch sites and IRAM load range)
+COMPOSE = [sys.executable, str(KRAKEN_TOOLS / "re_tool.py"), "--fw", FW, "compose_qemu_image"] if FW else \
+    [sys.executable, str(RE_TOOLS / "compose_qemu_image.py")]
 
 STOCK_IMG = WS / json.loads((REPO / "image.json").read_text())["base_image"]
-DATACHIP = STOCK_IMG.parent / "datachip_generic_factory_defaults.bin.xz"
+DATACHIP = RE_ROOT / "data/firmware/patching/datachip_generic_factory_defaults.bin.xz"
 SRC = REPO / "patches/kraken_ui"
+
+
+_fwmap = {}
+
+
+def stock_is(addr, hexbytes):
+    """Are the stock bytes at ADDR the instructions HEXBYTES (written for DM32.00.01.048)? On the reference build: the
+    same bytes. On another build (FW): ADDR is already translated; the 048 address is found through
+    firmware/<FW>/addrmap.json and tools/fwmap.py site_equiv checks the bytes are the same instructions there, each
+    PC-relative one reaching the translated target - the check the build applies to every splice."""
+    want = bytes.fromhex(hexbytes.replace(" ", ""))
+    img = STOCK_IMG.read_bytes()
+    got = img[addr - 0x03000000:addr - 0x03000000 + len(want)]
+    if not FW:
+        return got == want
+    if FW not in _fwmap:
+        sys.path.insert(0, str(KRAKEN_TOOLS))
+        import fwmap
+        amap = json.loads((KRAKEN_TOOLS.parent / "firmware" / FW / "addrmap.json").read_text())["map"]
+        fwd = {int(k, 16): int(v["to"], 16) for k, v in amap.items()}
+        inv = {t: f for f, t in fwd.items()}
+        fm = fwmap.FwMap(FW)
+
+        def tr(v):
+            t = fwd.get(v)
+            if t is None:
+                try:
+                    t = fm.translate(v)[0]
+                except fwmap.Unresolved:
+                    t = -1
+            return t
+        _fwmap[FW] = (fm, inv, tr)
+    fm, inv, tr = _fwmap[FW]
+    ref = inv.get(addr)
+    if ref is None or fm.ref.img[ref - 0x03000000:ref - 0x03000000 + len(want)] != want:
+        return False
+    return fm.site_equiv(ref, addr, len(want), tr) is None
 
 
 def elf(n=1):

@@ -23,6 +23,18 @@ Steps:
   4. Unless --no-test, run each patch's own QEMU test against the COMBINED image, by loading the
      test module and pointing its PATCHED/ELF globals at the combined image and this build's ELF.
 
+All of that is done once per stock firmware build in firmware/firmwares.json (docs/firmware-builds.md), one after
+the other: the reference build (DM32.00.01.048) from this repo's own files into out/kraken/, every other build from
+the copies tools/fw_translate.py writes under out/fw/<id>/ (sources, manifests and tests with each stock address
+translated through firmware/<id>/addrmap.json) into out/kraken-<id>/. Every builder check runs against that build's
+own stock image; dm32uv-re's tools get that build's symbols, policy files and QEMU-only patch sites through
+tools/re_tool.py. Step 0 also checks firmware/<id>/addrmap.json with tools/gen_fw_maps.py --check. At the end
+out/kraken/release/ (what a release carries: kraken_patch.json, the web installer's patch with one entry per build,
+and kraken_reader.bin; no stock firmware) and out/kraken/updates/ (one update file per build, named after its
+firmware, for installing by hand; never published: it contains the stock firmware) are written.
+
+  build_image.py [--fw ID ...] [--no-test]     --fw: only these builds (default all)
+
 Nothing here flashes a radio. Flashing is the manual procedure in docs/flashing.md.
 """
 import argparse
@@ -43,6 +55,18 @@ RE = W / "dm32/dm32uv-re"
 RE_TOOLS = RE / "tools/src/dm32_patch_tools"
 SECTOR = 0x1000
 FLASH_BASE = 0x03000000     # sector numbers are offsets into the 1 MB image; the flash is mapped here
+sys.path.insert(0, str(HERE))
+import fwreg  # noqa: E402
+
+
+def fw_dir(fw):
+    """Where tools/fw_translate.py writes a non-reference build's sources, manifests, tests and dm32uv-re files."""
+    return REPO / "out" / "fw" / fw["id"]
+
+
+def fw_out(fw, base):
+    """The build's output folder: out/kraken/ for the reference, out/kraken-<id>/ for the others."""
+    return base if fwreg.is_reference(fw) else base.with_name(f"{base.name}-{fw['id']}")
 
 
 def sha256(b):
@@ -58,7 +82,10 @@ def run(cmd):
     subprocess.run([str(c) for c in cmd], check=True)
 
 
-def build(cfg, out):
+def build(cfg, out, fw):
+    """One stock firmware build: fw is its firmware/firmwares.json entry, cfg its image.json (the repo's, or the copy
+    tools/fw_translate.py wrote), out its output folder."""
+    ref = fwreg.is_reference(fw)
     stock_path = W / cfg["base_image"]
     stock = stock_path.read_bytes()
     # image.json "exclude_claims": claims of another repo that this image provably never uses (each
@@ -81,16 +108,17 @@ def build(cfg, out):
     for f in cfg["allocation_files"]:
         drop = {n for (ef, n) in excl if ef == f}
         extra += ["--extra-allocations", filter_claims(f, drop, f"allocations_filtered_{len(extra)}.json") if drop else W / f]
-    # the builder's own registry (always loaded, not an --extra-allocations file): filtered the same way and
-    # handed to the builder through tools/bmp_filtered.py
-    builder = [sys.executable, RE_TOOLS / "build_manifest_patch.py"]
+    # the builder's own registry (always loaded, not an --extra-allocations file): filtered the same way and handed to
+    # the builder through tools/re_tool.py; for another firmware build, fw_translate's copy of it (forbidden ranges moved)
     own = "dm32/dm32uv-re/data/allocations.json"
+    own_src = own if ref else str(fw_dir(fw) / "re" / "allocations.json")
     drop = {n for (ef, n) in excl if ef == own}
-    if drop:
-        builder = [sys.executable, HERE / "bmp_filtered.py", filter_claims(own, drop, "allocations_filtered_builder.json")]
+    registry = filter_claims(own_src, drop, "allocations_filtered_builder.json") if drop else W / own_src
+    builder = [sys.executable, HERE / "re_tool.py", "--fw", fw["id"],
+               "--set", f"build_manifest_patch.ALLOCATIONS_JSON={registry}", "build_manifest_patch"]
 
     # gas silently drops `bsr <absolute>`: refuse to build if any patch source does that
-    run([sys.executable, HERE / "check_bsr.py", REPO / "patches"])
+    run([sys.executable, HERE / "check_bsr.py", (REPO if ref else fw_dir(fw)) / "patches"])
 
     base, steps, owner = stock_path, [], {}
     for i, p in enumerate(cfg["patches"]):
@@ -128,7 +156,7 @@ def build(cfg, out):
     if staged.exists():
         shutil.rmtree(staged)
     expect = ",".join(f"{FLASH_BASE + s:#010x}" for s in sorted(total))
-    run([sys.executable, RE_TOOLS / "stage_sectors.py", "--patched", final, "--stock", stock_path,
+    run([sys.executable, HERE / "re_tool.py", "--fw", fw["id"], "stage_sectors", "--patched", final, "--stock", stock_path,
          "--out", staged, "--expect-sectors", expect])
     # rollback files: each changed sector's stock bytes, from the stock image itself
     rb = staged / "rollback"
@@ -149,26 +177,18 @@ def build(cfg, out):
         sys.exit(f"DM32_OFFICIAL_SAMPLE={sample}: no such file")
     if not sample:
         print("note: DM32_OFFICIAL_SAMPLE not set; the update header is not compared with an official file", flush=True)
-    run([sys.executable, HERE / "make_official_update.py", "build", final, "--base", stock_path,
-         "--out", out / f"{cfg['name']}_update_BFUV32-V2.bin", "--maps", *maps,
-         *(["--official-sample", sample] if sample else [])])
+    update = out / f"{cfg['name']}_update_BFUV32-V2.bin"
+    run([sys.executable, HERE / "make_official_update.py", "build", final, "--base", stock_path, "--firmware", fw["id"],
+         "--out", update, "--maps", *maps, *(["--official-sample", sample] if sample else [])])
 
-    # the web installer: Kraken's bytes only, applied in the browser to the stock firmware read off the radio
-    site = out / "web"
-    run([sys.executable, HERE / "build_reader.py", "--out", out / "reader"])
-    run([sys.executable, HERE / "make_web_patch.py", "--stock", stock_path, "--image", final,
-         "--update", out / f"{cfg['name']}_update_BFUV32-V2.bin", "--reader", out / "reader" / "reader.json",
-         "--site", site,
-         "--out", site / "kraken_patch.json", "--name", cfg["name"]])
-    # the two files a release carries for the web installer; .github/workflows/pages.yml publishes the
-    # page with them (docs/web-flasher.md, "Publishing")
-    for src, name in ((site / "kraken_patch.json", "kraken_patch.json"), (site / "reader.bin", "kraken_reader.bin")):
-        data = src.read_bytes()
-        (out / name).write_bytes(data)
-        (out / f"{name}.sha256").write_text(f"{sha256(data)}  {name}\n")
+    # this build's entry of the web installer's patch: Kraken's bytes only, applied in the browser to the stock
+    # firmware read off the radio (finish() puts every build's entry in one kraken_patch.json; .github/workflows/
+    # pages.yml publishes the page with it, docs/web-flasher.md "Publishing")
+    run([sys.executable, HERE / "make_web_patch.py", "entry", "--firmware", fw["id"], "--stock", stock_path,
+         "--image", final, "--update", update, "--out", out / "web_entry.json"])
 
     report = dict(
-        name=cfg["name"], base=dict(path=str(stock_path), sha256=sha256(stock)),
+        name=cfg["name"], firmware=fw["version"], base=dict(path=str(stock_path), sha256=sha256(stock)),
         image=dict(path=str(final), sha256=sha256(img)),
         sectors={f"{FLASH_BASE + s:#010x}": owner[s] for s in sorted(total)},
         patches=[dict(id=s["id"], name=s["name"], warnings=s["summary"].get("warnings", [])) for s in steps])
@@ -217,7 +237,17 @@ def run_one(spec_path):
     sys.exit(rc)
 
 
-def run_tests(final, steps, out):
+def test_env(port, out, fw):
+    """A test child's environment: its gdb port and build folder; for a non-reference build also DM32_FW (the tests
+    then compose QEMU images for that build) and DM32_WS (they run from out/fw/<id>/tests/, not the repo)."""
+    env = dict(os.environ, DM32_GDB_PORT=port, DM32_KRAKEN_OUT=str(out))
+    env.pop("DM32_FW", None)
+    if not fwreg.is_reference(fw):
+        env.update(DM32_FW=fw["id"], DM32_WS=str(W))
+    return env
+
+
+def run_tests(final, steps, out, fw):
     """Run every patch's test concurrently, each in a --run-one child with its own QEMU gdb port
     (f13's second machine hard-codes 1235, so the assigned ports stay clear of 1234/1235).
     Each child's output goes to a log in `out` and is printed whole when it finishes."""
@@ -235,9 +265,9 @@ def run_tests(final, steps, out):
         port = str(1240 + 10 * i)
         p = subprocess.Popen([sys.executable, __file__, "--run-one", str(sp)],
                              stdout=open(log, "w"), stderr=subprocess.STDOUT,
-                             env=dict(os.environ, DM32_GDB_PORT=port))
+                             env=test_env(port, out, fw))
         jobs.append((s, p, log, time.time()))
-        print(f"===== test {s['id']} {s['name']}: {pathlib.Path(t['script']).name} against the combined image "
+        print(f"===== [{fw['version']}] test {s['id']} {s['name']}: {pathlib.Path(t['script']).name} against the combined image "
               f"(parallel, gdb port {port}, {log.name}) =====", flush=True)
     results = {}
     for s, p, log, t0 in jobs:
@@ -245,30 +275,84 @@ def run_tests(final, steps, out):
         results[s["id"]] = rc
         print(f"\n===== {s['id']} done, exit {rc}, {time.time() - t0:.1f} s wall — {log.name} =====")
         print(log.read_text(), flush=True)
-    print("\n===== test summary =====")
+    print(f"\n===== test summary ({fw['version']}) =====")
     for k, v in results.items():
         print(f"  {k}: {'PASS' if v == 0 else f'FAIL (exit {v})'}")
     return all(v == 0 for v in results.values())
 
 
+def finish(built, base_out):
+    """release/: the files a release carries, kraken_patch.json (every build's web entry, docs/web-flasher.md) and
+    kraken_reader.bin. updates/: kraken_<firmware>_update_BFUV32-V2.bin per build (docs/flashing.md), for installing by
+    hand; they contain the stock firmware, so they are never published. Plus the web site out/kraken/web/."""
+    site = base_out / "web"
+    run([sys.executable, HERE / "build_reader.py", "--out", base_out / "reader"])
+    run([sys.executable, HERE / "make_web_patch.py", "site", "--reader", base_out / "reader" / "reader.json",
+         "--site", site, "--out", site / "kraken_patch.json", "--name", "kraken",
+         *[o / "web_entry.json" for _fw, o in built]])
+    for src, name in ((site / "kraken_patch.json", "kraken_patch.json"), (site / "reader.bin", "kraken_reader.bin")):
+        data = src.read_bytes()
+        (base_out / name).write_bytes(data)
+        (base_out / f"{name}.sha256").write_text(f"{sha256(data)}  {name}\n")
+    rel, upd = base_out / "release", base_out / "updates"
+    for d in (rel, upd):
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir()
+    for fw, o in built:
+        name = f"kraken_{fw['version']}_update_BFUV32-V2.bin"
+        data = (o / "kraken_update_BFUV32-V2.bin").read_bytes()
+        (upd / name).write_bytes(data)
+        (upd / f"{name}.sha256").write_text(f"{sha256(data)}  {name}\n")
+    for name in ("kraken_patch.json", "kraken_reader.bin"):
+        shutil.copy2(base_out / name, rel / name)
+        shutil.copy2(base_out / f"{name}.sha256", rel / f"{name}.sha256")
+    for d, what in ((rel, "RELEASE (publish these)"), (upd, "UPDATE FILES (contain stock firmware: never publish)")):
+        print(f"\n{what} {d}")
+        for f in sorted(d.iterdir()):
+            if not f.name.endswith(".sha256"):
+                print(f"  {f.name}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", type=pathlib.Path, default=REPO / "image.json")
+    ap.add_argument("--config", type=pathlib.Path, default=REPO / "image.json",
+                    help="another image.json (a measurement variant): built for the reference firmware only")
     ap.add_argument("--out", type=pathlib.Path, default=REPO / "out" / "kraken")
+    ap.add_argument("--fw", action="append", help="build only this firmware (id or version; repeatable)")
     ap.add_argument("--no-test", action="store_true")
     ap.add_argument("--run-one", type=pathlib.Path, help="internal: run one test spec in this process")
     args = ap.parse_args()
     if args.run_one:
         run_one(args.run_one)
         return
-    cfg = json.loads(args.config.read_text())
+    variant = args.config.resolve() != (REPO / "image.json").resolve()
+    fws = [fwreg.reference()] if variant else fwreg.firmwares()
+    if args.fw:
+        want = {fwreg.get(k)["id"] for k in args.fw}
+        fws = [f for f in fws if f["id"] in want]
     # the manifest's host rows / hooks / blobs and the C headers are generated: refuse to build from a stale one
     for gen in ("gen_menu_hosts.py", "gen_manifest.py", "gen_claims.py"):
         run([sys.executable, HERE / gen, "--check"])
-    args.out.mkdir(parents=True, exist_ok=True)
-    final, steps = build(cfg, args.out)
-    if not args.no_test and not run_tests(final, steps, args.out):
-        sys.exit(1)
+    others = [f["id"] for f in fws if not fwreg.is_reference(f)]
+    if others:
+        # every stock address of every non-reference build must have its checked translation
+        run([sys.executable, HERE / "gen_fw_maps.py", "--check", *others])
+        run([sys.executable, HERE / "fw_translate.py", *others])
+    built, failed = [], []
+    for fw in fws:
+        print(f"\n########## {fw['version']} ##########", flush=True)
+        out = fw_out(fw, args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        cfg = json.loads((args.config if fwreg.is_reference(fw) else fw_dir(fw) / "image.json").read_text())
+        final, steps = build(cfg, out, fw)
+        built.append((fw, out))
+        if not args.no_test and not run_tests(final, steps, out, fw):
+            failed.append(fw["version"])
+    if not variant:
+        finish(built, args.out)
+    if failed:
+        sys.exit(f"tests failed on: {', '.join(failed)}")
 
 
 if __name__ == "__main__":

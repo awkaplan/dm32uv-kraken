@@ -5,9 +5,12 @@ It adds features in erased program flash and hooks them into stock code with `bs
 is one update file in Baofeng's own format, installed with the radio's own updater, plus a web
 installer that does the same from the browser.
 
-Everything targets stock firmware **`DM32.00.01.048`**. Every address in code and docs is for that build.
-The builder checks the stock bytes at every hook site, so a wrong address fails the build. It never
-produces a silently broken image.
+Everything is written against stock firmware **`DM32.00.01.048`** (the reference build). Every address in code and
+docs is for that build. Kraken also ships for `DM32.01.L01.048` (Baofeng's public download) and `DM32.01.01.049`
+(radios sold from late 2025): the build translates every stock address through a checked map
+(`firmware/<id>/addrmap.json`) and builds translated copies under `out/fw/<id>/`
+([docs/firmware-builds.md](docs/firmware-builds.md)). The builder checks the stock bytes at every hook site of every
+build, so a wrong address fails the build. It never produces a silently broken image.
 
 This is radio-transmitter firmware. A bad patch can key the transmitter, damage a radio's calibration,
 or leave it unusable until reflashed. Read the safety rules below before changing anything.
@@ -28,7 +31,8 @@ or leave it unusable until reflashed. Read the safety rules below before changin
 | `tests/` | Host tests (`test_*.py`), QEMU tests, web installer tests ([tests/README.md](tests/README.md)) |
 | `web/`, `reader/` | The web installer page and the small read-only program it loads into the radio's RAM |
 | `docs/` | Developer notes ([docs/README.md](docs/README.md) indexes them); `docs/user-guide/` is for radio owners |
-| `out/` | Build output (gitignored) |
+| `firmware/` | The supported stock builds (`firmwares.json`), each one's generated address map and reviewed overrides. No firmware files |
+| `out/` | Build output (gitignored): `out/kraken/` (048, `release/` = what a release carries, `updates/` = the update files, never published), `out/kraken-<id>/`, `out/fw/<id>/`, `out/stock/` |
 | `private/` | The developer's own radio backups and dumps (gitignored). Never commit anything from it |
 
 The stock firmware, the patch builder, the stock symbol table and the Docker build image live in the
@@ -39,12 +43,16 @@ separate [dm32uv-re](https://github.com/awkaplan/dm32uv-re) repo, checked out ne
 ## Commands
 
 ```sh
-tools/build.sh                 # build in Docker, then run every QEMU test (the PR gate)
+tools/build.sh                 # all three firmware builds in Docker, then every QEMU test on each (the PR gate)
 tools/build.sh --no-test       # build only
+tools/build.sh --fw l01        # one firmware build (048, l01, 049; repeatable)
 tools/build.sh --run 'CMD'     # run CMD in the build container, from the repo root
 python3 tools/gen_menu_hosts.py && python3 tools/gen_manifest.py && python3 tools/gen_claims.py
                                # regenerate after editing menu_hosts.json, hooks.json, blobs.json or allocations.json
                                # (each takes --check; the build fails while any output is stale)
+python3 tools/fetch_stock.py && python3 tools/gen_fw_maps.py
+                               # the L01/049 stock images (once), then the address maps: after any change that adds
+                               # or moves a stock address (fails with what it cannot prove; docs/firmware-builds.md)
 python3 tests/test_<name>.py   # one host test (seconds; your own cc)
 for t in tests/test_*.py; do python3 "$t" || echo "FAIL $t"; done
 python3 tools/check_repo_hygiene.py          # no firmware, dumps, logs, EXIF photos or private/ files about to be committed
@@ -75,7 +83,9 @@ The full recipe is [docs/building.md section 6](docs/building.md#6-adding-a-feat
    safe. A hook must fall through to stock unchanged when the feature is off.
 5. **Memory.** Any new flash or SRAM goes in a claim in `allocations.json`. Free space:
    [docs/flash-allocation.md](docs/flash-allocation.md).
-6. **Regenerate and build** (commands above).
+6. **Regenerate and build** (commands above), including `tools/gen_fw_maps.py`: every stock address must translate
+   into L01 and 049. One it cannot prove needs a hand proof in `firmware/<id>/overrides.json`, or a hook placed so
+   it fits every build ([docs/firmware-builds.md](docs/firmware-builds.md) section 4).
 7. **Tests.** A host test for pure logic (`tests/test_<name>.py`, using `hostcc.py` and `hostlib.py`), and
    QEMU checks for anything that touches stock code or RAM, called from `tests/kraken_ui_test.py`.
 8. **Docs.** Update the user guide page (a **Status** line and a **Where** line), the row in
@@ -99,6 +109,9 @@ These are enforced by the build where possible. Never weaken a check to make a b
   an explicit user action. Transmit settings are RAM-only (off at power-on) unless there is a strong
   reason. Automatic transmitters (beacons, IDs, VOX) show a red standby tag
   ([docs/standby-tags.md](docs/standby-tags.md)) and respect stock's TX inhibit, busy-channel and menu gates.
+- **One build per firmware, never crossed.** A radio gets only the update file named after the firmware it reports
+  (Menu > Device Info); the updater does not check. Installers check the version string at the build's own address.
+  Never weaken a translation check, or take a target's bytes as "expected" without `fwmap.site_equiv`.
 - **Stay under the updater's size limit** (`0xF4002` bytes including the header). The build checks it.
 - **Claim every byte** you use in `allocations.json`; the build checks claims and hook sites for overlaps.
 - **Never store to `0x03xxxxxx` from patch code.** Program flash is execute-in-place SPI flash; a store
@@ -129,7 +142,7 @@ These are enforced by the build where possible. Never weaken a check to make a b
 - **Feature IDs** (F1, F13, ...) from [docs/feature-status.md](docs/feature-status.md) are used in code
   comments, commit messages and notes.
 - **Developer notes** start with a one-line status (static research, QEMU-verified, or tested on a
-  radio) and give addresses for `DM32.00.01.048`. **User guide pages** are for radio owners: plain
+  radio) and give addresses for `DM32.00.01.048` (the reference; other builds are translated). **User guide pages** are for radio owners: plain
   steps, every term explained, and for transmit features, when the radio transmits and the legal limits.
 - **Writing style:** short, plain sentences, no marketing language. UI text on the radio is ASCII.
 - A user guide status may say **works on hardware** only after a test on a real radio.

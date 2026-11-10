@@ -11,6 +11,9 @@ refuses overlapping claims and any changed byte outside a declared one.
 - SHA-256 `9b08ce6d8d0b63617d9c1f9548d93ea6008a9ebce5cd36089752f74a62a09716`, 1 MiB, mapped at `0x03000000`
 - Firmware `DM32.00.01.048`. The per-unit sector `0x0300B000` is blank (0xFF) in this image; the update
   file never writes it.
+- The same claims serve the `DM32.01.L01.048` and `DM32.01.01.049` builds: both windows are unused there too (the
+  translator checks the flash window is erased in each build's stock image, and no stock reference points into the
+  SRAM window). See [firmware-builds.md](firmware-builds.md).
 
 ## The window
 
@@ -47,7 +50,7 @@ Free space at the end of each claim in the current build (trailing 0xFF bytes, s
 |---|---|
 | `kraken_ui5_code` | 2060 |
 | `mi_rng_code` | 3272 |
-| `kraken_ui_code` | 60 |
+| `kraken_ui_code` | 44 |
 | `kraken_ui_data` | 1940 |
 | `kraken_ui4_code` | 3738 |
 | `kraken_ui_code2` | 3653 |

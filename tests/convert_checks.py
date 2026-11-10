@@ -17,7 +17,7 @@ from gdb_rsp import read_mem
 
 from qemu_menu import CELL_COUNT, CELL_CUR, CELL_ICON, CELL_IDX, CELL_PTR, CELL_SUB, CELL_VIS, CURSOR, ROW, SLOT
 from optrow_checks import STOCK_MARKS, STOCK_OK_POPUP, STOCK_EMPTY
-from target import cstr, fcall, r32, w32
+from target import cstr, fcall, open_category, r32, w32
 
 PA_DRIVE = 0x00038498
 # The KRAKEN list after the 2026-11-03 moves. Parrot's five rows and the Scrambler switch/Key
@@ -106,12 +106,14 @@ def unit_checks(c, s, s2, dwc):
         if row is None:
             continue                       # not in the KRAKEN list: the two checks below do not apply
         m.wmem(c, ROW, bytes([row]))
+        open_category(c)                    # KRAKEN open: krk_opt_title / krk_opt_ok act only there
         _, p, abi, _ = fcall(c, s["krk_opt_title"])
         m.report(abi and cstr(c, p) == label.encode(), f"{label}: header text {cstr(c, p)!r}")
         fk = {setf: rec("set"), STOCK_MARKS: rec("marks"), STOCK_OK_POPUP: rec("popup"), cat: rec("restore")}
         for cursor in sorted({0, 1, len(labs) - 1}):
             calls.clear()
             m.wmem(c, ROW, bytes([row]))
+            open_category(c)                    # KRAKEN open: krk_opt_title / krk_opt_ok act only there
             m.wmem(c, CURSOR, bytes([cursor]))
             _, _, abi, _ = fcall(c, s["krk_opt_ok"], fakes=fk)
             order = [t for t, _, _ in calls]
@@ -135,6 +137,7 @@ def unit_checks(c, s, s2, dwc):
         if not in_krk:
             continue
         m.wmem(c, ROW, bytes([rows[label]]))
+        open_category(c)                    # KRAKEN open: krk_opt_title / krk_opt_ok act only there
         _, p, abi, _ = fcall(c, s["krk_opt_title"])
         m.report(abi and p == STOCK_EMPTY, f"{label}: not an option row, so the title hook gives the stock empty header")
 

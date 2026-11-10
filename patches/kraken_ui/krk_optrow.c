@@ -113,9 +113,17 @@ void krk_opt_enter(const struct krk_opt *o)
     LIST_SLOT = (u8)(cur + 1);                  /* n <= 8: the window is the whole list, so slot = cursor + 1 */
 }
 
+/* The open top-level category (top-level list 0x3e63f + 2 at the top row byte 0x3e4e9, read as in krk_open_opt). The stock arms
+ * krk_opt_title and krk_opt_ok are spliced into take every category stock has no arm for. On DM32.01.L01.048 that includes id 6,
+ * Record, whose arm that build removed (firmware/l01/overrides.json): its rows are not ours. Only that id is turned away: on
+ * DM32.00.01.048 these arms are also reached with other categories (the Channel Set Scrambler reopen sequence in
+ * tests/optrow_checks.py), and the code below handles those as it always has. */
+#define TOP_CATEGORY (((volatile u8 *)0x0003e641)[*(volatile u8 *)0x0003e4e9])
+#define RECORD_CATEGORY 6
+
 const char *krk_opt_title(void)
 {
-    const struct krk_screen *s = krk_row_screen(KRK_SELECTED_ROW);
+    const struct krk_screen *s = TOP_CATEGORY != RECORD_CATEGORY ? krk_row_screen(KRK_SELECTED_ROW) : 0;
 
     if (!s || !s->opt)
         return STOCK_EMPTY_TITLE;
@@ -164,7 +172,7 @@ void krk_opt_commit(const struct krk_opt *o, void (*restore)(void))
 
 void krk_opt_ok(void)
 {
-    const struct krk_screen *s = krk_row_screen(KRK_SELECTED_ROW);
+    const struct krk_screen *s = TOP_CATEGORY != RECORD_CATEGORY ? krk_row_screen(KRK_SELECTED_ROW) : 0;
 
     if (!s || !s->opt) {
         stock_set_mode(0x1c, 1);                /* what stock does here for a category without a commit handler */

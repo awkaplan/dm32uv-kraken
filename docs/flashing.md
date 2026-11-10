@@ -8,8 +8,12 @@ Nothing in this repository talks to a radio. Every step here is manual.
 
 ## 1. The update file
 
-`tools/build.sh` writes `out/kraken/kraken_update_BFUV32-V2.bin` (see [building.md](building.md)). It is
-in Baofeng's official update format:
+`tools/build.sh` writes one update file per stock firmware build, in `out/kraken/updates/`:
+`kraken_DM32.00.01.048_update_BFUV32-V2.bin`, `kraken_DM32.01.L01.048_update_BFUV32-V2.bin` and
+`kraken_DM32.01.01.049_update_BFUV32-V2.bin` (see [building.md](building.md) and
+[firmware-builds.md](firmware-builds.md)). They contain Baofeng's stock firmware, so releases do not carry them:
+build them yourself. Each build's own folder also has it as `kraken_update_BFUV32-V2.bin`
+(`out/kraken/`, `out/kraken-l01/`, `out/kraken-049/`). Each is in Baofeng's official update format:
 
 - a 0x100-byte header (`BFUV32-V2`, 0xFF fill, `END`), then the raw program flash from `0x0300C000` up;
 - no encryption or signature; the updater checks a CRC16 per 1 KB block.
@@ -23,12 +27,12 @@ The radio's updater erases `0x0300C000`-`0x030FFFFF` and writes the file there. 
 So one file fits every radio on the same firmware, and installing it needs no per-radio data.
 `tools/make_official_update.py build` refuses to write the file if the image differs from stock below
 `0x0300B000`, if it is over the updater's size limit (0xF4002 bytes with the header), if it is not on the
-`DM32.00.01.048` line, or if a linked section reaches the last block's padding. It then simulates the
-update on the stock image.
+firmware line it is built for (`--firmware`; the version string at that build's own address), or if a linked
+section reaches the last block's padding. It then simulates the update on the stock image.
 
-**Only for radios that show firmware `DM32.00.01.048`** (Menu > Device Info). The updater does not check
-the version. Baofeng's public download is a different build line, `DM32.01.L01.048`; cross-flashing between
-the lines is reported to brick the radio (recoverably).
+**Use the file named after the firmware the radio shows** (Menu > Device Info). The updater does not check the
+version. A file for another build replaces the radio's firmware with a Kraken built on a different firmware line;
+cross-flashing between lines is reported to brick the radio (recoverably, with the updater).
 
 ## 2. Tools
 
@@ -64,7 +68,9 @@ Make the restore file now, while you have the backup in hand:
 python3 tools/make_official_update.py build backup1.bin --base backup1.bin --out stock_restore_BFUV32-V2.bin
 ```
 
-If it refuses ("not on the DM32.00.01.048 line"), the radio is not on the firmware Kraken is built for. Stop.
+It finds the firmware from the backup (the version string at each supported build's own address); `--firmware 048`
+(or `l01`, `049`) makes it insist on one. If it refuses ("not on the ... line"), the backup is not of a firmware Kraken
+supports. Stop, and check Menu > Device Info again.
 
 ## 4. Flash
 
@@ -72,7 +78,7 @@ If it refuses ("not on the DM32.00.01.048 line"), the radio is not on the firmwa
 2. Hold SK1 and PTT, power on, release when the LED is green.
 3. Run:
    ```sh
-   python3 DM32_firmware_loader.py PORT out/kraken/kraken_update_BFUV32-V2.bin
+   python3 DM32_firmware_loader.py PORT out/kraken/updates/kraken_<FIRMWARE>_update_BFUV32-V2.bin
    ```
    It erases (about 15 s), uploads, and reboots the radio into the new firmware.
 
@@ -86,7 +92,7 @@ Read the radio back and check it holds exactly what the updater should have writ
 
 ```sh
 python3 C7000_read_progmem.py PORT after.bin
-python3 tools/make_official_update.py verify out/kraken/kraken_update_BFUV32-V2.bin after.bin --before backup1.bin
+python3 tools/make_official_update.py verify out/kraken/updates/kraken_<FIRMWARE>_update_BFUV32-V2.bin after.bin --before backup1.bin
 ```
 
 `VERIFY OK` means `0x0300C000` up matches the file, the rest of the app area is erased, and everything below

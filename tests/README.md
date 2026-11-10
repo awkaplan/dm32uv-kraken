@@ -64,6 +64,12 @@ python3 /w/dm32uv-unleashed/tests/f13_checks.py
 `parrot_qemu_test.py --window` also checks the baseband voice window. That needs a QEMU build whose DMR RAM
 model keeps writes; the default image reads zeros there.
 
+Every QEMU test also runs for the L01 and 049 builds, from the translated copy `out/fw/<id>/tests/` that
+`tools/fw_translate.py` writes (stock addresses replaced, [docs/firmware-builds.md](../docs/firmware-builds.md));
+`tools/build_image.py` then sets `DM32_FW` and `DM32_WS`. Write tests against 048 as before. A hex number that indexes
+an image (`img[0x3D556:0x3D558]`) counts as a flash offset; build images through `build_artifacts.COMPOSE`.
+`web_flasher_test.mjs` also installs the L01 and 049 builds on a simulated radio when their builds exist.
+
 QEMU helpers: `build_artifacts.py` (where the build's ELFs and image are, symbol lookup), `claims.py`
 (reads `allocations.json`), `target.py` (calls into patch code on a halted machine), `qemu_menu.py`
 (booted runs driven by key sequences).

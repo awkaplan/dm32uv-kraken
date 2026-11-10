@@ -30,7 +30,7 @@ import tempfile
 import threading
 import time
 
-from build_artifacts import DATACHIP, RE_TOOLS
+from build_artifacts import COMPOSE, DATACHIP, RE_TOOLS
 from gdb_rsp import RspClient, parse_g_reply, read_mem
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -132,7 +132,7 @@ class Boot:
     def __init__(self, patched, tag, seq, port=None, bp=None, settle=100, on_hit=None):
         self.dir = pathlib.Path(tempfile.mkdtemp(prefix=f"qemu_{tag}_"))
         d = self.dir
-        subprocess.run([sys.executable, str(RE_TOOLS / "compose_qemu_image.py"), "--patched", str(patched), "--out", str(d / "boot.bin"), "--iram-out"],
+        subprocess.run([*COMPOSE, "--patched", str(patched), "--out", str(d / "boot.bin"), "--iram-out"],
                        check=True, stdout=subprocess.DEVNULL)
         idle_wait(d)
         subprocess.run(f"xz -dc {DATACHIP} > {d / 'datachip.bin'}", shell=True, check=True)

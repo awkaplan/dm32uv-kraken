@@ -24,7 +24,7 @@ wording can change freely:
 
 | Step | The person | The page | Time |
 |---|---|---|---|
-| Check | Picks the cable's port, turns the radio off, then on normally | Loads the reader through the boot ROM, raises the line to 1.5 Mbaud if the cable can, checks the boot header and the firmware version (`DM32.00.01.048`), and has the radio CRC all 256 sectors: a radio that is not stock, or already runs this build, is told so here | seconds |
+| Check | Picks the cable's port, turns the radio off, then on normally | Loads the reader through the boot ROM, raises the line to 1.5 Mbaud if the cable can, checks the boot header and the firmware version (one of the builds in the patch file: `DM32.00.01.048`, `DM32.01.L01.048`, `DM32.01.01.049`), and has the radio CRC all 256 sectors: a radio that is not stock, or already runs this build, is told so here | seconds |
 | Back up | Waits | Reads all 1 MiB in 4 KB CRC-checked frames, then checks every sector against the radio's own CRC and the firmware area against stock's SHA-256 | ~10 s at 1.5 Mbaud, ~1.5 min at 115200 (Prolific cables) |
 | Save | Turns the radio off, saves the file | Saves with the file picker and reads the saved file back to compare; without a picker it downloads and asks the person to confirm | |
 | Install | Turns the radio on holding SK1 + PTT (green LED), clicks Install | Builds the update file, checks its hash against the build's, and sends it to Baofeng's updater | ~1.5 min (the updater runs at 115200) |
@@ -34,15 +34,26 @@ wording can change freely:
 an older Kraken build), or put stock back from it. Both still connect first for the boot-header and version
 checks and say whether the backup's per-unit sector matches this radio.
 
-The page refuses, and writes nothing, when the radio reports another firmware version (Baofeng's public
-`DM32.01.L01.048` is named in the message), when its firmware area is not stock 048 (it points to the backup
-option), when it already runs this build, or when a chosen backup is not a 1 MiB stock 048 image.
+`kraken_patch.json` holds one entry per stock firmware build ([firmware-builds.md](firmware-builds.md)): its version
+string and where it keeps it, the stock and Kraken sector CRCs, the update file's hash and Kraken's records. The page
+reads the sectors of every build's version spot and uses the build whose own string is at its own address
+(`0x030ADAA0` for 048, `0x030AB858` for L01, `0x030ADA20` for 049); a string elsewhere does not count. From then on
+the flow works on that one build. For **Update or remove Kraken** the build is the backup's, and the radio must report
+the same firmware.
 
-The version check passes only on `DM32.00.01.048` at its own address, `0x030ADAA0`. To name another build
-in the refusal, the page also reads the sector holding L01's string (`0x030AB858`; at `0x030ADAA0` L01 has
-code pointers, so nothing readable) and looks through both sectors for any `DM32.xx.xx.nnn` string. The
-diagnostics record the string and where it was found. Before this, an L01 radio was refused as "an unknown
-version" ([issue 2](https://github.com/awkaplan/dm32uv-kraken/issues/2)).
+Before it flashes Kraken onto a build that has not been tested on a real radio (`radio_tested` false in
+`firmware/firmwares.json`, carried in the build's entry; `DM32.01.L01.048` and `DM32.01.01.049` for now), the page
+shows one more screen, `untested-firmware`: Kraken on that firmware is unstable, tested only in an emulator, install at
+your own risk. **Install at my own risk** goes on to the update-mode step; **Cancel** stops with nothing written (the
+backup is already saved). The diagnostics record the answer. Putting stock back shows no such screen.
+
+The page refuses, and writes nothing, when the radio reports a firmware no entry is for (it names what it found and
+the builds it supports), when a backup is of another build than the radio, when the firmware area is not that build's
+stock (it points to the backup option), when it already runs this build, or when a chosen backup is not a 1 MiB stock
+image of a supported build. To name an unsupported build in the refusal the page looks through the version sectors
+for any `DM32.xx.xx.nnn` string; the diagnostics record the string and where it was found
+([issue 2](https://github.com/awkaplan/dm32uv-kraken/issues/2): L01 radios were refused before this; they are
+supported now).
 
 ## 2. Pieces
 
@@ -58,12 +69,15 @@ version" ([issue 2](https://github.com/awkaplan/dm32uv-kraken/issues/2)).
 | `web/diagnostics.js` | The page's side of the diagnostics: browser, OS, allowed cables, the screen, the download |
 | `reader/reader.c`, `start.S`, `reader.ld` | The reader: about 1.5 KB of C-SKY code that runs from IRAM |
 | `tools/build_reader.py` | Builds the reader with the C-SKY toolchain in the Docker image |
-| `tools/make_web_patch.py` | Writes `kraken_patch.json`, copies `web/` and `reader.bin` beside it |
+| `tools/make_web_patch.py` | `entry`: one build's checked entry; `site`: `kraken_patch.json` from all entries, `web/` and `reader.bin` beside it |
 
 ### The patch file
 
-`kraken_patch.json` (`kraken-web-patch-1`) holds:
+`kraken_patch.json` (`kraken-web-patch-2`) holds `name`, `reader` (load address, entry, size and SHA-256 of
+`reader.bin`, shared by every build) and `builds`, one entry per stock firmware build, each with:
 
+- `firmware` and `version_at`: the build's version string and its file offset (the page uses the entry whose string
+  the radio has at that offset).
 - `records`: the changed bytes as (offset, base64) runs, about 103 KB. A run never carries an unchanged stock
   byte that is not erased; the tool refuses to write the file otherwise. The only stock-derived content is
   what Kraken itself writes: about 650 bytes of copied stock menu pointer tables (extended with new rows) and
@@ -72,7 +86,7 @@ version" ([issue 2](https://github.com/awkaplan/dm32uv-kraken/issues/2)).
   `0x0300C000` up.
 - `target`: the same for the Kraken image. The installer pads the updater's last block with 0xFF, so after
   an install the radio holds exactly this image, and these CRCs check it.
-- `update`: the update file's size and SHA-256. `reader`: load address, entry, size and SHA-256 of `reader.bin`.
+- `update`: the update file's size and SHA-256.
 
 The tool checks that the records applied to stock give the patched image exactly, and that header plus
 firmware area is the build's update file byte for byte. The page checks the same hashes before flashing.
@@ -175,14 +189,14 @@ page (`web/`) as it is at the release's tag, plus two files the release carries.
 itself (the build needs the stock firmware and the C-SKY toolchain image), so the live installer is always
 exactly a released build.
 
-1. Build (`tools/build.sh`). Besides the update file it writes the release's web files,
-   `out/kraken/kraken_patch.json` and `out/kraken/kraken_reader.bin` (`reader.bin` under its release
-   name), each with a `.sha256`.
+1. Build (`tools/build.sh`, all three firmware builds). It writes the release's files to `out/kraken/release/`:
+   `kraken_patch.json` (every build's entry) and `kraken_reader.bin` (`reader.bin` under its release name), each with a
+   `.sha256`. They are also in `out/kraken/`. The update files in `out/kraken/updates/` contain the stock firmware and
+   are never attached.
 2. Check them as the workflow will: `node tools/check_web_site.mjs out/kraken/web`.
 3. Tag and publish a release with both files attached, for example:
    ```sh
-   gh release create v1.0 out/kraken/kraken_patch.json out/kraken/kraken_reader.bin \
-       out/kraken/kraken_patch.json.sha256 out/kraken/kraken_reader.bin.sha256
+   gh release create v1.0 out/kraken/release/*
    ```
    Publishing the release runs the workflow. To redeploy (a page fix in an existing release's tag, or an
    older release), run it by hand: Actions > Web installer > Run workflow, with a tag or empty for the
@@ -234,8 +248,8 @@ Partly done. Needs the radio, the cable and someone at the radio:
 - Chrome, Edge or another Chromium browser on a computer. Firefox and Safari have no Web Serial.
 - The page cannot see the battery level; it tells the person to charge it.
 - The updater runs at 115200, so installing takes about a minute and a half whatever the cable.
-- Releases still publish `kraken_update_BFUV32-V2.bin`, which contains the stock firmware. Dropping it in
-  favour of the web installer is a separate decision.
+- Releases carry no update file: it contains the stock firmware. Installing by hand means building it
+  (`out/kraken/updates/`).
 
 ## 7. Diagnostics
 

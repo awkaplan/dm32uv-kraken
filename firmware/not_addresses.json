@@ -1,0 +1,7 @@
+{
+ "_comment": [
+  "Values in the stock-address ranges (tools/fw_text.py) that are numbers, not addresses: tools/gen_fw_maps.py leaves them",
+  "unchanged in every build. Each needs the reason a person checked."
+ ],
+ "values": {}
+}

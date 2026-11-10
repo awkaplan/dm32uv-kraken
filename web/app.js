@@ -334,7 +334,7 @@ $("backup-file").addEventListener("change", async (ev) => {
 });
 
 function ready() {
-  return Boolean(env.patch && env.reader && "serial" in navigator);
+  return Boolean(env.bundle && env.reader && "serial" in navigator);
 }
 
 function updateButtons() {
@@ -389,9 +389,13 @@ async function preflight() {
     if (pin && (await sha256(bin)) !== pin.reader) throw new PinError("reader.bin");
     if (bin.length !== patch.reader.size || (await sha256(bin)) !== patch.reader.sha256) throw new Error("reader.bin does not match the patch file");
     env.reader = { bin, load: patch.reader.load, entry: patch.reader.entry };
-    env.patch = patch;
-    pageInfo.patch = { firmware: patch.firmware, update: patch.update.sha256.slice(0, 16), reader: patch.reader.sha256.slice(0, 16) };
-    check("patch", `Kraken build ${patch.update.sha256.slice(0, 12)} loaded`, true);
+    env.bundle = patch;                       // one build per stock firmware; each flow picks the radio's
+    pageInfo.patch = {
+      firmware: patch.firmwares.join(", "),
+      update: patch.builds.map((b) => `${b.firmware} ${b.update.sha256.slice(0, 16)}`).join("; "),
+      reader: patch.reader.sha256.slice(0, 16),
+    };
+    check("patch", `Kraken loaded for ${patch.firmwares.join(", ")}`, true);
   } catch (e) {
     pageInfo.patchError = e.message;
     check("patch", "Kraken build loaded", false, e.message);

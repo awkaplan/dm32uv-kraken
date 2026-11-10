@@ -4,15 +4,24 @@ Build:
 
 - `build.sh` - builds the image (and by default runs the QEMU tests) inside the `dm32uv-re` Docker image.
 - `build_image.py` - the build itself: applies the patches in `image.json` in order, stages the sectors, writes the update files, runs the tests. Called by `build.sh`.
-- `bmp_filtered.py` - runs `dm32uv-re`'s patch builder with some of its claims left out (`image.json` `exclude_claims`). Called by `build_image.py`.
+- `re_tool.py` - runs one of `dm32uv-re`'s tools with a firmware build's symbols, policy files and QEMU-only patch sites, and with `--set` overrides (e.g. the builder's claim registry without `image.json`'s `exclude_claims`). Called by `build_image.py` and the QEMU tests. Replaces `bmp_filtered.py`.
+
+Firmware builds ([docs/firmware-builds.md](../docs/firmware-builds.md)):
+
+- `fetch_stock.py` - downloads and checks the L01 and 049 update files and composes their base images in `out/stock/`. Run by `build.sh` on the host.
+- `fwreg.py` - the build list (`firmware/firmwares.json`) and base images.
+- `fwmap.py`, `csky_pcrel.py` - the matcher that proves where a 048 address is in another build (`python3 tools/fwmap.py l01 0x...` explains one), and the C-SKY PC-relative decoder it uses.
+- `fw_text.py` - finds the stock addresses in sources, manifests and tests (and rewrites them).
+- `gen_fw_maps.py` - generates `firmware/<id>/addrmap.json` for every stock address Kraken uses; `--check` in every build. Run after any change that adds or moves a stock address.
+- `fw_translate.py` - writes a build's translated tree in `out/fw/<id>/`. Called by `build_image.py`.
 - `check_bsr.py` - fails the build if assembly branches to an absolute address (C-SKY gas emits nothing for it).
 - `gen_menu_hosts.py` - generates the stock-menu row boilerplate from `patches/kraken_ui/menu_hosts.json`.
 - `gen_manifest.py` - generates the branch hooks and blob list of `kraken_ui.patch.json` from `hooks.json` and `blobs.json`.
 - `gen_claims.py` - generates `krk_claims.h` and the `KRK_EXT*` part of `krk.h` from `allocations.json`.
   The build runs all three generators with `--check`. Run them without it after you edit their inputs.
 - `sat_tle_gen.py` - turns `data/tles.txt` into `patches/kraken_ui/krk_sat_tles.c`. Run by hand when the TLEs change.
-- `make_official_update.py` - writes and checks the universal update file for the radio's own SK1+PTT updater.
-- `build_reader.py`, `make_web_patch.py` - build the web installer's reader program and its patch file and site in `out/kraken/web/` ([docs/web-flasher.md](../docs/web-flasher.md)). Called by `build_image.py`.
+- `make_official_update.py` - writes and checks the update file for the radio's own SK1+PTT updater (one per firmware build; `--firmware`, or found from the image).
+- `build_reader.py`, `make_web_patch.py` - build the web installer's reader program and its patch file (one entry per firmware build) and site in `out/kraken/web/` ([docs/web-flasher.md](../docs/web-flasher.md)). Called by `build_image.py`.
 - `check_web_site.mjs` - checks an assembled web-installer site before it is published (`node tools/check_web_site.mjs out/kraken/web`); the Pages workflow runs it.
 - `pin_web_release.py` - pins an assembled site to its release (tag and file hashes in `index.html`); the Pages workflow runs it.
 - `setup_pages.sh` - one-time GitHub Pages setup for the web installer, once the repository is public.

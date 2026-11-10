@@ -1,6 +1,7 @@
 # Kraken user guide
 
-Kraken is an add-on firmware for the Baofeng DM-32UV. It keeps the stock firmware (`DM32.00.01.048`)
+Kraken is an add-on firmware for the Baofeng DM-32UV. It keeps the stock firmware (`DM32.00.01.048`, `DM32.01.L01.048`
+or `DM32.01.01.049`; only `DM32.00.01.048` has been tested on a radio so far)
 and everything it does, and adds features found on pricier radios: analog APRS, a band scope, a parrot,
 satellite tracking, working VOX and more.
 

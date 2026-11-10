@@ -78,8 +78,10 @@
     addi    sp, sp, \size
     .endm
 
-/* Hooked over `br16 0x304a112` at 0x03049dcc: append top-level item index 10. At the hook
- * r4 = cursor pointer, r5 = list buffer base (snake_menu_append_trampoline.S). */
+/* Hooked over `st16.h r3,(r4,0); br16 0x304a112` at 0x03049dca: redo the count store, append top-level item index 10,
+ * leave through the tail. At the hook r3 = the new count, r4 = cursor pointer, r5 = list buffer base
+ * (snake_menu_append_trampoline.S). The splice covers the store as well as the br16 because the halfword after the br16
+ * is padding only in some builds (firmware/l01/overrides.json, docs/firmware-builds.md). */
 /* APRS (category id 9) is always shown, by request (2026-10-15): stock appends it only when its
  * settings gate is set (CPS APRS on) and never in the short idx24 list. Before appending KRAKEN,
  * scan the list just built (r5[0..count), count at (r4,0)) and append 9 if stock left it out.
@@ -121,6 +123,7 @@
 
     .global krk_menu_append
 krk_menu_append:
+    st.h    r3, (r4, 0)             /* the displaced store: the count stock just incremented */
     APPEND_TOP_ITEMS
     lrw     r3, IDX23_EPILOGUE
     jmp     r3

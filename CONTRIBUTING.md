@@ -92,7 +92,9 @@ Never test new transmit code on the air first. Use the emulator, then a dummy lo
 - Every page that describes a transmit feature says when the radio will transmit, and what the legal
   limits are.
 - Developer notes in `docs/` start with a one-line status (static research, QEMU-verified, or tested on
-  a radio). Give addresses for stock `DM32.00.01.048`.
+  a radio). Give addresses for stock `DM32.00.01.048`, the reference build; the L01 and 049 builds are translated
+  from it (`docs/firmware-builds.md`). A change that adds or moves a stock address also commits the regenerated
+  `firmware/*/addrmap.json` (`python3 tools/gen_fw_maps.py`).
 - No personal details in docs, tests or commit messages: no callsigns, DMR IDs, locations, serial
   numbers or radio backups. Use example values such as `N0CALL`.
 

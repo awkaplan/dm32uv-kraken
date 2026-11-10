@@ -1,0 +1,47 @@
+{
+ "_comment": [
+  "The stock firmware builds Kraken is built for (docs/firmware-builds.md). Everything in this repo - sources, hooks.json,",
+  "menu_hosts.json, the manifests, the tests - is written against the REFERENCE build. Every other build gets Kraken through",
+  "tools/fwmap.py: a checked map from each reference address to the same code or data in that build (firmware/<id>/addrmap.json,",
+  "generated; firmware/<id>/overrides.json, reviewed by hand), applied by tools/fw_translate.py to copies under out/.",
+  "No firmware is committed. The reference image comes from dm32uv-re; the others are Baofeng update files fetched by",
+  "tools/fetch_stock.py from the commit-pinned URL below and checked against update_sha256. A 1 MiB base image is the",
+  "reference image's boot region (0x03000000-0x0300BFFF: boot header, Baofeng's loader, the blanked per-unit sector; the",
+  "updater never writes it) with the update file's body from 0x0300C000 and 0xFF after it.",
+  "version_at: where the build keeps its version string (Menu > Device Info shows it); the installers check it there.",
+  "radio_tested: Kraken has been installed and used on a real radio on this build. The web installer shows an",
+  "untested-build warning, which the person must accept, before it flashes Kraken onto a build without it."
+ ],
+ "reference": "048",
+ "firmwares": [
+  {
+   "id": "048",
+   "version": "DM32.00.01.048",
+   "version_at": "0x030adaa0",
+   "radio_tested": true,
+   "base_image": "dm32/dm32uv-re/data/firmware/patching/progmem_stock_DP570UV_20260926_FULL.bin",
+   "base_sha256": "9b08ce6d8d0b63617d9c1f9548d93ea6008a9ebce5cd36089752f74a62a09716",
+   "source": "a radio read (dm32uv-re PROVENANCE.md); Baofeng never published this build"
+  },
+  {
+   "id": "l01",
+   "version": "DM32.01.L01.048",
+   "version_at": "0x030ab858",
+   "radio_tested": false,
+   "update_url": "https://raw.githubusercontent.com/M7OCM/DM-32UV/8efe0e504392aefbfbd84169df6f2da1d32cdd3c/DM32.01.L01.048.bin",
+   "update_sha256": "fda860febfcf1a234eed7fa73272112891074aac83746e4f8dfe224a2a700f8f",
+   "update_size": 860416,
+   "source": "Baofeng's public download, archived by M7OCM (branch DM-32UV-Firmware-(most-common)); the reference build without the voice recorder"
+  },
+  {
+   "id": "049",
+   "version": "DM32.01.01.049",
+   "version_at": "0x030ada20",
+   "radio_tested": false,
+   "update_url": "https://raw.githubusercontent.com/M7OCM/DM-32UV/8efe0e504392aefbfbd84169df6f2da1d32cdd3c/DM32.01.01.049.bin",
+   "update_sha256": "03107b6f600e7fa95105af8324cff349c0f17fe30db249c14d11e79baa8da97a",
+   "update_size": 869688,
+   "source": "Baofeng firmware archived by M7OCM (branch DM-32UV-Firmware-(most-common)); shipped on radios sold from late 2025"
+  }
+ ]
+}

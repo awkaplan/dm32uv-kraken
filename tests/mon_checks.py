@@ -18,7 +18,7 @@ pin read, the stock prescaler) are intercepted and recorded.
 """
 import struct
 
-from build_artifacts import HOOK_TBL, REPO      # first: puts the tool directories on sys.path
+from build_artifacts import HOOK_TBL, REPO, stock_is      # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from claims import claim
 from gdb_rsp import read_mem
@@ -52,7 +52,7 @@ def check_mon(c, s, s2, img, stock, dwc):
     from build_patch import decode_branch
     print("== F14 RX Monitor: splice, hook slot, budget")
     off = 0x03013F48 - 0x03000000
-    m.report(stock[off:off + 8].hex(" ") == "02 e0 ca 03 00 e8 85 fd", f"stock bytes at 0x03013f48: {stock[off:off + 8].hex(' ')} (want bsr 0x030546dc then br32 0x03013a56)")
+    m.report(stock_is(0x03013F48, "02 e0 ca 03 00 e8 85 fd"), f"stock bytes at 0x03013f48: {stock[off:off + 8].hex(' ')} (want bsr 0x030546dc then br32 0x03013a56)")
     kind, half = decode_branch(img[off:off + 4])
     m.report(kind == "bsr" and 0x03013F48 + half * 2 == s2["krk_hook_bg_tick"], f"bg_tick_hook: {kind} at 0x03013f48 -> {0x03013F48 + half * 2:#x} (want krk_hook_bg_tick {s2['krk_hook_bg_tick']:#x})")
     m.report(img[off + 4:off + 8] == stock[off + 4:off + 8], "bg_tick_hook: the br32 back to the OSFlagPend (0x03013f4c) is untouched")

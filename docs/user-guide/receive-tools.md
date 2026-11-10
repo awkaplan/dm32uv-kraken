@@ -249,5 +249,6 @@ How it works: [../dmr-ber.md](../dmr-ber.md), [../chanset-submenu.md](../chanset
 ![About screen](img/about.png)
 *Emulator screenshot.*
 
-It shows the Kraken name, the stock firmware it is built on (`base DM32.00.01.048`) and a short list of
+It shows the Kraken name, the stock firmware it is built on (its version, for example `DM32.00.01.048`) and a short
+list of
 patches. Press `Back` to leave.

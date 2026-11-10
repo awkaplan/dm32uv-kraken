@@ -10,13 +10,13 @@ export const SECTOR = 0x1000;
 export const BLOCK = 0x400; // updater block size
 export const SIZE_LIMIT = 0xf4002; // the updater refuses a larger file (header included)
 export const VERSION_AT = 0xadaa0; // where DM32.00.01.048 keeps its version string
-// Baofeng's public download, DM32.01.L01.048, also ends in 048 but is a different build line: its string
-// is at 0xab858, and 0xadaa0 holds code pointers there. Only used to name the build in a refusal.
+// Each stock firmware build keeps its version string at its own place (the patch file's builds say where: 0xab858 for
+// DM32.01.L01.048, 0xada20 for DM32.01.01.049); at another build's place there is code or other data.
 export const L01 = "DM32.01.L01.048";
-export const VERSION_SPOTS = [VERSION_AT, 0xab858];
+export const VERSION_SPOTS = [VERSION_AT, 0xab858, 0xada20];
 const VERSION_RE = /^DM32\.[0-9A-Z]{2}\.[0-9A-Z]{2,4}\.[0-9]{3}$/;
 export const BOOT_MAGIC = ascii("thd\x0c");
-export const PATCH_FORMAT = "kraken-web-patch-1";
+export const PATCH_FORMAT = "kraken-web-patch-2";
 
 export const HEADER = (() => {
   const h = new Uint8Array(0x100).fill(0xff);
@@ -34,32 +34,59 @@ export class CheckError extends Error {
 }
 
 // --- the patch file (kraken_patch.json, written by tools/make_web_patch.py) ---
+// One entry per stock firmware build (docs/firmware-builds.md), and the reader they share. loadPatch checks it all and
+// returns { name, reader, builds }; selectBuild picks the build a radio or a backup is on. A build has the fields one
+// patch had before: firmware, versionAt, stock, target, update, records, kraken_sectors (and reader, name).
+
+function loadBuild(b, reader, name) {
+  for (const k of ["firmware", "version_at", "stock", "target", "update", "records"]) {
+    if (!(k in b)) throw new CheckError("patch", `The Kraken patch file has a build with no "${k}".`);
+  }
+  if (!VERSION_RE.test(b.firmware) || !(b.version_at >= APP && b.version_at < FLASH_SIZE)) {
+    throw new CheckError("patch", `The Kraken patch file has a bad build entry (${b.firmware}).`);
+  }
+  const records = b.records.map(([at, b64]) => ({ at, data: fromBase64(b64) }));
+  for (const r of records) {
+    if (r.at < APP || r.at + r.data.length > FLASH_SIZE) throw new CheckError("patch", `The Kraken patch file writes outside the firmware area (${addr(r.at)}).`);
+  }
+  const s = b.stock, t = b.target;
+  if (!(s.end > APP && s.end <= FLASH_SIZE && t.end > APP && t.end <= FLASH_SIZE)) throw new CheckError("patch", "The Kraken patch file has bad bounds.");
+  if (b.update.size !== HEADER.length + (t.end - APP) || b.update.size > SIZE_LIMIT) throw new CheckError("patch", "The Kraken patch file's update size does not add up.");
+  const n = (FLASH_SIZE - APP) / SECTOR;
+  if (s.sector_crc32?.length !== n || t.sector_crc32?.length !== n) throw new CheckError("patch", "The Kraken patch file has no sector CRCs.");
+  return { ...b, versionAt: b.version_at, records, reader, name };
+}
 
 export function loadPatch(json) {
   const p = json;
   if (!p || p.format !== PATCH_FORMAT) throw new CheckError("patch", `The Kraken patch file has an unknown format (${p && p.format}).`);
-  for (const k of ["stock", "target", "update", "records", "firmware", "reader"]) {
-    if (!(k in p)) throw new CheckError("patch", `The Kraken patch file has no "${k}".`);
-  }
-  const records = p.records.map(([at, b64]) => ({ at, data: fromBase64(b64) }));
-  for (const r of records) {
-    if (r.at < APP || r.at + r.data.length > FLASH_SIZE) throw new CheckError("patch", `The Kraken patch file writes outside the firmware area (${addr(r.at)}).`);
-  }
-  const s = p.stock, t = p.target;
-  if (!(s.end > APP && s.end <= FLASH_SIZE && t.end > APP && t.end <= FLASH_SIZE)) throw new CheckError("patch", "The Kraken patch file has bad bounds.");
-  if (p.update.size !== HEADER.length + (t.end - APP) || p.update.size > SIZE_LIMIT) throw new CheckError("patch", "The Kraken patch file's update size does not add up.");
-  const n = (FLASH_SIZE - APP) / SECTOR;
-  if (s.sector_crc32?.length !== n || t.sector_crc32?.length !== n) throw new CheckError("patch", "The Kraken patch file has no sector CRCs.");
-  return { ...p, records };
+  if (!p.reader || !Array.isArray(p.builds) || !p.builds.length) throw new CheckError("patch", "The Kraken patch file has no builds.");
+  const builds = p.builds.map((b) => loadBuild(b, p.reader, p.name));
+  if (new Set(builds.map((b) => b.firmware)).size !== builds.length) throw new CheckError("patch", "The Kraken patch file lists a firmware twice.");
+  return { name: p.name, reader: p.reader, builds, firmwares: builds.map((b) => b.firmware) };
+}
+
+// The build whose version string is at its own place in IMG (a whole image, or one with the version sectors read in)
+export function selectBuild(bundle, img) {
+  return bundle.builds.find((b) => isFirmware(img, b)) || null;
+}
+
+// Where to look for version strings: every build's place, and the known places of builds Kraken does not support
+export function versionSpots(bundle) {
+  return [...new Set([...(bundle ? bundle.builds.map((b) => b.versionAt) : []), ...VERSION_SPOTS])];
+}
+
+function listOf(names) {
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
 }
 
 // --- what the radio holds ---
 
 // The firmware's version string and where it is: { version, at }, or { version: "", at: -1 }. Looks at the
 // known spots first, then anywhere in IMG (a whole image, or one with only some sectors read in).
-export function findVersion(img) {
+export function findVersion(img, spots = VERSION_SPOTS) {
   const at24 = (a) => text(img.subarray(a, a + 24));
-  for (const a of VERSION_SPOTS) if (VERSION_RE.test(at24(a))) return { version: at24(a), at: a };
+  for (const a of spots) if (VERSION_RE.test(at24(a))) return { version: at24(a), at: a };
   for (let a = img.indexOf(0x44); a >= 0; a = img.indexOf(0x44, a + 1)) {
     if (img[a + 1] === 0x4d && img[a + 2] === 0x33 && img[a + 3] === 0x32 && img[a + 4] === 0x2e && VERSION_RE.test(at24(a))) {
       return { version: at24(a), at: a };
@@ -72,33 +99,32 @@ export function versionOf(img) {
   return findVersion(img).version;
 }
 
-// Is IMG on the build this patch is for? Only its own spot counts, wherever else a string turns up.
-export function isFirmware(img, patch) {
-  return text(img.subarray(VERSION_AT, VERSION_AT + 24)).startsWith(patch.firmware);
+// Is IMG on this build? Only the build's own spot counts, wherever else a string turns up.
+export function isFirmware(img, build) {
+  const at = build.versionAt;
+  return text(img.subarray(at, at + 24)) === build.firmware;
 }
 
-// What to tell the person when the version is wrong. WHAT is "This radio" or "That backup".
-export function wrongVersionMessage(v, patch, what) {
-  if (v === L01) {
-    return `${what} has ${L01}, Baofeng’s public download. It also ends in 048, but it is a different firmware line. Kraken works only on ${patch.firmware}.`;
-  }
-  return `${what} has firmware ${v || "of an unknown version"}. Kraken needs ${patch.firmware}.`;
+// What to tell the person when no build fits. WHAT is "This radio" or "That backup"; BUNDLE is the loaded patch file.
+export function wrongVersionMessage(v, bundle, what) {
+  return `${what} has firmware ${v || "of an unknown version"}. Kraken works on ${listOf(bundle.firmwares)}.`;
 }
 
 // Checks that need only the first block and the version sectors (read into a 1 MB buffer, before the
 // full read)
-export function quickChecks(head, patch) {
+// BUILD: the build the radio must be on (null: none of the bundle's fits).
+export function quickChecks(head, build, bundle) {
   const out = [];
   out.push({
     id: "boot",
     label: "Program memory has the DM-32 boot header",
     ok: equal(head.subarray(0, 4), BOOT_MAGIC),
   });
-  const v = versionOf(head);
+  const v = findVersion(head, versionSpots(bundle)).version;
   out.push({
     id: "version",
-    label: `Firmware is ${patch.firmware}`,
-    ok: isFirmware(head, patch),
+    label: build ? `Firmware is ${build.firmware}` : `Firmware is ${listOf(bundle.firmwares)}`,
+    ok: !!build && isFirmware(head, build),
     detail: v ? `The radio reports ${v}.` : "The radio reports no version string.",
   });
   return out;

@@ -1144,9 +1144,9 @@
  "splices": [
   {
    "name": "menu_append_hook",
-   "addr": "0x03049dcc",
-   "expect": "a3 05 00 00",
-   "why": "br16 0x304a112 ; bkpt -> bsr trampoline (appends category index 10)",
+   "addr": "0x03049dca",
+   "expect": "60 ac a3 05",
+   "why": "menu_option_gen_idx23 after its last stock append: `st16.h r3,(r4,0); br16 0x0304a112` (count store, then the shared tail) -> bsr krk_menu_append, which redoes the store, appends category index 10 and jumps to the tail itself. These 4 bytes exist in every supported build; the padding halfword 048 has after the br16 does not (DM32.01.L01.048 puts a literal word there). Nothing branches to the br16",
    "branch": {
     "kind": "bsr",
     "target": "@kraken_ui:krk_menu_append"

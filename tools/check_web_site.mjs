@@ -44,7 +44,7 @@ if (fs.existsSync(path.join(dir, "kraken_patch.json")) && fs.existsSync(path.joi
   let patch = null;
   try {
     patch = loadPatch(JSON.parse(fs.readFileSync(path.join(dir, "kraken_patch.json"), "utf8")));
-    ok(true, `kraken_patch.json loads (firmware ${patch.firmware}, update ${patch.update.sha256.slice(0, 12)})`);
+    ok(true, `kraken_patch.json loads (${patch.builds.map((b) => `${b.firmware} update ${b.update.sha256.slice(0, 12)}`).join(", ")})`);
   } catch (e) {
     ok(false, `kraken_patch.json loads (${e.message})`);
   }

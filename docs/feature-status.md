@@ -13,9 +13,13 @@ Status values:
 
 IDs are the ones used in commit messages, code comments and the notes in `docs/`.
 
+**Firmware builds.** Every status below is for stock `DM32.00.01.048`. The same features are built for
+`DM32.01.L01.048` and `DM32.01.01.049` from a checked translation ([firmware-builds.md](firmware-builds.md)) and run
+the same QEMU tests; on those two builds every feature is **emulator only** until it is used on a radio.
+
 | ID | Feature | What it does | Status | User guide |
 |---|---|---|---|---|
-| — | Update file install | One `kraken_update_BFUV32-V2.bin` file, installed with the radio's own updater | hardware (one radio so far) | [install](user-guide/install.md) |
+| — | Update file install | One update file per firmware (`kraken_<firmware>_update_BFUV32-V2.bin`), installed with the radio's own updater | hardware (one radio so far, on 048); L01 and 049: emulator only | [install](user-guide/install.md) |
 | — | Web installer | Chrome or Edge page that backs the radio up, applies Kraken in the browser and installs it with the radio's updater; can also put stock back | experimental: the reader starts on a radio (one cable, macOS); full backup, install and restore not yet tested on a radio | [web-flasher.md](web-flasher.md) |
 | F0a | Stronger MI random numbers | AES-256 CTR_DRBG seeded from hardware noise replaces the unseeded generator behind stock DMR encryption | hardware | [privacy](user-guide/privacy.md) |
 | F1 | Last Heard | Recent DMR callers: ID, alias or contact name, slot, colour code, RSSI, time | hardware, menu newer | [receive tools](user-guide/receive-tools.md) |

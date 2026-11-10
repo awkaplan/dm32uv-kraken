@@ -76,17 +76,27 @@ What it does (`tools/build_image.py`, run inside the container):
 Inside the container this repo is always at `/w/dm32uv-unleashed` and dm32uv-re at `/w/dm32/dm32uv-re`,
 whatever the folders are called on the host. `image.json` and the tests use those paths.
 
-### Outputs (`out/kraken/`, gitignored)
+### Outputs (gitignored)
+
+`tools/build.sh` builds every stock firmware build in [`firmware/firmwares.json`](../firmware/firmwares.json), one
+after the other ([firmware-builds.md](firmware-builds.md)); `--fw l01` (repeatable) builds only some. Each build has the
+layout below: `DM32.00.01.048` in `out/kraken/`, `DM32.01.L01.048` in `out/kraken-l01/`, `DM32.01.01.049` in
+`out/kraken-049/`. `out/kraken/release/` then holds what a release carries: `kraken_patch.json` (the web installer's
+patch, one entry per build) and `kraken_reader.bin`, each with a `.sha256`. `out/kraken/updates/` holds
+`kraken_<firmware>_update_BFUV32-V2.bin` for each build; they contain the stock firmware, so they are for your own
+installs and are never published. `out/fw/<id>/` holds the translated sources, manifests and tests of a build, `out/stock/` the L01 and 049
+stock images (`tools/fetch_stock.py`).
 
 | File | What |
 |---|---|
-| `kraken_update_BFUV32-V2.bin` (+ `.sha256`) | **The update file.** Baofeng's official `BFUV32-V2` format, for the radio's own updater. This is what you flash |
+| `kraken_update_BFUV32-V2.bin` (+ `.sha256`) | **The update file** of this build. Baofeng's official `BFUV32-V2` format, for the radio's own updater. This is what you flash (the copy in `out/kraken/updates/` has the firmware in its name) |
 | `progmem_KRAKEN_patched.bin` (+ `.sha256`) | The full 1 MiB program-flash image (stock plus Kraken) |
 | `kraken.bps` | The same change as a BPS patch against the stock image |
 | `build.json` | Base and image hashes, and which patch owns each changed sector |
-| `kraken_patch.json`, `kraken_reader.bin` | The web installer's two build files under their release names, with `.sha256`. A release carries them and the Pages workflow publishes the page with them ([web-flasher.md](web-flasher.md)) |
-| `web/` | The web installer's site: `web/`, `reader.bin` and `kraken_patch.json` (Kraken's bytes only) ([web-flasher.md](web-flasher.md)). Serve it as static files |
-| `reader/` | The web installer's reader program (`reader.bin`, its ELF, map and `reader.json`), built from `reader/` by `tools/build_reader.py` |
+| `web_entry.json` | This build's entry of the web installer's patch file |
+| `kraken_patch.json`, `kraken_reader.bin` | `out/kraken/` only: the web installer's two files under their release names, with `.sha256`, for every build. A release carries them and the Pages workflow publishes the page with them ([web-flasher.md](web-flasher.md)) |
+| `web/` | `out/kraken/` only: the web installer's site: `web/`, `reader.bin` and `kraken_patch.json` (Kraken's bytes only) ([web-flasher.md](web-flasher.md)). Serve it as static files |
+| `reader/` | `out/kraken/` only: the web installer's reader program (`reader.bin`, its ELF, map and `reader.json`), built from `reader/` by `tools/build_reader.py` |
 | `staged/` | Each changed 4 KiB sector, and `rollback/` with its stock bytes. Written by dm32uv-re's `stage_sectors.py`, which also refuses sensitive sectors. Not needed for the update-file flow |
 | `steps/NN_<patch>/` | Per-patch builder output: the ELFs, link maps and summaries. The tests read symbols from here |
 | `test_NN.log` | Each patch test's full output |
@@ -164,6 +174,8 @@ A new patch that is not part of `kraken_ui` gets its own folder under `patches/`
 claims file, and an entry in `image.json` (`patches`, and `allocation_files` for the claims). `patches/mi_rng/`
 is a small example.
 
-Every hook and stock address in Kraken is for `DM32.00.01.048` (the `DP570UV` program-flash image in
-dm32uv-re). The builder checks the stock bytes at every site, so a different firmware fails to build
-rather than producing a broken image.
+Every hook and stock address in Kraken is written for `DM32.00.01.048` (the `DP570UV` program-flash image in
+dm32uv-re). For `DM32.01.L01.048` and `DM32.01.01.049` the build translates each one through
+`firmware/<id>/addrmap.json`; after a change that adds or moves a stock address, run `python3 tools/gen_fw_maps.py`
+and commit the maps ([firmware-builds.md](firmware-builds.md) section 6). The builder checks the stock bytes at every
+site of every build, so an address that is wrong for a build fails to build rather than producing a broken image.
