@@ -9,7 +9,12 @@ export const UNIT = 0xb000; // per-unit sector 0x0300B000 (binding record, TX-ba
 export const SECTOR = 0x1000;
 export const BLOCK = 0x400; // updater block size
 export const SIZE_LIMIT = 0xf4002; // the updater refuses a larger file (header included)
-export const VERSION_AT = 0xadaa0;
+export const VERSION_AT = 0xadaa0; // where DM32.00.01.048 keeps its version string
+// Baofeng's public download, DM32.01.L01.048, also ends in 048 but is a different build line: its string
+// is at 0xab858, and 0xadaa0 holds code pointers there. Only used to name the build in a refusal.
+export const L01 = "DM32.01.L01.048";
+export const VERSION_SPOTS = [VERSION_AT, 0xab858];
+const VERSION_RE = /^DM32\.[0-9A-Z]{2}\.[0-9A-Z]{2,4}\.[0-9]{3}$/;
 export const BOOT_MAGIC = ascii("thd\x0c");
 export const PATCH_FORMAT = "kraken-web-patch-1";
 
@@ -50,23 +55,50 @@ export function loadPatch(json) {
 
 // --- what the radio holds ---
 
-export function versionOf(img) {
-  return text(img.subarray(VERSION_AT, VERSION_AT + 24));
+// The firmware's version string and where it is: { version, at }, or { version: "", at: -1 }. Looks at the
+// known spots first, then anywhere in IMG (a whole image, or one with only some sectors read in).
+export function findVersion(img) {
+  const at24 = (a) => text(img.subarray(a, a + 24));
+  for (const a of VERSION_SPOTS) if (VERSION_RE.test(at24(a))) return { version: at24(a), at: a };
+  for (let a = img.indexOf(0x44); a >= 0; a = img.indexOf(0x44, a + 1)) {
+    if (img[a + 1] === 0x4d && img[a + 2] === 0x33 && img[a + 3] === 0x32 && img[a + 4] === 0x2e && VERSION_RE.test(at24(a))) {
+      return { version: at24(a), at: a };
+    }
+  }
+  return { version: "", at: -1 };
 }
 
-// Checks that need only the first block and the version block (read before the full read)
-export function quickChecks(block0, versionBlock, patch) {
+export function versionOf(img) {
+  return findVersion(img).version;
+}
+
+// Is IMG on the build this patch is for? Only its own spot counts, wherever else a string turns up.
+export function isFirmware(img, patch) {
+  return text(img.subarray(VERSION_AT, VERSION_AT + 24)).startsWith(patch.firmware);
+}
+
+// What to tell the person when the version is wrong. WHAT is "This radio" or "That backup".
+export function wrongVersionMessage(v, patch, what) {
+  if (v === L01) {
+    return `${what} has ${L01}, Baofeng’s public download. It also ends in 048, but it is a different firmware line. Kraken works only on ${patch.firmware}.`;
+  }
+  return `${what} has firmware ${v || "of an unknown version"}. Kraken needs ${patch.firmware}.`;
+}
+
+// Checks that need only the first block and the version sectors (read into a 1 MB buffer, before the
+// full read)
+export function quickChecks(head, patch) {
   const out = [];
   out.push({
     id: "boot",
     label: "Program memory has the DM-32 boot header",
-    ok: equal(block0.subarray(0, 4), BOOT_MAGIC),
+    ok: equal(head.subarray(0, 4), BOOT_MAGIC),
   });
-  const v = text(versionBlock);
+  const v = versionOf(head);
   out.push({
     id: "version",
     label: `Firmware is ${patch.firmware}`,
-    ok: v.startsWith(patch.firmware),
+    ok: isFirmware(head, patch),
     detail: v ? `The radio reports ${v}.` : "The radio reports no version string.",
   });
   return out;

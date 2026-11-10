@@ -38,6 +38,12 @@ The page refuses, and writes nothing, when the radio reports another firmware ve
 `DM32.01.L01.048` is named in the message), when its firmware area is not stock 048 (it points to the backup
 option), when it already runs this build, or when a chosen backup is not a 1 MiB stock 048 image.
 
+The version check passes only on `DM32.00.01.048` at its own address, `0x030ADAA0`. To name another build
+in the refusal, the page also reads the sector holding L01's string (`0x030AB858`; at `0x030ADAA0` L01 has
+code pointers, so nothing readable) and looks through both sectors for any `DM32.xx.xx.nnn` string. The
+diagnostics record the string and where it was found. Before this, an L01 radio was refused as "an unknown
+version" ([issue 2](https://github.com/awkaplan/dm32uv-kraken/issues/2)).
+
 ## 2. Pieces
 
 | File | What |

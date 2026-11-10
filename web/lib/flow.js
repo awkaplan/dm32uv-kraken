@@ -23,8 +23,8 @@
 
 import { addr, equal, sha256 } from "./bytes.js";
 import {
-  APP, FLASH_SIZE, SECTOR, UNIT, VERSION_AT, BOOT_MAGIC, CheckError,
-  classify, krakenUpdate, quickChecks, stockUpdate, expectedFlash, versionOf,
+  APP, FLASH_SIZE, SECTOR, UNIT, VERSION_SPOTS, BOOT_MAGIC, CheckError,
+  classify, krakenUpdate, quickChecks, stockUpdate, expectedFlash, versionOf, findVersion, isFirmware, wrongVersionMessage,
 } from "./image.js";
 import { Link } from "./link.js";
 import { crc32 } from "./kr.js";
@@ -143,16 +143,20 @@ async function connect(session, env, ui, { askOff = true } = {}) {
   note(env, "reader", { version: reader.version, divisor: reader.divisor, baud, maxBaud: cableMaxBaud(usb), tries: reader.speedTries || [] });
   const head = new Uint8Array(FLASH_SIZE);
   await reader.read(head, 0, SECTOR);
-  const vsec = VERSION_AT & ~(SECTOR - 1);
-  await reader.read(head, vsec, SECTOR);
-  const checks = quickChecks(head.subarray(0, SECTOR), head.subarray(VERSION_AT), env.patch);
-  merge(env, "radio", { version: versionOf(head), bootHeader: equal(head.subarray(0, 4), BOOT_MAGIC) ? "ok" : "not the DM-32UV boot magic" });
+  // The sector of each known version spot (DM32.00.01.048's, and others' to name them in a refusal)
+  for (const s of new Set(VERSION_SPOTS.map((a) => a & ~(SECTOR - 1)))) await reader.read(head, s, SECTOR);
+  const checks = quickChecks(head, env.patch);
+  const found = findVersion(head);
+  merge(env, "radio", {
+    version: found.version,
+    versionAt: found.at >= 0 ? addr(found.at) : undefined,
+    bootHeader: equal(head.subarray(0, 4), BOOT_MAGIC) ? "ok" : "not the DM-32UV boot magic",
+  });
   for (const c of checks) ui.check(c.id, c.label, c.ok, c.ok ? undefined : c.detail);
   const bad = checks.find((c) => !c.ok);
   if (bad) {
     if (bad.id === "version") {
-      const v = versionOf(head);
-      throw new CheckError("version", `This radio has firmware ${v || "of an unknown version"}. Kraken needs ${env.patch.firmware}. Nothing was changed.`);
+      throw new CheckError("version", `${wrongVersionMessage(found.version, env.patch, "This radio")} Nothing was changed.`);
     }
     throw new CheckError(bad.id, "This doesn\u2019t look like a DM-32UV. Nothing was changed.");
   }
@@ -215,9 +219,9 @@ async function checkBackupFile(img, env, ui) {
   ui.check("file", "File is a 1 MB DM-32UV program-memory backup", ok);
   if (!ok) throw new CheckError("file", "That file isn\u2019t a DM-32UV backup from this page.");
   const v = versionOf(img);
-  const vok = v.startsWith(env.patch.firmware);
+  const vok = isFirmware(img, env.patch);
   ui.check("file-version", `Backup is of ${env.patch.firmware}`, vok, vok ? undefined : `The backup reports ${v || "no version"}.`);
-  if (!vok) throw new CheckError("file-version", `That backup has firmware ${v || "of an unknown version"}. It needs to be ${env.patch.firmware}.`);
+  if (!vok) throw new CheckError("file-version", wrongVersionMessage(v, env.patch, "That backup"));
 }
 
 // Flash FILE with the updater, then check it by sector CRCs. Loops on failure: the updater can always be

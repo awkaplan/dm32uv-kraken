@@ -49,6 +49,16 @@ function stockRadio() {
   return f;
 }
 
+// A radio on Baofeng's public DM32.01.L01.048 line, where it matters here: L01 holds code pointers at
+// 00.01.048's version spot (its bytes there, so nothing readable) and its own string at 0xab858
+const L01_AT = 0xab858;
+function l01Radio() {
+  const f = stockRadio();
+  f.set(Buffer.from("de7e0303de7e030382760303de7e0303de7e0303de7e0303", "hex"), VERSION_AT);
+  f.set(Buffer.from("DM32.01.L01.048\0" + "2022-06-27\0", "latin1"), L01_AT);
+  return f;
+}
+
 // The person: does what each prompt says, unless the test says otherwise
 function person(radio, { onAsk = {}, wrongUpdaterMode = false } = {}) {
   const seen = { asks: [], checks: {}, saved: null, done: null, statuses: [], bauds: [] };
@@ -250,15 +260,44 @@ await scenario("install: fast rates open but garble: falls back to 115200", asyn
   ok(seen.done?.id === "installed", "finished");
 });
 
-await scenario("install: wrong firmware line (DM32.01.L01.048) stops before the backup", async () => {
+await scenario("install: wrong firmware line (DM32.01.L01.048) stops before the backup and names it", async () => {
+  const radio = new MockRadio(l01Radio());
+  const { ui, seen } = person(radio);
+  const e = await expectError(install(envFor(radio), ui), "version");
+  ok(seen.checks.version?.ok === false && seen.checks.version.detail === "The radio reports DM32.01.L01.048.", `version check names what the radio reports (${seen.checks.version?.detail})`);
+  ok(/DM32\.01\.L01\.048, Baofeng.s public download.*different firmware line.*DM32\.00\.01\.048.*Nothing was changed/.test(e?.message), `the refusal says it is L01 (${e?.message})`);
+  ok(radio.dataFrames <= 3, `only the boot and version sectors were read (${radio.dataFrames})`);
+  ok(seen.saved === null && !radio.events.includes("erase"), "no backup prompt, nothing written");
+});
+
+await scenario("install: another build whose string is in a version sector is named", async () => {
   const before = stockRadio();
-  before.set(Buffer.from("DM32.01.L01.048"), VERSION_AT);
+  before.fill(0, VERSION_AT, VERSION_AT + 24);
+  before.set(Buffer.from("DM32.00.01.050\0", "latin1"), VERSION_AT + 0x140);
+  const radio = new MockRadio(before);
+  const { ui } = person(radio);
+  const e = await expectError(install(envFor(radio), ui), "version");
+  ok(/This radio has firmware DM32\.00\.01\.050\. Kraken needs DM32\.00\.01\.048\./.test(e?.message), `named (${e?.message})`);
+});
+
+await scenario("install: no version string anywhere it looks", async () => {
+  const before = stockRadio();
+  before.fill(0xff, VERSION_AT, VERSION_AT + 24);
+  const radio = new MockRadio(before);
+  const { ui, seen } = person(radio);
+  const e = await expectError(install(envFor(radio), ui), "version");
+  ok(seen.checks.version?.detail === "The radio reports no version string.", "check says no version string");
+  ok(/firmware of an unknown version/.test(e?.message), `refusal says unknown (${e?.message})`);
+});
+
+await scenario("install: the 00.01.048 string away from its own spot does not pass", async () => {
+  const before = stockRadio();
+  before.fill(0xff, VERSION_AT, VERSION_AT + 24);
+  before.set(Buffer.from("DM32.00.01.048\0", "latin1"), L01_AT);
   const radio = new MockRadio(before);
   const { ui, seen } = person(radio);
   await expectError(install(envFor(radio), ui), "version");
-  ok(seen.checks.version?.ok === false && /L01/.test(seen.checks.version.detail), "version check failed and names what the radio reports");
-  ok(radio.dataFrames <= 2, `only two sectors were read (${radio.dataFrames})`);
-  ok(seen.saved === null && !radio.events.includes("erase"), "no backup prompt, nothing written");
+  ok(seen.checks.version?.ok === false, "refused: only 0xadaa0 counts");
 });
 
 await scenario("install: a radio already on this Kraken build (known from CRCs, no backup read)", async () => {
@@ -266,7 +305,7 @@ await scenario("install: a radio already on this Kraken build (known from CRCs, 
   const { ui, seen } = person(radio);
   await install(envFor(radio), ui);
   ok(seen.done?.id === "already", "says it is already installed");
-  ok(radio.dataFrames <= 2 && !radio.events.includes("erase"), "nothing read beyond the checks, nothing written");
+  ok(radio.dataFrames <= 3 && !radio.events.includes("erase"), "nothing read beyond the checks, nothing written");
 });
 
 await scenario("install: modified firmware (an earlier Kraken build) is refused from CRCs", async () => {
@@ -276,7 +315,7 @@ await scenario("install: modified firmware (an earlier Kraken build) is refused 
   const { ui, seen } = person(radio);
   await expectError(install(envFor(radio), ui), "not-stock");
   ok(seen.checks.stock?.ok === false, "stock check failed");
-  ok(radio.dataFrames <= 2 && seen.saved === null && !radio.events.includes("erase"), "no backup read, nothing written");
+  ok(radio.dataFrames <= 3 && seen.saved === null && !radio.events.includes("erase"), "no backup read, nothing written");
 });
 
 await scenario("install: stock restored earlier with padding in its last block is still stock", async () => {
@@ -397,9 +436,7 @@ await scenario("diagnostics: Mac + Prolific over WebUSB, and a cable that dies m
 });
 
 await scenario("diagnostics: a refused radio (wrong firmware line) says why", async () => {
-  const before = stockRadio();
-  before.set(Buffer.from("DM32.01.L01.048"), VERSION_AT);
-  const radio = new MockRadio(before);
+  const radio = new MockRadio(l01Radio());
   const { ui } = person(radio);
   const diag = new Recorder();
   diag.flowStart("install");
@@ -408,9 +445,9 @@ await scenario("diagnostics: a refused radio (wrong firmware line) says why", as
   } catch (e) {
     diag.flowEnd("refused", e);
   }
-  ok(diag.facts.radio?.version === "DM32.01.L01.048", "the version the radio reports");
+  ok(diag.facts.radio?.version === "DM32.01.L01.048" && diag.facts.radio?.versionAt === "0x030ab858", "the version the radio reports, and where");
   const { by } = await diagFiles(diag);
-  ok(/install .*refused .*\[version\]/.test(by["summary.txt"]) && /Radio +firmware "DM32.01.L01.048"/.test(by["summary.txt"]), "summary says it was refused for the version");
+  ok(/install .*refused .*\[version\]/.test(by["summary.txt"]) && /Radio +firmware "DM32.01.L01.048" at 0x030ab858/.test(by["summary.txt"]), "summary says it was refused for the version");
   ok(firmwareInTrace(diag).length === 0, "no firmware in the trace");
 });
 
@@ -451,6 +488,15 @@ await scenario("from backup: a backup that is not stock is refused before the ra
   const radio = new MockRadio(stockRadio());
   const { ui } = person(radio);
   await expectError(installFromBackup(envFor(radio), ui, simulateUpdate(stockRadio(), UPDATE)), "file-stock");
+  ok(radio.readReplies === 0 && !radio.events.includes("erase"), "radio not read or written");
+});
+
+await scenario("from backup: a backup of an L01 radio is refused and named", async () => {
+  const radio = new MockRadio(stockRadio());
+  const { ui, seen } = person(radio);
+  const e = await expectError(installFromBackup(envFor(radio), ui, l01Radio()), "file-version");
+  ok(seen.checks["file-version"]?.detail === "The backup reports DM32.01.L01.048.", `check names it (${seen.checks["file-version"]?.detail})`);
+  ok(/^That backup has DM32\.01\.L01\.048, Baofeng/.test(e?.message), `refusal says it is L01 (${e?.message})`);
   ok(radio.readReplies === 0 && !radio.events.includes("erase"), "radio not read or written");
 });
 

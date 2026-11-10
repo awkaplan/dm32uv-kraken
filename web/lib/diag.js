@@ -314,7 +314,7 @@ export class Recorder {
       const tries = (f.reader.tries || []).map((x) => `${x.baud} ${x.result}`).join(", ");
       row("Reader", `v${f.reader.version}, ROM divisor ${f.reader.divisor}, ran at ${f.reader.baud ?? "?"} baud${tries ? ` (tried ${tries})` : ""}`);
     }
-    if (f.radio) row("Radio", `firmware "${f.radio.version}", ${f.radio.kind || "not classified"}${f.radio.differ ? `, ${f.radio.differ} sector(s) differ from stock` : ""}`);
+    if (f.radio) row("Radio", `firmware "${f.radio.version}"${f.radio.versionAt ? ` at ${f.radio.versionAt}` : ""},${f.radio.kind || "not classified"}${f.radio.differ ? `, ${f.radio.differ} sector(s) differ from stock` : ""}`);
     if (f.backupFile) row("Backup file", `${f.backupFile.size} B, ${f.backupFile.version || "no version"}, ${f.backupFile.kind || "?"}`);
     for (const a of f.flash || []) row("Install", `${a.result}${a.blocks ? `, ${a.acked}/${a.blocks} blocks` : ""}${a.code ? ` [${a.code}]` : ""}${a.message ? `: ${a.message}` : ""}`);
     if (f.verify) row("Verify", f.verify.bad.length ? `${f.verify.bad.length} sector(s) differ, first ${f.verify.bad[0]}` : "all sectors match");
