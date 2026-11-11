@@ -238,9 +238,14 @@ def check_mon(c, s, s2, img, stock, dwc):
     assert armed()
     feed(noise_halves(30))                         # listening to the channel noise first
     w32(c, M + O_HALVES, 0)
+    AL = s2["A"]                                    # F14b alert state (krk_aprs_alert.c): Alert on, nothing pending
+    m.wmem(c, AL, struct.pack("<I", 0x414C5254) + bytes(20))
     got, depth1 = feed(pcm["f1"])
     call = rb(RING + 2, 10).split(b"\0")[0]            # struct stn { u16 sec; char call[10]; char info[8]; }
     info = rb(RING + 12, 8).split(b"\0")[0]
+    m.report(rb(AL + 23)[0] == 1 and r32(c, AL + 12) == RING + 2 and r32(c, AL + 16) == RING + 12,
+             "F14b: the decoded frame reached krk_aprs_alert_frame from harvest, after stn_add (pending, pointing at the new ring[0])")
+    w32(c, AL, 0)
     m.report(got == len(pcm["f1"]) and ring_n() == ring_before + 1 and call == b"N0CALL" and info == b">DM-32U",
              f"frame 1 ({len(pcm['f1'])} halves, FM_ADDR_SW toggling): decoded into the ring, {ring_n()} station: {call!r} {info!r}")
     m.report(halves() == len(pcm["f1"]), f"  the monitor counted {halves()} halves")

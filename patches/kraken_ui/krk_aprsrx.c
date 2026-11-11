@@ -201,8 +201,10 @@ static int harvest(void)
         fresh = AFSK_LINES;
     R.shown_frames = fr;
     while (fresh--) {
-        if (krk_afsk_line((int)fresh, line) > (int)fresh)
+        if (krk_afsk_line((int)fresh, line) > (int)fresh) {
             stn_add(line);
+            krk_aprs_alert_frame(ring[0].call, ring[0].info);   /* F14b standby notice (krk_aprs_alert.c) */
+        }
     }
     return 1;
 }
@@ -461,24 +463,25 @@ const struct krk_screen krk_aprsrx_screen = {
     .tick_ms = 1,
 };
 
-/* The Monitor switch as a STOCK option level (krk_optrow.c, docs/stock-option-level.md): KRAKEN > RX Monitor > Off / On.
- * RAM only (policy P4): krk_mon_set() is the existing state machine entry, unchanged. */
+/* The Monitor switch as a STOCK option level (krk_optrow.c, docs/stock-option-level.md): APRS > RX Monitor > Off / On / Alert
+ * (Alert = On plus the standby notice, krk_aprs_alert.c). RAM only (policy P4): krk_mon_set() is the existing state machine entry, unchanged. */
 
 static int mon_get(void)
 {
-    return krk_mon_on() ? 1 : 0;
+    return krk_mon_on() ? 1 + krk_aprs_alert_on() : 0;
 }
 
 static void mon_set(int idx)
 {
+    krk_aprs_alert_set(idx == 2);
     if ((idx != 0) != (krk_mon_on() != 0))
         krk_mon_set(idx != 0);
 }
 
 static const struct krk_opt mon_opt = {
     .title = "RX Monitor",
-    .labels = krk_offon_labels,
-    .n = 2,
+    .labels = krk_mon_labels,
+    .n = 3,
     .get = mon_get,
     .set = mon_set,
 };

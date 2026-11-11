@@ -1,11 +1,11 @@
 # F14 APRS RX Monitor: analog APRS receive at standby (2026-11-02)
 
 Status: built, QEMU-verified (47 in-target checks in `tests/mon_checks.py` plus a booted run), **not run on a radio**.
-Default OFF, RAM only (policy P4). Switch: **KRAKEN > RX Monitor > Off / On**, a genuine stock option level (radio marks, `docs/stock-option-level.md`; since 2026-11-02 the `#` key of the APRS RX stations screen is gone). The stations screen shows `RX Monitor on h123` / `RX Monitor off` on row 9 as a status line (no key hint).
+Default OFF, RAM only (policy P4). Switch: **APRS > RX Monitor > Off / On / Alert** (Alert: section 5), a genuine stock option level (radio marks, `docs/stock-option-level.md`; since 2026-11-02 the `#` key of the APRS RX stations screen is gone). The stations screen shows `RX Monitor on h123` / `RX Monitor off` on row 9 as a status line (no key hint).
 
 What it does: with the Monitor on, the AFSK/AX.25 decoder of the APRS RX screen (`krk_aprsrx.c`) keeps running while no screen
 is open, on analog channels, and fills the same 8-station ring. Opening the screen shows what arrived (title "APRS MON n
-stations"). MVP surfacing only: no standby-screen drawing, no sound, **no transmit path of any kind**.
+stations"). With `Alert` a popup at standby shows each packet (F14b, section 5). No sound, **no transmit path of any kind**.
 
 ## 1. Feasibility study (the gates)
 
@@ -202,3 +202,74 @@ while the squelch is closed, the first packet after a quiet spell may be lost on
 7. **PTT**: voice PTT on an analog channel with the Monitor armed: normal modulation, no stuck audio switch afterwards.
 8. **Burst Voice / Parrot / APRS RX screens** with the Monitor on: unchanged behaviour (they own the path while open), Monitor resumes on Back.
 9. **Reboot**: switch the radio off and on with the Monitor on: it comes up Off.
+
+## 5. F14b Alert: a popup at standby per decoded packet (issue #5, 2026-11-11)
+
+Status: built, QEMU-verified (host test `tests/test_aprs_alert.py`, halted-machine and booted checks in `tests/alert_checks.py`,
+one check in `tests/mon_checks.py`), **not run on a radio**. Addresses for DM32.00.01.048.
+
+**Setting.** The RX Monitor option level has a third value: `Off` / `On` / `Alert` (Alert = On plus the popup). `mon_set`
+(krk_aprsrx.c) calls `krk_aprs_alert_set(idx == 2)` and then the unchanged `krk_mon_set`; `mon_get` reads 0, 1 or 2. RAM only
+(magic word `ALRT`), off at power-on. No settings record, no new menu row.
+
+**Data path.** `harvest()` calls `krk_aprs_alert_frame(ring[0].call, ring[0].info)` right after `stn_add`, so the popup shows
+exactly what the APRS RX list's top row shows (call-SSID cut at 9, the first 7 text characters, unprintables as `.`). It only
+stores the two pointers and the tick count and marks the notice pending; it does nothing while a Kraken screen runs (the APRS RX
+screen decodes in task menu; the owner is looking at the list). `krk_aprs_alert_tick()` runs on every pass of the background
+loop (`krk_hook_bg_tick`, right after `krk_mon_tick`), in the same task as the monitor's harvest, so the pending state and the
+ring entry never change under it.
+
+**Why drawing from the background task is safe.** The popup is the stock box (`krk_popup_draw`: `display_draw_dialog_panel`
+0x03019be8, the icon bitmap 0x03039034, centred text 0x03018b5c; each takes the LCD semaphore 0x39344 itself). The tick draws only when:
+
+| Gate | Read | Why |
+|---|---|---|
+| standby on screen | screen-mode byte 0x320af is 0 or 0x5b | as the standby tags (docs/standby-tags.md) |
+| no key held | stock poll's confirmed key 0x392c4 == 0 | a key being handled is about to change the screen; also keeps our event post out of a pass that posted a key event |
+| not keyed, PTT up | 0x3fdc8 bit 3; `ptt_pin_down` 0x03012f48 | no popup during TX or a PTT press; every Kraken send keys |
+| task menu idle | keymsgq OS_Q (address from the literal 0x030131d8, 0x38d70): `PendList.NbrEntries` (u16 at +0x10) != 0 and `MsgQ.NbrEntries` (u16 at +0x2a) == 0 | task menu draws every stock screen and runs every Kraken screen. Pending on an empty queue, it is drawing nothing. The background task (priority 30) outranks it (31), so task menu cannot start a redraw until the popup is complete |
+
+The OS_Q layout is uC/OS-III with the debug fields on (Type 'QUEU', NamePtr, PendList {Head, Tail, NbrEntries}, DbgPrev/Next/Name,
+MsgQ {InPtr, OutPtr, NbrEntriesSize, NbrEntries, ...}); read in a booted QEMU run at standby: `+0x10` = 1 (task menu pending),
+`+0x28` = 5 (queue size), `+0x2a` = 0. A Kraken screen blocks task menu in its runner (not pending: no popup), so no separate
+screen-owner gate is needed in the tick. The remaining interleave is the maintenance task (priority 38) drawing the clock or the
+standby tags at the same moment, which touch other rows.
+
+**Clearing.** After 500 ticks (5 s), or on the first pass after Back is released (Back seen at 0x392c4 = 0x06 while the popup is up),
+the tick posts UI event 100 with `write_field_and_mbox_post(1, 100)` @0x03013178 under the same gates. That is the event stock posts
+at the end of every call and TX and from the Menu Exit timer (docs/menu-exit-timer.md); at standby task menu answers it with a full
+standby redraw (`dialog_show_number_or_alt` 0x0303b394 -> `standby_screen_refresh_with_statusbar` -> rows). Booted QEMU: the box
+disappears, the mode byte stays 0, the menu history 0x320ac is unchanged, and the only pixels that differ from the frame before the
+popup are the RSSI bar. Because all posted events share one byte (0x38e29), the post is made only when the queue is empty and no key
+is down, so it cannot overwrite a queued key event. If the screen leaves standby while the popup is up (Menu, a call), stock's
+redraw replaces it; the tick then posts one extra event 100 when standby is back and quiet (a redundant standby redraw).
+
+**Rate limit.** Not before 50 ticks after the frame (the carrier's tail, stock's end-of-receive redraw); at most one popup per
+800 ticks (the newest pending station wins); dropped if not shown within 1000 ticks of the frame (a menu was open); the same
+callsign (djb2 hash of call-SSID, 16 bits) as the last popup within 30000 ticks gets none. Only the last popup's station is
+remembered (two stations alternating can each pop once per 8 s). The times are OS ticks: under stock power save the tick runs up to
+~2x fast (docs/fm-send-ram-tx.md section 6), which at worst halves them.
+
+**Memory.** State `A`, 24 bytes in `.bss.aprs` (claim `kraken_aprs_state`); nothing in kraken_ui2's plain `.bss`. Code in
+kraken_ui2: 468 bytes in all (048 link map, `.text` 0x8afc -> 0x8cd0): `krk_aprs_alert.c` (`-Os`) about 410 with its labels and
+strings, `krk_aprsrx.c` about +56 (getter, setter, the harvest call), `krk_periodic.c` +4. No new splice: the existing `bg_tick_hook` (0x03013f48) carries it.
+New stock address: RAM 0x392c4 (the confirmed key), translated identically for DM32.01.L01.048 and DM32.01.01.049 by
+`tools/gen_fw_maps.py` ("ram: referenced by stock code"). All other addresses were already in the maps.
+
+**Receive only.** No PTT post, no FD6818 or modem write; the halted-machine and host checks fail on any PTT flag post.
+
+**Not done (follow-ups).** Distance and bearing for uncompressed positions (needs a position parser and integer distance/bearing code;
+none exists in the blobs, and it did not fit). Backlight on for the popup. A per-station history of more than one entry.
+
+**Hardware checks (two radios, after the merge).** Use a second radio to send the analog APRS beacon (Upload Beacon) on a simplex
+analog channel; the receiving radio has RX Monitor = Alert and sits at standby.
+1. Popup at standby: callsign-SSID and the first 7 text characters, about 0.5 s after the packet ends; gone after about 5 s with
+   the standby screen intact (no leftovers in the VFO rows).
+2. Back closes it at once; the next Back / Menu / arrow keys work normally (no lost key, no channel change by the popup).
+3. PTT while the popup is up transmits normally; after TX standby is clean.
+4. A second beacon within 8 s: no second popup; the same station again within 5 min: none; another station: one.
+5. In a menu when the packet arrives: no popup over the menu; back at standby within 10 s: the popup appears.
+6. `On` (not Alert): no popup, the station is in APRS RX.
+7. Power save: unplug the cable, wait until the radio idles, then beacon from the other radio. Expect the monitor itself may not
+   decode there (FM RX clocks, docs/fm-send-ram-tx.md section 6, not fixed for receive); note whether the popup appears and how long it stays.
+8. Dual watch with one analog side: popup intact over the dual-watch flips.

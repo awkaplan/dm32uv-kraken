@@ -107,9 +107,9 @@ def unit_checks(c, s, s2, dwc):
              "RX Monitor row: label 'RX Monitor', no enter/tick (a setting, not a screen), opt = mon_opt, flags 0")
     o = struct.unpack("<IIBxxxII", read_mem(c, s2["mon_opt"], 20))
     m.report(read_mem(c, s2["mon_opt"] + 28, 8) == bytes(8), "mon_opt: no title_fn, no after hook (the new optional fields stay 0)")
-    labs = struct.unpack("<II", read_mem(c, o[1], 8))
-    m.report(cstr(c, o[0]) == b"RX Monitor" and o[2] == 2 and o[3] == mon_get and o[4] == mon_set and [cstr(c, p_) for p_ in labs] == [b"Off", b"On"],
-             f"mon_opt: title 'RX Monitor', 2 options {[cstr(c, p_) for p_ in labs]}, getter mon_get, setter mon_set")
+    labs = struct.unpack("<III", read_mem(c, o[1], 12))
+    m.report(cstr(c, o[0]) == b"RX Monitor" and o[2] == 3 and o[3] == mon_get and o[4] == mon_set and [cstr(c, p_) for p_ in labs] == [b"Off", b"On", b"Alert"],
+             f"mon_opt: title 'RX Monitor', 3 options {[cstr(c, p_) for p_ in labs]}, getter mon_get, setter mon_set")
 
     m.wmem(c, ROW, bytes([row_mon]))
     open_category(c, 6)                 # another category (Record, which DM32.01.L01.048 routes to the same default arm)
@@ -135,7 +135,7 @@ def unit_checks(c, s, s2, dwc):
     cat = s["krk_category_entry"]
     fk = {mon_set: rec("set"), STOCK_MARKS: rec("marks"), STOCK_OK_POPUP: rec("popup"), STOCK_SETMODE: rec("mode"), cat: rec("restore"),
           s["krk_aprs_render"]: rec("restore")}
-    for cursor, want in ((1, 1), (0, 0), (5, 0)):
+    for cursor, want in ((1, 1), (0, 0), (2, 2), (5, 0)):
         calls.clear()
         calls.clear()
         m.wmem(c, CURSOR, bytes([cursor]))
@@ -779,9 +779,9 @@ def boot_checks(patched, s, s2):
         frames["ours"] = b.last_frame()
         cells = CELLS(b)
         ptr = r_u32(b.mem(CELL_PTR, 4))
-        labs = [b.mem(r_u32(b.mem(ptr + 4 * i, 4)), 4).split(b"\0")[0] for i in range(2)] if ok else []
-        rep(ok and cells["count"] == 2 and cells["sub"] == 2 and cells["cur"] == 0 and cells["dot"] == 0 and cells["slot"] == 1 and labs == [b"Off", b"On"],
-            f"RX Monitor row: the stock option level is open (radio-mark mode), 2 options {labs}, cursor and dot on Off {cells}")
+        labs = [b.mem(r_u32(b.mem(ptr + 4 * i, 4)), 6).split(b"\0")[0] for i in range(3)] if ok else []
+        rep(ok and cells["count"] == 3 and cells["sub"] == 2 and cells["cur"] == 0 and cells["dot"] == 0 and cells["slot"] == 1 and labs == [b"Off", b"On", b"Alert"],
+            f"RX Monitor row: the stock option level is open (radio-mark mode), 3 options {labs}, cursor and dot on Off {cells}")
         rep(not mon_on(b), "opening the level does not change the Monitor (Off)")
         hist = b.mem(HIST, 4)
         rep(hist[3] == 0x15 and hist[0] == hist[1] == 3, f"menu history: one level deeper (depth {hist[0]}, mode code {hist[3]:#x}, as the stock option level 0x15)")

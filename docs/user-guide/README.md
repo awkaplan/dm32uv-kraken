@@ -41,7 +41,7 @@ Rows marked *digital* appear only on a digital channel.
 | | Upload Beacon | Send one analog APRS beacon now | [APRS](aprs.md) |
 | | Callsign | Your callsign and SSID for APRS | [APRS](aprs.md) |
 | | APRS RX | List of analog APRS stations heard | [APRS](aprs.md) |
-| | RX Monitor | Decode APRS in the background at standby | [APRS](aprs.md) |
+| | RX Monitor | Decode APRS in the background at standby, with an optional popup per packet | [APRS](aprs.md) |
 | **Call Log** | Last Heard | Recent DMR stations heard | [Receive tools](receive-tools.md) |
 | **GNSS** | GPS Grid | Maidenhead locator from GPS | [Receive tools](receive-tools.md) |
 | **Settings > Radio Settings** | TX Power Trim | Finer transmit power steps | [Power, squelch, range](radio-settings.md) |
@@ -80,7 +80,7 @@ radio transmit on their own. **White** tags (or your menu colour) are receive-si
 | `BN` | red | Analog APRS beacon | the automatic beacon is armed (APRS On, an interval, a callsign) |
 | `SA` | red | Satellites | tracking is running |
 | `SC` | white | Scrambler | the scrambler is applied (digital channel with a key) |
-| `MN` | white | RX Monitor | RX Monitor is On |
+| `MN` | white | RX Monitor | RX Monitor is On or Alert |
 | `SQ` | white | Squelch Mode | Normal or Tight is set |
 | `PR` | white | Parrot | Parrot is On (it records calls you hear) |
 

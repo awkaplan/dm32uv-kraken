@@ -180,6 +180,12 @@ void krk_mon_yield(void);
 void krk_mon_set(int on);
 int krk_mon_on(void);
 int krk_aprs_tx_busy(void);
+/* F14b APRS RX alert (krk_aprs_alert.c): RX Monitor "Alert" shows a stock popup at standby for a decoded packet. */
+void krk_aprs_alert_frame(const char *call, const char *info);   /* after every decoded frame: the newest ring entry (krk_aprsrx.c harvest) */
+void krk_aprs_alert_tick(void);                 /* bg-loop hook body (krk_periodic.c krk_hook_bg_tick) */
+void krk_aprs_alert_set(int on);
+int krk_aprs_alert_on(void);                    /* Alert set and the Monitor on */
+extern const char *const krk_mon_labels[3];     /* "Off", "On", "Alert" */
 
 /* Standby tags (krk_tags.c, docs/standby-tags.md): each feature's "on and in effect on this channel
  * now" read. All in blob 2 except krk_sat_active (blob 3, imported). */

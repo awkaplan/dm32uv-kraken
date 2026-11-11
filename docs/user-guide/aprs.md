@@ -244,14 +244,15 @@ How it works: [../rx-audio-fm-mode.md](../rx-audio-fm-mode.md)
 ## RX Monitor
 
 Keeps the APRS RX decoder running at standby, so stations heard while you are not looking are in the list when
-you open **APRS RX**. The speaker keeps playing.
+you open **APRS RX**. Set to `Alert`, it also shows a short popup at standby for each packet it decodes. The
+speaker keeps playing.
 
-**Status:** checked in the emulator only; not yet tested on a radio.
+**Status:** works on hardware, including Alert (DM32.00.01.048, 2026-11-11: a second radio's beacons decoded at standby, the notice shown and cleared). Not yet tested with real APRS traffic or with dual watch.
 **Where:** **Menu > APRS > RX Monitor** (analog channels only)
 
 ### Using it
-1. Open **Menu > APRS > RX Monitor**. Choose `On` and press `OK`. The radio shows `Setting is OK`.
-2. Return to standby on an analog channel. Packets are decoded in the background. Nothing shows at standby.
+1. Open **Menu > APRS > RX Monitor**. Choose `On` or `Alert` and press `OK`. The radio shows `Setting is OK`.
+2. Return to standby on an analog channel. Packets are decoded in the background.
 3. Open **Menu > APRS > APRS RX** to see the list. The title reads `APRS MON`.
 
 The monitor pauses by itself, and resumes a moment later, while:
@@ -262,15 +263,41 @@ The monitor pauses by itself, and resumes a moment later, while:
 
 With dual watch on, it decodes whichever side is being received, if that side is analog.
 
+### The Alert popup
+With `Alert`, about half a second after a packet is decoded the radio shows a grey popup over the standby screen:
+
+| Line | Shows |
+|---|---|
+| 1 | the station's callsign and SSID, for example `N0CALL-9` |
+| 2 | the first 7 characters of the packet text, as in the APRS RX list (for example `!4140.5`, the start of a position) |
+
+The popup closes by itself after about 5 seconds, or when you press and release `Back`. Any other key works as
+usual: `PTT` transmits, `Menu` opens the menu, the arrow keys change the channel. The popup never takes a key
+press away from the radio.
+
+It does not show:
+- while a menu, a stock popup or any Kraken screen is open, while a call is on screen, while you transmit or
+  hold `PTT`, or while you hold any key. A packet that arrives then is shown when you are back at standby, if
+  that is within about 10 seconds; otherwise it is only in the APRS RX list;
+- more than once every 8 seconds. When several stations are heard in that time, the newest one is shown;
+- for the same station again within 5 minutes of its last popup (for example digipeated copies of one packet,
+  or a station that beacons every minute). A station with another SSID counts as another station.
+
 ### Settings
 
 | Setting | Values | Default | Kept at power-off? |
 |---|---|---|---|
-| RX Monitor | `Off`, `On` | `Off` | No. It returns to `Off` at power-off. |
+| RX Monitor | `Off`, `On`, `Alert` (`On` plus the popup) | `Off` | No. It returns to `Off` at power-off. |
 
 ### Limits
 - Receive only. It never transmits, digipeats or igates.
-- No alert or standby display when a packet arrives; open APRS RX to check.
+- The popup shows the start of the raw packet text only. It does not decode positions or show distance and
+  bearing.
+- No sound, and the popup does not turn the display backlight on.
+- The 5-second, 8-second, 10-second and 5-minute times are measured with the radio's own clock tick. When the
+  radio is in power save at standby that tick can run fast, so the times may be up to about half as long.
+- RX Monitor under power save (no programming cable connected, radio idle at standby) is untested on a radio:
+  the receive audio may stop reaching the decoder there (see the developer note).
 
 How it works: [../aprs-rx-monitor.md](../aprs-rx-monitor.md)
 

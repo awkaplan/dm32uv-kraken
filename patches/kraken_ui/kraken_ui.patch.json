@@ -114,6 +114,7 @@
     "krk_aprs_text.c",
     "krk_aprs_menu.c",
     "krk_aprsrx.c",
+    "krk_aprs_alert.c",
     "krk_afsk.c",
     "krk_ax25.c",
     "krk_periodic.c",

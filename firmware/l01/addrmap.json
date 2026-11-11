@@ -372,6 +372,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/alert_checks.py",
     "tests/aprs_beacon_e2e.py"
    ]
   },
@@ -500,6 +501,13 @@
     "tests/kraken_ui_test.py",
     "tests/mon_checks.py",
     "tests/optrow_checks.py"
+   ]
+  },
+  "0x000392c4": {
+   "to": "0x000392c4",
+   "how": "ram: referenced by stock code",
+   "in": [
+    "tests/alert_checks.py"
    ]
   },
   "0x0003a4f0": {
@@ -959,6 +967,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/alert_checks.py",
     "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py",
     "tests/f10_checks.py",
@@ -1090,6 +1099,7 @@
    "how": "OSFlagPost_wrapper_set (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/alert_checks.py",
     "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/parrot_qemu_test.py"
@@ -1273,6 +1283,7 @@
    "how": "bitwise_not_of_boolean_result (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/alert_checks.py",
     "tests/f10_checks.py",
     "tests/mon_checks.py"
    ]
@@ -1281,6 +1292,7 @@
    "to": "0x03012770",
    "how": "write_field_and_mbox_post (moved)",
    "in": [
+    "tests/alert_checks.py",
     "tests/kraken_ui_test.py"
    ]
   },
@@ -1289,7 +1301,8 @@
    "how": "flash literal word read by a matched function",
    "in": [
     "patches/kraken_ui/kraken_ui.patch.json",
-    "patches/kraken_ui/krk_stock.h"
+    "patches/kraken_ui/krk_stock.h",
+    "tests/alert_checks.py"
    ]
   },
   "0x03013660": {
@@ -2645,6 +2658,7 @@
    "how": "ui_tick_prescaler_post (same)",
    "in": [
     "patches/kraken_ui/krk_periodic.c",
+    "tests/alert_checks.py",
     "tests/mon_checks.py"
    ]
   },

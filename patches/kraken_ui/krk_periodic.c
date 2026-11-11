@@ -60,5 +60,6 @@ void krk_hook_bg_tick(void)
 {
     stock_bg_prescaler();
     krk_mon_tick();
+    krk_aprs_alert_tick();                      /* F14b: the standby notice (krk_aprs_alert.c) */
     krk_vox_tick();
 }

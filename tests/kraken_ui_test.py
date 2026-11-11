@@ -30,6 +30,7 @@ from claims import claim
 from gdb_rsp import read_mem
 import dw_checks as dwc
 import mon_checks
+import alert_checks
 import optrow_checks
 import convert_checks
 import aprs_text_checks
@@ -740,6 +741,7 @@ def booted_runs(s, s2):
         import aprs_beacon_e2e as bcn
         print("== APRS automatic beacon, end to end (own QEMUs)")
         bcn.run(PATCHED, m.report)
+        alert_checks.boot_checks(PATCHED, s, s2)    # F14b APRS RX alert: the setting, the popup at standby, stock's redraw (three QEMUs)
     except Exception:
         print("FAIL  booted runs raised:\n" + traceback.format_exc())
 
@@ -1159,6 +1161,7 @@ def main():
         convert_checks.unit_checks(c, s, s2, dwc)   # 2026-11-02: Squelch Mode / TX Power Trim / Parrot option rows, one-shot and screen rows, trim state
         print("== F14 RX Monitor")
         mon_checks.check_mon(c, s, s2, img, STOCK_IMG.read_bytes(), dwc)
+        alert_checks.unit_checks(c, s, s2)          # F14b APRS RX alert (issue #5)
         check_f12_review(c, s, s2, img)              # review fixes 2026-10-29
         check_sweeps(c, s, s2, img)                  # one-action sweeps: F3 key 2, F11 key 6, F12 P1
         check_f10(c, img, s2, syms(ELF3))
