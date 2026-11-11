@@ -196,6 +196,12 @@
      "label": "RX Monitor",
      "screen": "&krk_monitor_row",
      "label_at": "0x030e76e0"
+    },
+    {
+     "key": "text",
+     "label": "Beacon Text",
+     "screen": "&krk_aprs_text_screen",
+     "label_at": "0x030e77a0"
     }
    ],
    "jump_tables": [

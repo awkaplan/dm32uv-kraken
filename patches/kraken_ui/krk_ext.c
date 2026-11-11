@@ -11,6 +11,7 @@ extern const struct krk_screen krk_monitor_row;     /* RX Monitor on/off, a stoc
 extern const struct krk_screen krk_callsign_screen;   /* F-APRS callsign editor, blob kraken_ui3 (manifest defsym) */
 extern const struct krk_screen krk_aprs_path_screen;
 extern const struct krk_screen krk_aprs_upload_screen;
+extern const struct krk_screen krk_aprs_text_screen;    /* F8a Beacon Text editor (krk_aprs_text.c) */
 extern const struct krk_screen krk_scramble_on_screen;  /* F12 Scrambler Off/On: a stock option level */
 extern const struct krk_screen krk_scrkey_row;          /* Scrambler Key: a NUMERIC entry row */
 extern const struct krk_screen krk_scrfmt_row;          /* Scrambler Fmt: stays a flat KRAKEN row */

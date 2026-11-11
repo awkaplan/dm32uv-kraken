@@ -165,7 +165,7 @@ const struct krk_screen *krk_row_screen(unsigned row)
  * string_array[index_list[row]]; the history push copies the list by value to 0x3e664). */
 #define APRS_DESC        ((const volatile u8 *)0x030ba924)
 #define APRS_STOCK_ROWS  KRK_APRS_FIRST
-static const u8 aprs_analog_items[] = {0, KRK_APRS_ITEM_PATH, 4, KRK_APRS_ITEM_UPLOAD, KRK_APRS_ITEM_CALL, KRK_APRS_ITEM_RX, KRK_APRS_ITEM_MON};
+static const u8 aprs_analog_items[] = {0, KRK_APRS_ITEM_PATH, 4, KRK_APRS_ITEM_UPLOAD, KRK_APRS_ITEM_CALL, KRK_APRS_ITEM_RX, KRK_APRS_ITEM_MON, KRK_APRS_ITEM_TEXT};
 
 void krk_aprs_render(void);
 static const struct krk_host aprs_host = {KRK_APRS_TABLE, krk_aprs_render, KRK_APRS_FIRST, KRK_APRS_MAX, 0, 1};

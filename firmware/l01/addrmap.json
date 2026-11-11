@@ -866,7 +866,8 @@
    "to": "0x0003ebec",
    "how": "ram: referenced by stock code",
    "in": [
-    "patches/kraken_ui/krk_aprs_tx.c"
+    "patches/kraken_ui/krk_aprs_tx.c",
+    "tests/aprs_text_checks.py"
    ]
   },
   "0x0003ecfe": {
@@ -924,6 +925,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py",
     "tests/f10_checks.py",
     "tests/f13_checks.py",
     "tests/mon_checks.py"
@@ -1154,6 +1156,7 @@
    "how": "vfo_display_state_nibble_bits_check (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py",
     "tests/dw_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py",
@@ -1171,14 +1174,16 @@
    "to": "0x0300f4f8",
    "how": "flash_block_id_resolve_locked (same)",
    "in": [
-    "patches/kraken_ui/krk_stock.h"
+    "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py"
    ]
   },
   "0x0300f71c": {
    "to": "0x0300f628",
    "how": "flash_block_read (same)",
    "in": [
-    "patches/kraken_ui/krk_stock.h"
+    "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py"
    ]
   },
   "0x0300f878": {
@@ -1186,6 +1191,7 @@
    "how": "flash_block_write (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py",
     "tests/bvnest_e2e.py"
    ]
   },
@@ -1398,6 +1404,7 @@
    "how": "tx_is_inhibited (moved)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_text_checks.py",
     "tests/f13_checks.py",
     "tests/mon_checks.py",
     "tests/parrot_qemu_test.py"
@@ -2609,7 +2616,8 @@
    "how": "event_queue_reset (same)",
    "in": [
     "patches/kraken_ui/krk_aprs_tx.c",
-    "tests/aprs_beacon_e2e.py"
+    "tests/aprs_beacon_e2e.py",
+    "tests/aprs_text_checks.py"
    ]
   },
   "0x03055850": {

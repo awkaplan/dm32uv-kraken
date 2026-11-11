@@ -175,3 +175,25 @@ Not usable: 0xFF0-0xFFE (only 15 bytes, and 0xFFF is the sector id tag; any writ
 - Is 0xFE0 or 0xFD0 preferable if a future vendor CPS version starts writing a field at the very end? (Unknowable; both 00/FF on the factory and OEM images.)
 - Is there extra stack headroom concern calling `flash_block_write` (~0xB0 B frame + callees) from the patch's own task? The menu task is the safe place.
 - Which task owns `p_ucos_mutex_0003944c` contention while recording/audio runs? Not analysed; stock settings saves have the same exposure.
+
+## 6. Records of ours in block 4
+
+Records grow downwards from 0xFE0 inside the free span 0xF10-0xFEF (3.3). Each is claimed in `allocations.json`
+(`datachip_records`), carries a magic and a checksum, and is written through `flash_block_write(4, off, rec, len)` only on the
+user's OK and only when its bytes change. All-00 (factory reset) and all-FF (vendor CPS write) fail the check and read as
+"not set".
+
+| Offsets | Size | Name | Owner | Layout |
+|---|---|---|---|---|
+| 0xFE0-0xFEF | 16 | `aprs_callsign` | `krk_callsign.c` | "CALL", callsign, SSID, version, APRS path, CW ID byte, checksum (seed 0x5a) |
+| 0xFD0-0xFDF | 16 | `freq_unlock` | `krk_band.c` | [freq-unlock.md](freq-unlock.md) |
+| 0xFC0-0xFCF | 16 | `burst_voice_cfg` | `krk_bvcfg.c` | [burst-voice.md](burst-voice.md) 13 |
+| 0xF90-0xFBF | 48 | `aprs_beacon_text` | `krk_aprs_trec.c` (F8a, 2026-11-11) | below |
+
+`aprs_beacon_text` (the analog APRS beacon comment, [aprs-submenu.md](aprs-submenu.md) 7.6): bytes 0-3 magic `BXT1`
+(0x31545842 little-endian), bytes 4-46 the text (at most 43 ASCII characters from `A-Z a-z 0-9 space . - / , : + ( )`,
+zero-padded), byte 47 the checksum: rotate-left-by-one then xor over bytes 0-46, seed 0x69 (the 16-byte records' rule over 47
+bytes). An empty text and a record that fails the check both mean the default comment. 48 bytes at 0xF90 stay inside one 256-byte
+read unit of `flash_block_read` (0xF00-0xFFF) and one 128-byte page (0xF80-0xFFF) of the write. Read on every beacon (no RAM copy):
+`flash_block_read` takes the same mutex as the write, and a torn read fails the checksum and sends the default. 0xF10-0xF8F
+stays free.

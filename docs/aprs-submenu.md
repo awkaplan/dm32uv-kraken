@@ -286,3 +286,35 @@ A row appended to the APRS list (items 8..11) may be an **option level** (`struc
 (cells only, returns) or runs the one-shot through `krk_run_screen`; OK at that level is routed by the splice at `0x0304d81c` (stock `cmpnei r3,7; bt 0x0304d846` in the
 category-9 OK handler `0x0304d6c0`) to `krk_aprs_opt_ok`. Upload Beacon (item 9) is now a one-shot with popups (no custom screen, two-press confirm kept). Details, evidence and the cookbook:
 `docs/stock-option-level.md`.
+
+### 7.6 Beacon Text (F8a, 2026-11-11, GitHub issue #3)
+
+Status: QEMU-verified (halted-machine checks and host tests); not yet run on a radio.
+
+Item 13 of the APRS list (analog channels only), a live screen (`krk_aprs_text_screen`, `krk_aprs_text.c`, blob ui2), appended
+after RX Monitor in `menu_hosts.json` and in `aprs_analog_items[]`. No new hook and no new stock address: the beacon's
+`build_info` and the no-fix status branch in `krk_aprs_tx.c` call `krk_aprs_text_cat()` where they appended `KRK_APRS_COMMENT`.
+
+- **Packets.** Position `!DDMM.mmN/DDDMM.mmW[` + text; no fix `>` + text + ` no GPS fix`. With no text, the old default
+  `DM-32UV Kraken` in both. 43 characters is the APRS limit for a position comment; the status is then 55 characters, under
+  the 62 a status may hold.
+- **Characters.** What the keypad types: A-Z, a-z, 0-9, space, `. - / , : + ( )`. None is `|` or `~` (APRS forbids them in a
+  comment) and none has five 1 bits in a row, so the comment adds no HDLC stuffing: a 43-character position frame is 1361 tone
+  bits with the 72-flag preamble, under the sender's 1500-bit cap (`tests/test_aprs_text.py`).
+- **Keys.** The callsign editor's typing, moved on 2026-11-11 into `krk_tapedit.c` (blob ui3, `krk_tap_key`) and shared:
+  multi-tap 2-9 (letters, then the digit), Up/Down step the last character through A-Z 0-9, `*` deletes, 1 s without a repeat
+  accepts. The callsign keeps keys 0 and 1 as digits; the text gets `0` = space, 0 and `1` = `. - / , : + ( )` 1, and `#` toggles
+  the letter case. The callsign editor's behaviour is unchanged (its host tests, and a differential run of the old and new code
+  over 400 random 400-key scripts with identical screens and records).
+- **Record.** 48 bytes at block 4 0xF90 (`krk_aprs_trec.c`, blob ui3; [settings-field.md](settings-field.md) 6), read on every
+  beacon and when the editor opens; written on OK only when it differs, then read back to verify (`Saved` / `Save FAILED`).
+  A blank (00 / FF) or damaged record reads as an empty text.
+- **RAM.** None of its own. Both editors lay their state over `krk_edit_ram` (blob ui3 .bss, 48 bytes, the union in
+  `krk_tapedit.h`): the runner runs one screen at a time and each editor sets its state up in `enter()`. The text is edited in
+  place with the record's layout (text at offset 4), so the record is read straight into it and written from it.
+- **Size.** Blob ui2 +424 bytes of flash, blob ui3 +196 (with `#pragma GCC optimize ("Os")` added to `krk_callsign.c`, whose
+  three struct copies became word loops: at -Os they compile to `memcpy`, which no blob has), ui3 .bss +12.
+- **Tests.** `tests/test_aprs_text.py` (host: typing, the record, `krk_aprs_tx.c`'s own `build_frame` on the record, the frame
+  size); `tests/aprs_text_checks.py` from `kraken_ui_test.py` (the image: the row, a typed save as one 48-byte write to 0xF90,
+  the status and position packets built by `krk_aprs_tx_send` from the record, stopped before keying);
+  `optrow_checks.check_aprs_path` (item 13 opens the screen through the runner).

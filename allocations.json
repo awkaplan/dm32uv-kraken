@@ -127,7 +127,7 @@
   ],
   "datachip_records": {
     "_comment": [
-      "16-byte records of ours inside stock data-chip logical block 4 (Radio Settings), written through stock flash_block_write.",
+      "Records of ours (16 bytes; the beacon text 48) inside stock data-chip logical block 4 (Radio Settings), written through stock flash_block_write.",
       "Not flash or SRAM claims: the builder and tools/gen_claims.py read only 'allocations'. The span 0xF10-0xFEF of block 4 is reached",
       "by no stock code, is 00 in the factory capture and in both CPS snapshots of this radio (2026-09-26) and FF in a vendor CPS write",
       "(docs/settings-field.md 3.3); records go downwards from 0xFE0. tests/test_bvcfg.py checks the Burst Voice record against this list."
@@ -156,6 +156,14 @@
         "end_exclusive": "0xFD0",
         "owner": "krk_bvcfg.c (blob ui2): Burst Voice Mode, Key-up Lead, Relay Capture (docs/burst-voice.md 13); since 2026-11-06",
         "source": "patches/kraken_ui/krk_bvcfg.c"
+      },
+      {
+        "name": "aprs_beacon_text",
+        "block": 4,
+        "start": "0xF90",
+        "end_exclusive": "0xFC0",
+        "owner": "krk_aprs_trec.c (blob ui3; editor krk_aprs_text.c in ui2): F8a analog APRS beacon text, 48 bytes: magic \"BXT1\", 43 text bytes (zero-padded), checksum (docs/settings-field.md 6); since 2026-11-11",
+        "source": "patches/kraken_ui/krk_aprs_trec.c"
       }
     ]
   }

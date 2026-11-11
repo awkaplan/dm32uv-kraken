@@ -82,6 +82,7 @@ const char *krk_aprs_path_name(unsigned idx);
 extern const char *const krk_aprs_path_names[KRK_APRS_PATHS];   /* the four names, for the Upload ID option level */
 unsigned krk_aprs_cfg_path(void);
 int krk_aprs_cfg_set_path(unsigned idx);
+int krk_aprs_text_cat(char *dst, unsigned size);   /* F8a beacon text, else KRK_APRS_COMMENT, appended (krk_aprs_trec.c, blob ui3); 1 = saved text */
 /* CW ID (krk_cwid.c, docs/cw-id.md). The generator state is the caller's (a stack struct for one send). */
 #define KRK_CW_UNITS 160            /* a 6-character call is at most 129 units */
 struct krk_cw {

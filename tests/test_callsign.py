@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 '''
-exe = hostcc.build([], driver_src=DRV)
+exe = hostcc.build([hostcc.UI / "krk_tapedit.c"], driver_src=DRV)    # the editor types through krk_tapedit.c
 def case(script, want_ok, want_call, why, fill=None):
     out = hostcc.run(exe, script, *([fill] if fill else [])).strip().split("|")
     good = (out[0] == str(want_ok) and out[1] == want_call and out[3] == out[0] and out[4] == out[1]

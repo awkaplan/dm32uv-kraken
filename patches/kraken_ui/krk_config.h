@@ -11,6 +11,6 @@
 #define KRK_APRS_PATH2    "WIDE2-1"
 #define KRK_APRS_SYMTAB   '/'
 #define KRK_APRS_SYMBOL   '['               /* '[' = person, '>' = car */
-#define KRK_APRS_COMMENT  "DM-32UV Kraken"
+#define KRK_APRS_COMMENT  "DM-32UV Kraken"   /* the comment when no Beacon Text is set (F8a, krk_aprs_trec.c) */
 
 #endif

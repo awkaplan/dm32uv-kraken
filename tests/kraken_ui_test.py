@@ -31,6 +31,7 @@ import dw_checks as dwc
 import mon_checks
 import optrow_checks
 import convert_checks
+import aprs_text_checks
 from qemu_menu import OS_TICKS
 from target import CANARY, call_via, cstr, fcall, halted_machine, r32, w32
 
@@ -653,19 +654,21 @@ def check_aprs_sublist(c, s, s2):
     digital = the 8 stock rows; selecting item 11 hands the stations screen to the runner with krk_aprs_render as the
     restore function, and running that restore redraws all 7 rows."""
     IDX, CNT, VIS, PTR, SUB, ROW, L2 = 0x0003E5F8, 0x0003E8F8, 0x0003E8F4, 0x0003E904, 0x18000A90, 0x0003E4EA, 0x0003E664
-    print("== APRS sub-list: analog shows APRS RX and RX Monitor (7 rows), digital keeps the 8 stock rows; item 11 opens the stations screen and Back restores 7 rows")
-    cells = lambda: (struct.unpack("<H", read_mem(c, IDX, 2))[0], list(read_mem(c, IDX + 2, 8)), read_mem(c, CNT, 1)[0], read_mem(c, VIS, 1)[0])
+    na = krk_define("KRK_APRS_MAX")                        # our rows, items 8.. (the analog list: stock 0 and 4, then ours in order)
+    want = [0, 8, 4] + list(range(9, 8 + na))
+    print(f"== APRS sub-list: analog shows {len(want)} rows (APRS RX, RX Monitor, Beacon Text ...), digital keeps the 8 stock rows; item 11 opens the stations screen and Back restores them")
+    cells = lambda: (struct.unpack("<H", read_mem(c, IDX, 2))[0], list(read_mem(c, IDX + 2, max(8, len(want)))), read_mem(c, CNT, 1)[0], read_mem(c, VIS, 1)[0])
     fk = {s["krk_line"]: 0}
     dwc.chan_poke(c, b"\x00")
     m.wmem(c, IDX, bytes(40))
     _, _, abi, _ = fcall(c, s["krk_aprs_render"], fakes=fk)
     n, items, cnt, vis = cells()
-    m.report(abi and n == 7 and items[:7] == [0, 8, 4, 9, 10, 11, 12] and cnt == 7 and vis == 7 and read_mem(c, SUB, 1)[0] == 2,
-             f"analog render: count {n}, items {items[:7]}, item count {cnt}, visible {vis}")
+    m.report(abi and n == len(want) and items[:n] == want and cnt == n and vis == min(n, 8) and read_mem(c, SUB, 1)[0] == 2,
+             f"analog render: count {n}, items {items[:n]}, item count {cnt}, visible {vis}")
     dwc.chan_poke(c, b"\x10")
     fcall(c, s["krk_aprs_render"], fakes=fk)
     n, items, cnt, vis = cells()
-    m.report(n == 8 and items == list(range(8)) and cnt == 8 and vis == 8, f"digital render: the 8 stock rows {items}, count {n}")
+    m.report(n == 8 and items[:8] == list(range(8)) and cnt == 8 and vis == 8, f"digital render: the 8 stock rows {items[:8]}, count {n}")
     dwc.chan_poke(c, b"\x00")
     runs = []
 
@@ -681,7 +684,7 @@ def check_aprs_sublist(c, s, s2):
     m.wmem(c, CNT, bytes([0]))
     fcall(c, s["krk_aprs_render"], fakes=fk)
     n, items, cnt, vis = cells()
-    m.report(n == 7 and items[:7] == [0, 8, 4, 9, 10, 11, 12] and cnt == 7 and vis == 7, f"after Back (restore = krk_aprs_render): all 7 rows redrawn {items[:7]}")
+    m.report(n == len(want) and items[:n] == want and cnt == n and vis == min(n, 8), f"after Back (restore = krk_aprs_render): all {n} rows redrawn {items[:n]}")
 
 
 def check_f9(c):
@@ -913,17 +916,18 @@ def main():
     for lang, base, stock_arr in ((0, 0x030BA924, 0x030BA8E4), (1, 0x030BA92C, 0x030BA904)):
         arr, cnt, sub = rd32(base), img[base + 4 - 0x3000000], img[base + 5 - 0x3000000]
         stock = [rd32(stock_arr + 4 * k) for k in range(8)]
-        ours = [rd32(arr + 4 * k) for k in (8, 9, 10, 11, 12)]
+        ours = [rd32(arr + 4 * k) for k in range(8, 8 + na)]
         call = img[ours[2] - 0x3000000:].split(b"\0")[0]
         rxl = img[ours[3] - 0x3000000:].split(b"\0")[0]
         monl = img[ours[4] - 0x3000000:].split(b"\0")[0]
-        m.report(cnt == 13 and monl == b"RX Monitor" and sub == 2 and [rd32(arr + 4 * k) for k in range(8)] == stock and ours[0] == stock[1] and ours[1] == stock[6] and call == b"Callsign" and rxl == b"APRS RX",
-                 f"APRS descriptor lang {lang}: count {cnt}, subtype {sub}, 8 stock strings kept, items 8/9 = stock Upload ID/Upload Beacon strings, item 10 {call}, item 11 {rxl}, item 12 {monl}")
+        txtl = img[ours[5] - 0x3000000:].split(b"\0")[0]
+        m.report(cnt == 8 + na and monl == b"RX Monitor" and txtl == b"Beacon Text" and sub == 2 and [rd32(arr + 4 * k) for k in range(8)] == stock and ours[0] == stock[1] and ours[1] == stock[6] and call == b"Callsign" and rxl == b"APRS RX",
+                 f"APRS descriptor lang {lang}: count {cnt}, subtype {sub}, 8 stock strings kept, items 8/9 = stock Upload ID/Upload Beacon strings, item 10 {call}, item 11 {rxl}, item 12 {monl}, item 13 {txtl}")
     tbl = rd32(0x0303D56C)
-    ent = [rd32(tbl + 4 * k) for k in range(13)]
+    ent = [rd32(tbl + 4 * k) for k in range(8 + na)]
     m.report(ent[:8] == [0x0303D570, 0x0303D5DE, 0x0303D634, 0x0303D6A4, 0x0303D72C, 0x0303D756, 0x0303D7D8, 0x0303D848]
-             and ent[8] == ent[9] == ent[10] == ent[11] == ent[12] == s["krk_aprs_item_stub"] and img[0x3D556:0x3D558] == b"\x0c\x3a",
-             f"APRS item table {tbl:#x}: 8 stock case blocks, items 8..12 -> stub {s['krk_aprs_item_stub']:#x}; bound cmphsi 13")
+             and all(e == s["krk_aprs_item_stub"] for e in ent[8:]) and img[0x3D556:0x3D558] == bytes([8 + na - 1, 0x3a]),
+             f"APRS item table {tbl:#x}: 8 stock case blocks, items 8..{7 + na} -> stub {s['krk_aprs_item_stub']:#x}; bound cmphsi {8 + na}")
     # The render case block 0x0303dd40 is `bsr krk_aprs_render; br 0x0303dd78` (v39)
     kind, half = decode_branch(img[0x3DD40:0x3DD44])
     m.report(kind == "bsr" and 0x0303DD40 + half * 2 == s["krk_aprs_render"] and img[0x3DD44:0x3DD46] == b"\x1a\x04",
@@ -1147,6 +1151,7 @@ def main():
         m.report(abi and disp and not subs, "owner N/E, station N/E: nothing flipped, no subtraction")
         check_small_features(c, s, s2, img)          # F12 / F11 / F3 (2026-10-29)
         check_aprs_sublist(c, s, s2)
+        aprs_text_checks.check_aprs_text(c, s, s2, syms(ELF3), dwc)   # F8a beacon text (issue #3)
         optrow_checks.static_checks(img, s, ELF)     # option level / popup splices and stubs
         optrow_checks.unit_checks(c, s, s2, dwc)   # option level cells, title, commit; popups; one-shot runner; Upload Beacon one-shot
         convert_checks.unit_checks(c, s, s2, dwc)   # 2026-11-02: Squelch Mode / TX Power Trim / Parrot option rows, one-shot and screen rows, trim state

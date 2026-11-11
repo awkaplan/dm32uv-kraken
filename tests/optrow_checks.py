@@ -597,7 +597,7 @@ def check_aprs_path(c, s, s2, dwc, SCR, rec, calls):
     calls.clear()
     fcall(c, s["krk_aprs_item"], fakes={s["krk_opt_enter"]: lambda regs, r0, r1: calls.append(("enter", r0)) or 0, s["krk_run_screen"]: rec("run")})
     m.report(calls == [("enter", opt)], f"APRS item 8 (Upload ID) opens the option level, no blocking screen {calls}")
-    for item, scr in ((9, "krk_aprs_upload_screen"), (10, "krk_callsign_screen"), (11, "krk_aprsrx_screen")):
+    for item, scr in ((9, "krk_aprs_upload_screen"), (10, "krk_callsign_screen"), (11, "krk_aprsrx_screen"), (13, "krk_aprs_text_screen")):
         m.wmem(c, L2 + 1, bytes([item]))
         calls.clear()
         fcall(c, s["krk_aprs_item"], fakes={s["krk_opt_enter"]: rec("enter"), s["krk_run_screen"]: rec("run")})
@@ -608,8 +608,9 @@ def check_aprs_path(c, s, s2, dwc, SCR, rec, calls):
     dwc.chan_poke(c, b"\x00")
     fcall(c, s["krk_aprs_render"])
     n = read_mem(c, ICNT, 1)[0]
-    items = list(read_mem(c, IL + 2, 7))
-    m.report(n == 7 and items == [0, 8, 4, 9, 10, 11, 12] and struct.unpack("<H", read_mem(c, IL, 2))[0] == 7, f"analog APRS list: {n} rows, items {items} (Upload ID = item 8 at row 1)")
+    want = [0, 8, 4] + list(range(9, 8 + krk_define("KRK_APRS_MAX")))     # stock 0 and 4, then ours in item order
+    items = list(read_mem(c, IL + 2, len(want)))
+    m.report(n == len(want) and items == want and struct.unpack("<H", read_mem(c, IL, 2))[0] == n, f"analog APRS list: {n} rows, items {items} (Upload ID = item 8 at row 1)")
     dwc.chan_poke(c, b"\x10")
     fcall(c, s["krk_aprs_render"])
     n = read_mem(c, ICNT, 1)[0]

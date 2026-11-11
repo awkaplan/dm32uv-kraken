@@ -8,15 +8,16 @@
 #ifndef KRK_MENU_ROWS_H
 #define KRK_MENU_ROWS_H
 
-/* APRS (category 9): stock items 0..7, ours items 8..12 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor) */
+/* APRS (category 9): stock items 0..7, ours items 8..13 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text) */
 #define KRK_APRS_FIRST 8
-#define KRK_APRS_MAX 5
+#define KRK_APRS_MAX 6
 #define KRK_APRS_ITEM_PATH 8
 #define KRK_APRS_ITEM_UPLOAD 9
 #define KRK_APRS_ITEM_CALL 10
 #define KRK_APRS_ITEM_RX 11
 #define KRK_APRS_ITEM_MON 12
-#define KRK_APRS_ROWS &krk_aprs_path_screen, &krk_aprs_upload_screen, &krk_callsign_screen, &krk_aprsrx_screen, &krk_monitor_row
+#define KRK_APRS_ITEM_TEXT 13
+#define KRK_APRS_ROWS &krk_aprs_path_screen, &krk_aprs_upload_screen, &krk_callsign_screen, &krk_aprsrx_screen, &krk_monitor_row, &krk_aprs_text_screen
 
 /* Call Log (category 4): stock items 0..3, ours item 4 (Last Heard) */
 #define KRK_CALLLOG_FIRST 4

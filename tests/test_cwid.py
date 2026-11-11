@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
 d = pathlib.Path(tempfile.mkdtemp())
 (d / "cs.c").write_text(CALLSIGN_TU)
 (d / "cw.c").write_text(CWID_TU)
-exe = hostcc.build([d / "cs.c", d / "cw.c"])
+exe = hostcc.build([d / "cs.c", d / "cw.c", hostcc.UI / "krk_tapedit.c"])    # the callsign editor types through krk_tapedit.c
 
 
 def run(*args):

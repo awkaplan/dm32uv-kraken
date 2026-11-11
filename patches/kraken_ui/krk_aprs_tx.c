@@ -15,7 +15,7 @@
  *           and exactly 1200 baud (capture16/17: frames bit-exact at rate 1.000). Mark and space at
  *           amplitude 8000: the TX path normalises the level, so other ratios only hurt (capture17).
  *   info:   "!lat/lon[comment" from the GPS fix; without a fix an APRS status packet ">comment no GPS
- *           fix", so the link works indoors too
+ *           fix", so the link works indoors too. comment = the owner's Beacon Text, else KRK_APRS_COMMENT (F8a)
  *   unkey:  OSFlagPost(0x0003a4f0, 0x10), the PTT-release event (also what TOT posts)
  *
  * Every exit path after keying restores the modem registers and releases PTT. Hard caps: TX-up wait
@@ -152,7 +152,7 @@ static int build_info(char *o, const struct krk_gps_fix *f)
     o[n++] = f->ew;
     o[n++] = KRK_APRS_SYMBOL;
     o[n] = 0;
-    krk_cat(o, KRK_APRS_COMMENT);
+    krk_aprs_text_cat(o, KRK_LINE_BUF);             /* F8a: the saved beacon text, else KRK_APRS_COMMENT (krk_aprs_trec.c, blob ui3) */
     return 0;
 }
 
@@ -345,7 +345,7 @@ static int build_frame(const char **why, const char **kind)
         /* No fix (indoors): an APRS status packet instead, so the link can still be tested. */
         info[0] = 0;
         krk_cat(info, ">");
-        krk_cat(info, KRK_APRS_COMMENT);
+        krk_aprs_text_cat(info, sizeof info);
         krk_cat(info, " no GPS fix");
         *kind = "status";
     }

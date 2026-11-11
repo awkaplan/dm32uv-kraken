@@ -1,3 +1,4 @@
+#pragma GCC optimize ("Os")
 /*
  * krk_callsign.c - the APRS callsign: an on-radio editor screen plus a validated 16-byte record,
  * persisted in a NEW field inside the stock Radio Settings block (logical block 0x04, offset
@@ -13,6 +14,7 @@
  */
 #include "krk.h"
 #include "krk_stock.h"
+#include "krk_tapedit.h"
 
 #define CALL_MAGIC 0x4c4c4143u     /* "CALL" little-endian */
 #define CALL_MAX   6
@@ -78,13 +80,22 @@ static void flash_read_rec(struct call_rec *r)
     flash_block_read(flash_block_id_resolve_locked(CALL_BLOCK), CALL_OFF, r, sizeof *r);
 }
 
+/* Word copies: a struct assignment becomes a memcpy call at -Os, and the blob has no memcpy. */
+static void rec_copy(struct call_rec *d, const struct call_rec *s)
+{
+    unsigned i;
+
+    for (i = 0; i < sizeof *d / 4; i++)
+        ((u32 *)d)[i] = ((const u32 *)s)[i];
+}
+
 static int krk_call_load(struct call_rec *r)
 {
     if (cache_state != CACHE_MAGIC) {      /* SRAM is noise at power-up: read flash once */
         flash_read_rec(&cache);
         cache_state = CACHE_MAGIC;
     }
-    *r = cache;
+    rec_copy(r, &cache);
     return rec_ok(r);
 }
 
@@ -108,7 +119,7 @@ static int krk_call_save(const struct call_rec *r)
         return 1;                           /* unchanged: no flash write */
     flash_block_write(CALL_BLOCK, CALL_OFF, r, sizeof *r);
     flash_read_rec(&back);                  /* verify through the same read path */
-    cache = back;
+    rec_copy(&cache, &back);
     cache_state = CACHE_MAGIC;
     return same(&back, r);
 }
@@ -124,16 +135,20 @@ typedef char call_rec_is_16_bytes[sizeof(struct call_rec) == 16 ? 1 : -1];
  * checksum), so setting one before a callsign exists does not wipe the other. */
 static void load_for_cfg(struct call_rec *r)
 {
-    struct call_rec z = {0};
+    u8 path = 0, spare = 0;
+    unsigned i;
 
     if (krk_call_load(r))
         return;
-    z.magic = CALL_MAGIC;
     if (r->magic == CALL_MAGIC && csum(r) == r->csum) {
-        z.path = r->path;
-        z.spare = r->spare;
+        path = r->path;
+        spare = r->spare;
     }
-    *r = z;
+    for (i = 0; i < sizeof *r / 4; i++)
+        ((u32 *)r)[i] = 0;
+    r->magic = CALL_MAGIC;
+    r->path = path;
+    r->spare = spare;
 }
 
 /* Analog APRS path (APRS > Upload ID on an analog channel). Stored in the callsign record so the
@@ -196,21 +211,13 @@ int krk_call_get(char *out)
     return 1;
 }
 
-/* ---- editor screen ------------------------------------------------------------------------- */
+/* ---- editor screen ------------------------------------------------------------------------------------------------
+ * Typing is krk_tapedit.c's (shared with the beacon text editor since 2026-11-11; the keys are unchanged). The state lies over
+ * krk_edit_ram, the RAM of whichever editor screen is open. */
+static const struct krk_tap_spec call_spec = { "0", "1", CALL_MAX };
 
-static const char *const taps[10] = {
-    "0", "1", "ABC2", "DEF3", "GHI4", "JKL5", "MNO6", "PQRS7", "TUV8", "WXYZ9",
-};
-static const char cycle[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
-static struct {
-    char call[CALL_MAX + 1];
-    u8 ssid;
-    u8 field;                       /* 0 callsign, 1 SSID */
-    signed char tap_key;                     /* digit key of the pending multi-tap, -1 none */
-    u8 tap_idx, tap_ticks, len, dirty;
-    char status[20];
-} E;
+#define E krk_edit_ram.call
+typedef char call_fits[sizeof E.call == CALL_MAX + 1 ? 1 : -1];
 
 static int key_digit(u8 scan)
 {
@@ -226,7 +233,7 @@ static void draw(void)
     l[0] = 0;
     krk_cat(l, "Call: ");
     krk_cat(l, E.call);
-    if (E.field == 0 && E.len < CALL_MAX)
+    if (E.field == 0 && E.t.len < CALL_MAX)
         krk_cat(l, "_");
     krk_line(2, l, E.field == 0 ? KRK_ACCENT : KRK_FG);
     l[0] = 0;
@@ -239,12 +246,6 @@ static void draw(void)
     krk_line(5, E.status, KRK_DIM);
 }
 
-static void commit_tap(void)
-{
-    E.tap_key = -1;
-    E.tap_idx = 0;
-}
-
 static void call_enter(void)
 {
     struct call_rec r;
@@ -253,16 +254,17 @@ static void call_enter(void)
     for (i = 0; i <= CALL_MAX; i++)
         E.call[i] = 0;
     E.ssid = 0;
-    E.len = 0;
+    E.t.len = 0;
     if (krk_call_load(&r)) {
         for (i = 0; r.call[i]; i++)
             E.call[i] = r.call[i];
-        E.len = (u8)i;
+        E.t.len = (u8)i;
         E.ssid = r.ssid;
     }
     E.field = 0;
     E.dirty = 0;
-    commit_tap();
+    E.t.key = -1;
+    E.t.lower = 0;
     E.status[0] = 0;
     krk_catn(E.status, sizeof E.status, KRK_CALL_PERSISTENT ? "" : "RAM only for now");
     krk_line(0, "Callsign: APRS, ID", KRK_DIM);
@@ -277,15 +279,14 @@ static void call_tick(u8 scan)
     int d = key_digit(scan);
 
     if (scan == SCAN_NONE) {
-        if (E.tap_key >= 0 && ++E.tap_ticks >= 10)  /* 1 s without a repeat: letter accepted */
-            commit_tap();
+        krk_tap_key(&E.t, E.call, &call_spec, scan);    /* the multi-tap timeout */
         return;
     }
     E.status[0] = 0;
     if (scan == SCAN_OK) {
         struct call_rec r;
         int i;
-        commit_tap();
+        E.t.key = -1;
         if (!valid_call(E.call)) {
             krk_catn(E.status, sizeof E.status, "Need 3-6 A-Z/0-9");
         } else {
@@ -301,44 +302,19 @@ static void call_tick(u8 scan)
             E.dirty = 0;
         }
     } else if (scan == SCAN_HASH) {
-        commit_tap();
+        E.t.key = -1;
         E.field ^= 1;
-    } else if (scan == SCAN_STAR) {
-        commit_tap();
-        if (E.field == 0 && E.len)
-            E.call[--E.len] = 0;
-        else if (E.field == 1)
+    } else if (E.field == 1) {
+        if (scan == SCAN_STAR) {
+            E.t.key = -1;
             E.ssid /= 10;
-        E.dirty = 1;
-    } else if (E.field == 1 && d >= 0) {
-        u32 v = E.ssid * 10u + (u32)d;
-        E.ssid = (u8)(v <= 15 ? v : d);
-        E.dirty = 1;
-    } else if (E.field == 0 && d >= 0) {
-        const char *set = taps[d];
-        int n = 0;
-        while (set[n]) n++;
-        if (E.tap_key == d && E.len) {              /* same key again: next letter in place */
-            E.tap_idx = (u8)((E.tap_idx + 1) % n);
-            E.call[E.len - 1] = set[E.tap_idx];
-        } else if (E.len < CALL_MAX) {
-            E.tap_key = (signed char)d;
-            E.tap_idx = 0;
-            E.call[E.len++] = set[0];
+            E.dirty = 1;
+        } else if (d >= 0) {
+            u32 v = E.ssid * 10u + (u32)d;
+            E.ssid = (u8)(v <= 15 ? v : d);
+            E.dirty = 1;
         }
-        E.tap_ticks = 0;
-        E.dirty = 1;
-    } else if ((scan == SCAN_UP || scan == SCAN_DOWN) && E.field == 0) {
-        int i = 0, n = sizeof cycle - 1;
-        commit_tap();
-        if (!E.len) {
-            E.call[E.len++] = 'A';
-        } else {
-            char *c = &E.call[E.len - 1];
-            while (i < n && cycle[i] != *c) i++;
-            i = scan == SCAN_UP ? (i + 1) % n : (i + n - 1) % n;
-            *c = cycle[i];
-        }
+    } else if (krk_tap_key(&E.t, E.call, &call_spec, scan) > 0) {
         E.dirty = 1;
     }
     draw();

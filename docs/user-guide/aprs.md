@@ -8,7 +8,7 @@ turned off in the CPS. Its rows follow the mode of the selected channel:
 
 | Selected channel | Rows |
 |---|---|
-| Analog | `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `APRS RX`, `RX Monitor` |
+| Analog | `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `APRS RX`, `RX Monitor`, `Beacon Text` |
 | Digital | the 8 stock rows: `APRS On/Off`, `Upload ID`, `Upload Type`, `Report Channel`, `Intervals Set`, `APRS Info`, `Upload Beacon`, `Delete All` |
 
 `Upload ID` and `Upload Beacon` mean different things in the two lists. On an analog channel they are Kraken's
@@ -23,7 +23,7 @@ Sends your position (or a status text when the radio has no GPS fix) as a standa
 analog channel, by hand or on a timer. Any APRS receiver, digipeater or igate can decode it.
 
 **Status:** works on hardware, by hand and on the automatic timer (DM32.00.01.048, 2026-11-11: three beacons 31 s apart at a 30 s interval). The timer's power-save correction is not yet confirmed on a radio.
-**Where:** **Menu > APRS** (analog channels only): `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`
+**Where:** **Menu > APRS** (analog channels only): `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `Beacon Text`
 
 ### Set your callsign
 The beacon will not transmit until a callsign is saved.
@@ -41,6 +41,30 @@ The beacon will not transmit until a callsign is saved.
 5. Press `Back` to leave. Unsaved changes are dropped.
 
 The same callsign is used by CW ID (**Settings > Radio Settings > Other Func > CW ID > Callsign**).
+
+### Set the beacon text
+**Status:** works on hardware (DM32.00.01.048, 2026-11-11: text typed on the keypad, saved, and received by a second radio).
+**Where:** **Menu > APRS > Beacon Text** (analog channels only)
+
+The beacon text is the comment at the end of your position beacon: a name, a frequency you monitor, a note. With no
+text set the beacon sends `DM-32UV Kraken`, as before.
+
+1. Open **Menu > APRS > Beacon Text**. The text is shown on three lines, with `_` where the next character goes.
+2. Type with the keypad, as for the callsign:
+   - `2`-`9`: letters by multi-tap, then the digit (`2` gives A, B, C, 2). Pause 1 second to accept a character.
+   - `0`: a space, then 0.
+   - `1`: `.` `-` `/` `,` `:` `+` `(` `)`, then 1.
+   - `#`: switch between capital and small letters for the letters you type next. The status line shows `ABC` or `abc`.
+   - `Up`/`Down`: step the last character through A-Z and 0-9.
+   - `*`: delete the last character.
+3. Press `OK` to save. The status line shows `Saved` (or `Save FAILED` if the settings memory could not be written).
+4. Press `Back` to leave. Unsaved changes are dropped.
+
+The text can be up to 43 characters, the most an APRS position comment may hold. To go back to the default text, delete
+the whole text and press `OK`.
+
+Receivers read some comment starts as data: a text that begins like `090/036` (course and speed), `PHG` followed by four
+digits, or `/A=` is shown as that data, not as text.
 
 ### Choose the digipeater path
 1. Open **Menu > APRS > Upload ID**. The list is titled `APRS path` and the dot marks the current path.
@@ -88,11 +112,12 @@ digital channels.
 
 | | With a GPS fix | Without a fix |
 |---|---|---|
-| Packet | position: `!DDMM.mmN/DDDMM.mmW[DM-32UV Kraken` | status: `>DM-32UV Kraken no GPS fix` |
+| Packet | position: `!DDMM.mmN/DDDMM.mmW[` + your beacon text | status: `>` + your beacon text + ` no GPS fix` |
 | Symbol | person (`/[`) | none |
 
 Source is your callsign and SSID, destination (tocall) `APZKRK`, path as set under `Upload ID`. The position is
-rounded to 1/100 of a minute (about 18 m). Symbol and comment are fixed and cannot be changed on the radio.
+rounded to 1/100 of a minute (about 18 m). The beacon text is the one set under `Beacon Text`, or `DM-32UV Kraken` when
+none is set. The symbol is fixed and cannot be changed on the radio.
 The mic is muted during the send. The channel's own power level is used.
 
 ### Dual watch
@@ -107,11 +132,12 @@ beacons try again shortly).
 |---|---|---|---|
 | Callsign, SSID | 3-6 letters/digits; SSID none or 1-15 | none (beacon refuses) | Yes |
 | Upload ID (path) | see the path table | `WIDE1-1,WIDE2-1` | Yes |
+| Beacon Text | up to 43 characters: letters, digits, space and `. - / , : + ( )` | none (`DM-32UV Kraken` is sent) | Yes |
 | APRS On/Off | stock, per channel; shared with DMR APRS | from the CPS | Yes (stock) |
 | Intervals Set | stock, radio-wide; shared with DMR APRS | from the CPS | Yes (stock) |
 
-Callsign and path are kept in the radio's settings memory. Writing a codeplug with the CPS, or a factory reset,
-erases them (and the CW ID setting): set the callsign again afterwards.
+Callsign, path and beacon text are kept in the radio's settings memory. Writing a codeplug with the CPS, or a factory
+reset, erases them (and the CW ID setting): set the callsign and the text again afterwards.
 
 ### Limits
 - Analog channels only. On a digital channel the stock DMR APRS rows and sends apply.

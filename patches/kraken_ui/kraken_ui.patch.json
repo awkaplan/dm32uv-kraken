@@ -63,7 +63,9 @@
     "krk_sat_tles.c",
     "krk_satrf.c",
     "krk_satscr.c",
-    "krk_callsign.c"
+    "krk_callsign.c",
+    "krk_tapedit.c",
+    "krk_aprs_trec.c"
    ],
    "cflags": [
     "-O2",
@@ -109,6 +111,7 @@
    "sources": [
     "krk_ext.c",
     "krk_aprs_tx.c",
+    "krk_aprs_text.c",
     "krk_aprs_menu.c",
     "krk_aprsrx.c",
     "krk_afsk.c",
@@ -180,7 +183,12 @@
     "krk_aprs_cfg_set_path": "@kraken_ui3:krk_aprs_cfg_set_path",
     "krk_cwid_cfg": "@kraken_ui3:krk_cwid_cfg",
     "krk_cwid_cfg_set": "@kraken_ui3:krk_cwid_cfg_set",
-    "krk_sat_active": "@kraken_ui3:krk_sat_active"
+    "krk_sat_active": "@kraken_ui3:krk_sat_active",
+    "krk_tap_key": "@kraken_ui3:krk_tap_key",
+    "krk_edit_ram": "@kraken_ui3:krk_edit_ram",
+    "krk_aprs_text_load": "@kraken_ui3:krk_aprs_text_load",
+    "krk_aprs_text_store": "@kraken_ui3:krk_aprs_text_store",
+    "krk_aprs_text_cat": "@kraken_ui3:krk_aprs_text_cat"
    },
    "libgcc": true
   },
@@ -433,7 +441,7 @@
   {
    "name": "krk_aprs_arr_zh",
    "addr": "0x030e7620",
-   "why": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): items 8..12 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
+   "why": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): items 8..13 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
    "parts": [
     {
      "stock_u32": "0x030ba8e4",
@@ -451,7 +459,8 @@
      "u32": [
       "@krk_aprs_lbl_call",
       "@krk_aprs_lbl_rx",
-      "@krk_aprs_lbl_mon"
+      "@krk_aprs_lbl_mon",
+      "@krk_aprs_lbl_text"
      ]
     }
    ]
@@ -477,7 +486,8 @@
      "u32": [
       "@krk_aprs_lbl_call",
       "@krk_aprs_lbl_rx",
-      "@krk_aprs_lbl_mon"
+      "@krk_aprs_lbl_mon",
+      "@krk_aprs_lbl_text"
      ]
     }
    ]
@@ -485,7 +495,7 @@
   {
    "name": "krk_aprs_itemjmp",
    "addr": "0x030e76a0",
-   "why": "APRS per-item jump table: 8 stock case blocks + 5 stub entries (items 8..12: Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor)",
+   "why": "APRS per-item jump table: 8 stock case blocks + 6 stub entries (items 8..13: Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text)",
    "parts": [
     {
      "stock_u32": "0x030aff54",
@@ -503,6 +513,7 @@
     },
     {
      "u32": [
+      "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
@@ -1140,6 +1151,21 @@
      "align": 4
     }
    ]
+  },
+  {
+   "name": "krk_aprs_lbl_text",
+   "addr": "0x030e77a0",
+   "why": "label of APRS item 13 (Beacon Text), an analog row (docs/aprs-submenu.md)",
+   "parts": [
+    {
+     "string": "Beacon Text",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
   }
  ],
  "splices": [
@@ -1313,7 +1339,7 @@
    "name": "aprs_desc_zh_count",
    "addr": "0x030ba928",
    "expect_u8": "0x08",
-   "u8": "0x0d"
+   "u8": "0x0e"
   },
   {
    "name": "aprs_desc_en_ptr",
@@ -1325,14 +1351,14 @@
    "name": "aprs_desc_en_count",
    "addr": "0x030ba930",
    "expect_u8": "0x08",
-   "u8": "0x0d"
+   "u8": "0x0e"
   },
   {
    "name": "aprs_item_bound",
    "addr": "0x0303d556",
    "expect": "07 3a",
-   "bytes": "0c 3a",
-   "why": "cmphsi r2,8 -> cmphsi r2,13 (raw imm = value-1): items 8..12 are ours"
+   "bytes": "0d 3a",
+   "why": "cmphsi r2,8 -> cmphsi r2,14 (raw imm = value-1): items 8..13 are ours"
   },
   {
    "name": "aprs_item_table_ptr",

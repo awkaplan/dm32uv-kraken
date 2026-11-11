@@ -21,7 +21,7 @@
  },
  {
   "name": "kraken_ui3",
-  "sources": ["krk_sat.c", "krk_sat_tles.c", "krk_satrf.c", "krk_satscr.c", "krk_callsign.c"],
+  "sources": ["krk_sat.c", "krk_sat_tles.c", "krk_satrf.c", "krk_satscr.c", "krk_callsign.c", "krk_tapedit.c", "krk_aprs_trec.c"],
   "linker_script": "kraken_ui3.ld",
   "entry": "krk_sat_screen",
   "expect_entry": "0x030f8000",
@@ -32,14 +32,14 @@
  },
  {
   "name": "kraken_ui2",
-  "sources": ["krk_ext.c", "krk_aprs_tx.c", "krk_aprs_menu.c", "krk_aprsrx.c", "krk_afsk.c", "krk_ax25.c", "krk_periodic.c", "krk_scramble.c", "krk_squelch.c", "krk_vox.c", "krk_ofstubs.S", "krk_txtrim.c", "krk_vframe.c", "krk_parrot_sm.c", "krk_parrot.c", "krk_cwid.c", "krk_band.c", "krk_bvcfg.c", "krk_tags.c"],
+  "sources": ["krk_ext.c", "krk_aprs_tx.c", "krk_aprs_text.c", "krk_aprs_menu.c", "krk_aprsrx.c", "krk_afsk.c", "krk_ax25.c", "krk_periodic.c", "krk_scramble.c", "krk_squelch.c", "krk_vox.c", "krk_ofstubs.S", "krk_txtrim.c", "krk_vframe.c", "krk_parrot_sm.c", "krk_parrot.c", "krk_cwid.c", "krk_band.c", "krk_bvcfg.c", "krk_tags.c"],
   "linker_script": "kraken_ui2.ld",
   "entry": "krk_ext_screens",
   "expect_entry": "0x030ee000",
   "imports": [
    {"from": "kraken_ui"},
    {"from": "kraken_ui", "syms": ["krk_screen_owner", "krk_tags_shown", "krk_popup", "krk_popup_draw", "krk_key_scan", "krk_opt_enter", "krk_opt_commit", "krk_run_screen"]},
-   {"from": "kraken_ui3", "syms": ["krk_sat_screen", "krk_sat_tick", "krk_callsign_screen", "krk_call_get", "krk_rec_csum", "krk_aprs_cfg_path", "krk_aprs_cfg_set_path", "krk_cwid_cfg", "krk_cwid_cfg_set", "krk_sat_active"]}
+   {"from": "kraken_ui3", "syms": ["krk_sat_screen", "krk_sat_tick", "krk_callsign_screen", "krk_call_get", "krk_rec_csum", "krk_aprs_cfg_path", "krk_aprs_cfg_set_path", "krk_cwid_cfg", "krk_cwid_cfg_set", "krk_sat_active", "krk_tap_key", "krk_edit_ram", "krk_aprs_text_load", "krk_aprs_text_store", "krk_aprs_text_cat"]}
   ],
   "libgcc": true
  },
