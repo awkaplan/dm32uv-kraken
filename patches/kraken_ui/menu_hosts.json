@@ -202,6 +202,12 @@
      "label": "Beacon Text",
      "screen": "&krk_aprs_text_screen",
      "label_at": "0x030e77a0"
+    },
+    {
+     "key": "chan",
+     "label": "Beacon Chan",
+     "screen": "&krk_aprs_chan_screen",
+     "label_at": "0x030e77c0"
     }
    ],
    "jump_tables": [

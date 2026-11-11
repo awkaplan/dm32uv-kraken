@@ -89,7 +89,7 @@ static void upload_run(void)
     if (!krk_tx_arm("OK again to send"))
         return;                                 /* timeout or any other key: cancelled, back to the menu */
     krk_popup(KRK_POP_INFO, "Sending...", 0, 0);
-    r = krk_aprs_tx_send(&why, &kind);
+    r = krk_aprs_chan_send(&why, &kind, 0);
     l1[0] = 0;
     if (r == 0) {
         krk_cat(l1, "Sent ");

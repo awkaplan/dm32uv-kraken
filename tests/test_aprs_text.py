@@ -52,6 +52,8 @@ unsigned krk_aprs_cfg_path(void) { return 0; }
 int krk_channel_analog(void) { return 1; }
 int krk_channel_on_selected(void) { return 1; }
 int krk_channel_flags(void) { return 0; }
+int krk_aprs_chan_send(const char **why, const char **kind, int automatic) { (void)automatic; return krk_aprs_tx_send(why, kind); }   /* F8b off */
+int krk_aprs_chan_keep(void) { return 1; }
 int krk_ui_in_menu(void) { return 0; }
 void krk_real_time(u32 *last, u8 *rsec, u32 *rtick, u32 now) { (void)last; (void)rsec; (void)rtick; (void)now; }   /* #7: unused by build_frame */
 void krk_mon_yield(void) {}

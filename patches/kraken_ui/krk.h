@@ -76,6 +76,10 @@ void krk_hook_chan_commit(void);             /* splice target (krk_stubs.S krk_c
 u8 krk_rec_csum(const void *rec, u8 seed);   /* 16-byte flash record checksum (krk_callsign.c, blob ui3) */
 int krk_call_get(char *out);                 /* "CALL[-SSID]" into out (>= 16 bytes); 1 if a callsign is set */
 int krk_aprs_tx_send(const char **why, const char **kind);
+/* F8b Beacon Chan (krk_aprs_chan.c): every beacon send goes through krk_aprs_chan_send (automatic = the interval tick) */
+int krk_aprs_chan_send(const char **why, const char **kind, int automatic);
+int krk_aprs_chan_get(void);                /* 0 = Off, else the memory channel number */
+int krk_aprs_chan_keep(void);               /* 0: the beacon channel switch holds the sender (other task), or the radio left the channel */
 int krk_aprs_tx_analog(void);
 unsigned krk_aprs_tx_count(void);
 const char *krk_aprs_path_name(unsigned idx);

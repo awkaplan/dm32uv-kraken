@@ -8,6 +8,7 @@
 
 extern const struct krk_screen krk_aprsrx_screen;
 extern const struct krk_screen krk_monitor_row;     /* RX Monitor on/off, a stock option level (krk_aprsrx.c) */
+extern const struct krk_screen krk_aprs_chan_screen;  /* F8b Beacon Chan: a stock numeric entry (krk_aprs_chan.c) */
 extern const struct krk_screen krk_callsign_screen;   /* F-APRS callsign editor, blob kraken_ui3 (manifest defsym) */
 extern const struct krk_screen krk_aprs_path_screen;
 extern const struct krk_screen krk_aprs_upload_screen;

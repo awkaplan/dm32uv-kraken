@@ -41,6 +41,22 @@
     "tests/kraken_ui_test.py"
    ]
   },
+  "0x0001018c": {
+   "to": "0x0001018c",
+   "how": "IRAM code (cpu_sr_save_and_disable_irq_iram)",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
+   ]
+  },
+  "0x0001019c": {
+   "to": "0x0001019c",
+   "how": "IRAM code (cpu_sr_restore_irq_iram)",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
+   ]
+  },
   "0x000106cc": {
    "to": "0x000106cc",
    "how": "IRAM data",
@@ -168,6 +184,7 @@
    "how": "IRAM code (fd6818b_reg_write)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py"
    ]
@@ -177,6 +194,7 @@
    "how": "IRAM code (fd6818_reg_read)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py"
    ]
@@ -186,6 +204,7 @@
    "how": "IRAM code (gpio_set_output_bit)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/mon_checks.py"
    ]
@@ -195,6 +214,7 @@
    "how": "IRAM code (gpio_clear_output_bit)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/mon_checks.py"
    ]
@@ -407,6 +427,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f10_checks.py"
    ]
   },
@@ -415,6 +436,7 @@
    "how": "ram: between references 0x38468 and 0x38470, both +0x0",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f10_checks.py"
    ]
   },
@@ -535,11 +557,20 @@
     "tests/parrot_qemu_test.py"
    ]
   },
+  "0x0003e198": {
+   "to": "0x0003e194",
+   "how": "ram: between references 0x3e144 and 0x3e1a4, both -0x4",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
+   ]
+  },
   "0x0003e1dc": {
    "to": "0x0003e1d8",
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_core.c",
+    "tests/aprs_chan_checks.py",
     "tests/dw_checks.py"
    ]
   },
@@ -557,6 +588,7 @@
    "in": [
     "patches/kraken_ui/krk_stock.h",
     "tests/aprs_beacon_e2e.py",
+    "tests/aprs_chan_checks.py",
     "tests/dw_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py",
@@ -599,6 +631,7 @@
    "how": "ram: between references 0x3e318 and 0x3e32a, both -0x4",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f10_checks.py",
     "tests/f13_checks.py",
     "tests/parrot_qemu_test.py"
@@ -867,6 +900,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_aprs_tx.c",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py"
    ]
   },
@@ -925,6 +959,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py",
     "tests/f10_checks.py",
     "tests/f13_checks.py",
@@ -952,6 +987,14 @@
    "in": [
     "patches/kraken_ui/krk_aprs_tx.c",
     "tests/aprs_beacon_e2e.py"
+   ]
+  },
+  "0x0004007a": {
+   "to": "0x00040076",
+   "how": "ram: between references 0x40078 and 0x400a8, both -0x4",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
    ]
   },
   "0x0004007c": {
@@ -986,6 +1029,14 @@
     "tests/dw_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py"
+   ]
+  },
+  "0x00042500": {
+   "to": "0x000424fc",
+   "how": "ram: referenced by stock code",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
    ]
   },
   "0x000426d0": {
@@ -1039,6 +1090,7 @@
    "how": "OSFlagPost_wrapper_set (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/parrot_qemu_test.py"
    ]
@@ -1047,6 +1099,7 @@
    "to": "0x0300c4bc",
    "how": "OSTimeDly_ms_wrapper (same)",
    "in": [
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py",
     "tests/optrow_checks.py",
@@ -1140,7 +1193,9 @@
    "to": "0x0300deb8",
    "how": "channel_change_apply_squelch (same)",
    "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f10_checks.py"
    ]
   },
@@ -1156,6 +1211,7 @@
    "how": "vfo_display_state_nibble_bits_check (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py",
     "tests/dw_checks.py",
     "tests/f13_checks.py",
@@ -1175,6 +1231,7 @@
    "how": "flash_block_id_resolve_locked (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py"
    ]
   },
@@ -1183,6 +1240,7 @@
    "how": "flash_block_read (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py"
    ]
   },
@@ -1191,6 +1249,7 @@
    "how": "flash_block_write (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py",
     "tests/bvnest_e2e.py"
    ]
@@ -1404,6 +1463,7 @@
    "how": "tx_is_inhibited (moved)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py",
     "tests/f13_checks.py",
     "tests/mon_checks.py",
@@ -1423,6 +1483,14 @@
    "in": [
     "patches/kraken_ui/kraken_ui.patch.json",
     "tests/dw_checks.py"
+   ]
+  },
+  "0x030305ac": {
+   "to": "0x0302f4f8",
+   "how": "ui_event_notify_alt (same)",
+   "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
+    "tests/aprs_chan_checks.py"
    ]
   },
   "0x03034d58": {
@@ -2615,8 +2683,10 @@
    "to": "0x03053744",
    "how": "event_queue_reset (same)",
    "in": [
+    "patches/kraken_ui/krk_aprs_chan.c",
     "patches/kraken_ui/krk_aprs_tx.c",
     "tests/aprs_beacon_e2e.py",
+    "tests/aprs_chan_checks.py",
     "tests/aprs_text_checks.py"
    ]
   },
@@ -2756,6 +2826,7 @@
    "how": "get_current_mode_state2 (same)",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
     "tests/parrot_qemu_test.py"
    ]
@@ -3980,6 +4051,13 @@
    "in": [
     "tests/kraken_ui_test.py",
     "tests/qemu_menu.py"
+   ]
+  },
+  "0x18001230": {
+   "to": "0x18001230",
+   "how": "SRAM: unchanged (all 125 stock references keep their address)",
+   "in": [
+    "tests/aprs_chan_checks.py"
    ]
   },
   "0x18003000": {

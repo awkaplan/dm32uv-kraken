@@ -259,6 +259,12 @@ static int fmram_send(int (*fill)(void *ctx, volatile u8 *h), void *ctx, const s
         *why = aborted ? "Aborted" : "TX did not come up";
         return -1;
     }
+    if (!krk_aprs_chan_keep()) {                    /* Beacon Chan: keyed, but no longer on the beacon channel: unkey at once */
+        unkey();
+        gpio_set_output_bit(GPIO_MIC_MUX);
+        *why = "Aborted";
+        return -1;
+    }
     os_time_dly_ms(100);
     FR.aud = AUDIO_CONTROL;
     FR.dev = FM_DEV_COEF;
@@ -389,6 +395,7 @@ static int claim(const char **why)
     else if (!krk_on_selected_side(1500)) { *why = "Dual watch: retry"; }
     else if (VFO_FLAGS8 & 0xf0)  { *why = "Analog channel only"; r = -1; }
     else if (stock_rx_active())   { *why = "Channel busy"; }
+    else if (!krk_aprs_chan_keep()) { *why = "Busy"; }       /* Beacon Chan (krk_aprs_chan.c) holds the sender, or reloaded meanwhile */
     else return 0;
     tx_busy = 0;
     return r;
@@ -497,7 +504,7 @@ void krk_hook_aprs_tick(void)
         T.last_send = now;                      /* stock skips this round the same way */
         return;
     }
-    if (krk_aprs_tx_send(&why, &kind) < 0 && stock_rx_active())
+    if (krk_aprs_chan_send(&why, &kind, 1) < 0 && stock_rx_active())
         T.last_send = now - (interval - RETRY_S) * TICK_HZ;   /* channel busy: retry in RETRY_S */
     else
         T.last_send = OS_TICKS;
@@ -508,7 +515,7 @@ void krk_hook_aprs_send_now(void)
     const char *why, *kind;
 
     if (analog())
-        krk_aprs_tx_send(&why, &kind);
+        krk_aprs_chan_send(&why, &kind, 0);
     else
         stock_aprs_send();
 }

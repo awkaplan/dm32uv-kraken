@@ -32,7 +32,7 @@
  },
  {
   "name": "kraken_ui2",
-  "sources": ["krk_ext.c", "krk_aprs_tx.c", "krk_aprs_text.c", "krk_aprs_menu.c", "krk_aprsrx.c", "krk_afsk.c", "krk_ax25.c", "krk_periodic.c", "krk_scramble.c", "krk_squelch.c", "krk_vox.c", "krk_ofstubs.S", "krk_txtrim.c", "krk_vframe.c", "krk_parrot_sm.c", "krk_parrot.c", "krk_cwid.c", "krk_band.c", "krk_bvcfg.c", "krk_tags.c"],
+  "sources": ["krk_ext.c", "krk_aprs_tx.c", "krk_aprs_text.c", "krk_aprs_menu.c", "krk_aprsrx.c", "krk_afsk.c", "krk_ax25.c", "krk_periodic.c", "krk_scramble.c", "krk_squelch.c", "krk_vox.c", "krk_ofstubs.S", "krk_txtrim.c", "krk_vframe.c", "krk_parrot_sm.c", "krk_parrot.c", "krk_cwid.c", "krk_band.c", "krk_bvcfg.c", "krk_tags.c", "krk_aprs_chan.c"],
   "linker_script": "kraken_ui2.ld",
   "entry": "krk_ext_screens",
   "expect_entry": "0x030ee000",

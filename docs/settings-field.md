@@ -160,6 +160,15 @@ Not usable: 0xFF0-0xFFE (only 15 bytes, and 0xFFF is the sector id tag; any writ
 - A third data point (a CPS read of a used radio, not done here because it is per-unit data) would
   confirm the range is 00/FF on a used radio too.
 
+### 3.5 Records Kraken uses (the list is `datachip_records` in `allocations.json`)
+
+| Range | Name | Owner | Layout |
+|---|---|---|---|
+| `0xFE0-0xFEF` | aprs_callsign | `krk_callsign.c` | callsign, SSID, analog path, CW ID byte |
+| `0xFD0-0xFDF` | freq_unlock | `krk_band.c` | Freq Unlock switch |
+| `0xFC0-0xFCF` | burst_voice_cfg | `krk_bvcfg.c` | Burst Voice settings |
+| `0xF80-0xF8F` | aprs_beacon_chan | `krk_aprs_chan.c` | u32 magic `0x4e484342` ("BCHN"), u16 channel (0 = Off, 1..4000), u16 = ~channel, 8 bytes 0. Written with `flash_block_write(4, 0xF80, rec, 16)` on the user's OK in **APRS > Beacon Chan**, only when the value changed. Anything else (CPS write FF, factory reset 00) reads as Off: the beacon goes out on the selected channel, as before the setting existed (docs/aprs-submenu.md 7.6). |
+
 ## 4. Vendor CPS write behaviour
 
 - Serial 'W' (0x57) with a 24-bit physical address and 4096-byte payload is handled in `serial_protocol_vframe_command_loop_variant` @0x0302a4dc:

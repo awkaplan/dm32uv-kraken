@@ -15,6 +15,7 @@ Checks:
 Run inside the dm32uv-re Docker image (tools/build.sh mounts the workspace at /w):
   python3 /w/dm32uv-unleashed/tests/kraken_ui_test.py
 """
+import json
 import re
 import struct
 import subprocess
@@ -32,6 +33,7 @@ import mon_checks
 import optrow_checks
 import convert_checks
 import aprs_text_checks
+import aprs_chan_checks
 from qemu_menu import OS_TICKS
 from target import CANARY, call_via, cstr, fcall, halted_machine, r32, w32
 
@@ -719,6 +721,7 @@ def booted_runs(s, s2):
     """Every check that boots its own QEMUs and walks the stock menu by key (no machine shared with the halted checks)."""
     try:
         optrow_checks.boot_checks(PATCHED, s, s2)        # booted runs: RX Monitor option level, Upload Beacon popups (own QEMUs)
+        aprs_chan_checks.boot_checks(PATCHED, s, s2)     # F8b Beacon Chan with the real stock 0x16 / 0x17 reloads (own QEMUs)
         # Booted end-to-end runs of the nine Scrambler / Parrot rows that moved to the stock Channel Set
         # menu on 2026-11-03 (docs/chanset-submenu.md): the list carries items 22..30 with the right
         # labels, OK opens an option level and OK there commits with the RAM state read back. This is the
@@ -917,12 +920,11 @@ def main():
         arr, cnt, sub = rd32(base), img[base + 4 - 0x3000000], img[base + 5 - 0x3000000]
         stock = [rd32(stock_arr + 4 * k) for k in range(8)]
         ours = [rd32(arr + 4 * k) for k in range(8, 8 + na)]
-        call = img[ours[2] - 0x3000000:].split(b"\0")[0]
-        rxl = img[ours[3] - 0x3000000:].split(b"\0")[0]
-        monl = img[ours[4] - 0x3000000:].split(b"\0")[0]
-        txtl = img[ours[5] - 0x3000000:].split(b"\0")[0]
-        m.report(cnt == 8 + na and monl == b"RX Monitor" and txtl == b"Beacon Text" and sub == 2 and [rd32(arr + 4 * k) for k in range(8)] == stock and ours[0] == stock[1] and ours[1] == stock[6] and call == b"Callsign" and rxl == b"APRS RX",
-                 f"APRS descriptor lang {lang}: count {cnt}, subtype {sub}, 8 stock strings kept, items 8/9 = stock Upload ID/Upload Beacon strings, item 10 {call}, item 11 {rxl}, item 12 {monl}, item 13 {txtl}")
+        lab = [img[a - 0x3000000:].split(b"\0")[0] for a in ours]
+        call, rxl, monl = lab[2], lab[3], lab[4]
+        want_lab = [r["label"].encode() for h in json.loads((REPO / "patches/kraken_ui/menu_hosts.json").read_text())["hosts"] if h["id"] == "aprs" for r in h["rows"]][2:]
+        m.report(cnt == 8 + na and lab[2:] == want_lab and sub == 2 and [rd32(arr + 4 * k) for k in range(8)] == stock and ours[0] == stock[1] and ours[1] == stock[6],
+                 f"APRS descriptor lang {lang}: count {cnt}, subtype {sub}, 8 stock strings kept, items 8/9 = stock Upload ID/Upload Beacon strings, items 10.. {lab[2:]} (menu_hosts.json {want_lab})")
     tbl = rd32(0x0303D56C)
     ent = [rd32(tbl + 4 * k) for k in range(8 + na)]
     m.report(ent[:8] == [0x0303D570, 0x0303D5DE, 0x0303D634, 0x0303D6A4, 0x0303D72C, 0x0303D756, 0x0303D7D8, 0x0303D848]
@@ -1160,6 +1162,7 @@ def main():
         check_f12_review(c, s, s2, img)              # review fixes 2026-10-29
         check_sweeps(c, s, s2, img)                  # one-action sweeps: F3 key 2, F11 key 6, F12 P1
         check_f10(c, img, s2, syms(ELF3))
+        aprs_chan_checks.check_aprs_chan(c, s, s2)  # F8b Beacon Chan: channel switch, return, refusals, guards (tests/aprs_chan_checks.py)
         check_back_exit(c, s, s2, syms(ELF4))        # 2026-11-02: Parrot / Burst Voice Back
         check_exit_and_rssi(c, s)                    # v52: UI freeze after exit, RSSI on DMR
         print("== F9 parrot (voice-frame layer)")

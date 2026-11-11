@@ -31,6 +31,7 @@ the same QEMU tests; on those two builds every feature is **emulator only** unti
 | F7 | DMR APRS bearing fix | Correct course and distance in stock APRS Info west of Greenwich or south of the equator | hardware | [APRS](user-guide/aprs.md) |
 | F8 | Analog APRS beacon | 1200 baud AFSK AX.25 position or status beacon, by hand or on the stock timer | hardware, menu newer (automatic timer confirmed on a radio 2026-11-11; its power-save correction not yet) | [APRS](user-guide/aprs.md) |
 | F8a | APRS Beacon Text | The owner's comment for the analog beacon (up to 43 characters, typed on the keypad), sent instead of the default `DM-32UV Kraken` | hardware | [APRS](user-guide/aprs.md#set-the-beacon-text) |
+| F8b | APRS beacon channel | analog beacons switch to a set memory channel (APRS > Beacon Chan), send, and switch back, with the stock report-channel reloads (issue #4) | emulator only | [APRS](user-guide/aprs.md#beacon-channel) |
 | B2 | APRS RX | Decodes analog APRS and lists the last 8 stations | decoder on hardware; screen and menu rows emulator only | [APRS](user-guide/aprs.md) |
 | F14 | RX Monitor | Keeps the APRS decoder running at standby | emulator only | [APRS](user-guide/aprs.md) |
 | F9 | Parrot | Records a DMR call and replays it as a DMR call | hardware, menu newer | [parrot and burst voice](user-guide/parrot-and-burst-voice.md) |

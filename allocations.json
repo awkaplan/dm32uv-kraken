@@ -164,6 +164,14 @@
         "end_exclusive": "0xFC0",
         "owner": "krk_aprs_trec.c (blob ui3; editor krk_aprs_text.c in ui2): F8a analog APRS beacon text, 48 bytes: magic \"BXT1\", 43 text bytes (zero-padded), checksum (docs/settings-field.md 6); since 2026-11-11",
         "source": "patches/kraken_ui/krk_aprs_trec.c"
+      },
+      {
+        "name": "aprs_beacon_chan",
+        "block": 4,
+        "start": "0xF80",
+        "end_exclusive": "0xF90",
+        "owner": "krk_aprs_chan.c (blob ui2): F8b Beacon Chan, the memory channel the analog APRS beacon is sent on (0 = Off; docs/aprs-submenu.md 7.6, docs/settings-field.md); since 2026-11-11",
+        "source": "patches/kraken_ui/krk_aprs_chan.c"
       }
     ]
   }

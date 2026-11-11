@@ -318,3 +318,75 @@ after RX Monitor in `menu_hosts.json` and in `aprs_analog_items[]`. No new hook 
   size); `tests/aprs_text_checks.py` from `kraken_ui_test.py` (the image: the row, a typed save as one 48-byte write to 0xF90,
   the status and position packets built by `krk_aprs_tx_send` from the record, stopped before keying);
   `optrow_checks.check_aprs_path` (item 13 opens the screen through the runner).
+### 7.7 Beacon Chan: the analog beacon on a set memory channel (F8b, issue #4, 2026-11-11)
+
+**Status:** QEMU-verified (halted-machine checks and booted runs with the generic codeplug). Not run on a radio.
+
+`krk_aprs_chan.c` (blob kraken_ui2), row **APRS > Beacon Chan** (item 14, stock numeric entry, 0 = Off, 1..4000).
+Every analog beacon goes through `krk_aprs_chan_send(why, kind, automatic)`: Upload Beacon (`krk_aprs_menu.c`), the
+programmable key (`krk_hook_aprs_send_now`) and the interval tick (`krk_hook_aprs_tick`, `automatic` = 1). With the setting
+Off it is `krk_aprs_tx_send` unchanged.
+
+**What stock does for DMR (the mechanism reused).** `gps_display_refresh_and_notify` @0x03062510 (the DMR beacon send)
+calls `ui_event_notify_alt(0x16)` @0x030305ac when the DMR report channel `*(u16 *)0x0004007a` (APRS cache +2) is not 0.
+`ui_event_notify_alt(reason)` takes mutex 0x3e330, sets the reason byte 0x3e319, posts flag 8 of group 0x3fd90 (the CodeSw
+task, `task_codesw_entry` @0x0303240c, runs `channel_switch_and_screen_refresh` @0x03032024) and waits for flag 4 (posted
+after the load). For reason 0x16 the refresh takes the channel number from 0x4007a and calls `channel_load_synchronized`
+@0x0305813c -> `channel_change_apply_dispatcher` @0x030573e8 with reason 0x16:
+- `(settings[0x2d] & 4) == 0 && reason != 0x14 && reason != 0x16` selects the VFO record; 0x16 skips that, so a memory
+  channel `1..4000` is read by number (`channel_num_to_block_offset` @0x03055924, `flash_field_read_cached`) in VFO mode too;
+- the full apply follows: band flags (`frequency_band_range_check_and_status_set`, 0x3e31b bit 5 = TX outside the bands),
+  struct commit (`commit_channel_record_dual_vfo` with param 0: the per-side caches 0x3e358/0x3e21c are NOT touched), live
+  words (`channel_freq_pair_store`), power, calibration, bandwidth, GPIO 0x2e/0x2f, the APRS cache bits; the number is
+  stored at 0x3e198 (0x3e144 + 0x54) at the end. Reasons 0x14 and 0x16 skip `channel_change_apply_squelch` (no RX retune);
+- the refresh tail redraws nothing for reasons 0x14..0x17. No flash write anywhere on the path (the RAM settings mirror
+  fields 0x30 bit 0, 0x38, 0x3d, 0x53, 0x54 follow the loaded channel; the mirror is never written back to flash,
+  docs/settings-field.md 0.3).
+When the DMR data call ends (`dialog_close_and_tx_release` @0x0302dc38, `dialog_request_tick` @0x0302d884, and three more),
+stock posts `ui_event_notify_alt(0x17)`: the refresh's default branch reloads the selected channel
+(`channel_list_index_resolve(settings[0x29], settings[0x26])`, or 0x3e198 when 0x3fd2c bit 1 is set), and the dispatcher's
+0x17 path loads it as a normal channel change (VFO record in VFO mode; the scan-parked side cache when 0x40120 bit 3/4 says so).
+
+**Our sequence** (`krk_aprs_chan_send`):
+1. Setting from block 4 0xF80 (magic "BCHN", u16 channel, u16 inverse; 00/FF/any mismatch = Off).
+2. Gates before any switch: no menu or Kraken screen open (automatic beacon only, `krk_ui_in_menu`, `krk_screen_owner`);
+   VOX/repeater not armed (`krk_vox_tag`); the lock: no send in progress (`krk_aprs_tx_busy`), not keyed (0x3fdc8 bit 3),
+   no other switch, taken with IRQs off (0x1018c / 0x1019c). The callers have already required an analog selected channel.
+3. Wake (`event_queue_reset` @0x03054d80), `krk_on_selected_side(1500)` (dual watch: selected side loaded, engine held in
+   state 3, as stock does before its 0x16).
+4. Save 0x4007a and 0x3e198; write our channel to 0x4007a and 0 to 0x3e198; `ui_event_notify_alt(0x16)`; put 0x4007a back.
+5. Check the load: 0x3e198 == our number (the dispatcher ran with it), flags8 0x3e1e4 `& 0xf8 == 0` (analog, may transmit),
+   0x3e31b bit 5 clear. Record the live TX word 0x38468. Otherwise refuse ("Analog channel only"): a DMR, receive-only,
+   out-of-band or empty slot is loaded for a moment but never keyed.
+6. `channel_change_apply_squelch` @0x0300df08 (RX onto the beacon channel, the stock idiom), 200 ms, then
+   `krk_aprs_tx_send` with all of its gates (TX inhibit, TX in use, dual watch, busy channel, callsign) on the beacon channel.
+7. Always (every path after step 4): put 0x3e198 back and `ui_event_notify_alt(0x17)`. Lock released.
+
+**Guards in `krk_aprs_tx.c`** (`krk_aprs_chan_keep()`, two one-line uses): `claim()` refuses with "Busy" (return 1 = try again
+soon) while a switch holds the sender, unless the caller is the switching task (OSTCBCurPtr 0x42500 recorded at the lock)
+and the radio is still on the beacon channel (TX word unchanged, analog, may transmit, in band). So CW ID and Burst Voice back
+off during the window, and a channel reload between the switch and the key-up (dual watch hold expiring, a knob turn) refuses
+the send. `fmram_send` checks again right after TX comes up and unkeys at once ("Aborted") before the audio source is
+switched, so a reload that lands during key-up costs at most a short unmodulated carrier.
+
+**What stays with the selected channel**: the trigger rules. The automatic beacon still needs the selected channel analog
+with APRS On (stock bit 0 of 0x40078), and the tick's gates (#7's) are unchanged; a digital selected channel never reaches the
+analog path (a limit of this version: a DMR user who wants analog beacons on 144.390 would need the tick hook to call the
+analog path on digital channels too). The tick's busy retry reads `stock_rx_active()` after the return, so a busy beacon
+channel retries on the selected channel's state (5 s or a full interval).
+
+**Side effects accepted**: about 2 s of receive on the beacon channel (the display keeps the selected channel; 0x16/0x17 do
+not redraw); the reason byte 0x3e319 is left at 0x17, as after a stock DMR report; satellite tracking (F10) ends if a beacon
+is sent while it runs (its ownership check sees the words change). A PTT press during the window transmits on the beacon
+channel until the 0x17 return, which tears the transmission down (`channel_switch_teardown_and_apply`).
+
+**Other builds**: every new address translated (`firmware/l01|049/addrmap.json`: functions "same", RAM by the moved-reference
+rule; 0x3e198 -> 0x3e194 and 0x4007a -> 0x40076 in L01). The reason codes are immediates in functions matched as "same", but
+the 0x16/0x17 behaviour was exercised only on 048 in QEMU.
+
+**Tests**: `tests/aprs_chan_checks.py` (from `kraken_ui_test.py`): halted machine with the reloads faked (Off unchanged;
+order 0x16, retune, send, 0x17; cells restored; failed send still returns; digital / TX-forbid / out of band / wrong number
+refused after the load; menu, VOX, busy, keyed, dual watch refused before; `krk_aprs_chan_keep` truth table; CW ID "Busy";
+key-up with the TX word changed unkeys without switching the audio), and booted runs with the generic codeplug and the real
+stock reloads (channel 15, 144.0225 analog: on it at the send, back on VFO A 144.125 after; channel 5 (DMR) and 26 (empty):
+0x16 then 0x17, no send).

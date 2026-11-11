@@ -20,10 +20,16 @@ With dual watch on, the list follows the side you selected with A/B, not the sid
 ## Analog APRS beacon
 
 Sends your position (or a status text when the radio has no GPS fix) as a standard APRS packet on the current
-analog channel, by hand or on a timer. Any APRS receiver, digipeater or igate can decode it.
+analog channel, or on a set beacon channel (see [Beacon channel](#beacon-channel)), by hand or on a timer. Any APRS
+receiver, digipeater or igate can decode it.
+
+**Send beacons only on an APRS frequency:** 144.390 MHz in North America, 144.800 MHz in Europe (check the APRS
+frequency for your region). Never beacon on a repeater or a voice channel: the packet is a burst of tones that
+disturbs everyone listening there, and repeaters are not for APRS. Either select the APRS channel before you send,
+or set it as the beacon channel.
 
 **Status:** works on hardware, by hand and on the automatic timer (DM32.00.01.048, 2026-11-11: three beacons 31 s apart at a 30 s interval). The timer's power-save correction is not yet confirmed on a radio.
-**Where:** **Menu > APRS** (analog channels only): `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `Beacon Text`
+**Where:** **Menu > APRS** (analog channels only): `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `Beacon Text`, `Beacon Chan`
 
 ### Set your callsign
 The beacon will not transmit until a callsign is saved.
@@ -79,7 +85,7 @@ digits, or `/A=` is shown as that data, not as text.
 | `Direct` | no digipeating |
 
 ### Send one beacon now
-1. Select the analog channel to send on (for example 144.390 MHz in North America).
+1. Select the analog channel to send on (for example 144.390 MHz in North America), or set a beacon channel.
 2. Open **Menu > APRS > Upload Beacon** and press `OK`. A popup shows `OK again to send` / `TRANSMITS`.
 3. Press `OK` again within 3 seconds. Any other key, or waiting, cancels with nothing sent.
 4. The radio shows `Sending...`, transmits for about one second, then shows `Sent position` or `Sent status`.
@@ -87,6 +93,8 @@ digits, or `/A=` is shown as that data, not as text.
 If it cannot send, a popup says why: `Set callsign first`, `Channel busy` (a signal is being received),
 `TX inhibited`, `TX in use` (you are already transmitting), `Dual watch: retry`, `Analog channel only`, or
 `Busy` (another send is running). `TX did not come up` or `Modem stalled` mean the send failed; try again.
+With a beacon channel set, `Beacon ch not usable`, `Analog channel only` and `Aborted` can also appear (see
+[Beacon channel](#beacon-channel)).
 
 ### Automatic beacon
 The stock interval timer drives the analog beacon on analog channels, the same way it drives DMR APRS on
@@ -107,6 +115,43 @@ digital channels.
 - A programmable key set in the CPS to the stock beacon-send function sends the analog beacon on an analog
   channel at once, with no confirmation. Stock allows that key only with a GPS fix (or the stock fixed-beacon
   type).
+
+### Beacon channel
+
+**Status:** emulator only. It has not been tested on a radio. Check the first beacons with a receiver.
+**Where:** **Menu > APRS > Beacon Chan** (analog channels only), after Beacon Text.
+
+With a beacon channel set, every analog beacon (Upload Beacon, the automatic beacon and the programmable key)
+goes out on that memory channel instead of the selected channel. The radio switches to it, sends, and switches
+back. This is the analog version of the stock DMR `Report Channel` setting, and it uses the same stock channel
+switch.
+
+1. Find the number of your APRS channel in the CPS channel list. This is the channel's number in the whole
+   channel list, not its position in a zone (`CH 1` on the standby screen is a position in the zone).
+2. Open **Menu > APRS > Beacon Chan**. The stock number entry opens with the current value; `0` means off.
+3. Press `Back` to delete digits, type the channel number (1-4000), and press `OK`. The radio shows
+   `Setting is OK`. A number above 4000 shows `Out of Range`.
+4. To turn it off, enter `0`.
+
+When a beacon is due or you send one:
+- The radio loads the beacon channel (its frequency, tones, power and bandwidth), listens on it for 0.2 seconds,
+  and sends only if the channel is clear. Then it loads the selected channel (memory channel or VFO) again. The
+  screen keeps showing the selected channel. Reception on the selected channel stops for about 2 seconds.
+- The radio transmits only on the beacon channel. If anything prevents the switch, nothing is sent: the beacon
+  never falls back to the selected channel while a beacon channel is set.
+- The beacon channel must be an analog channel that may transmit, inside the radio's transmit bands. Otherwise
+  the send is refused with `Analog channel only` (a DMR, receive-only or out-of-band channel, or an empty
+  channel number), and the radio stays on the selected channel.
+- `Busy` means another send or a transmission was running, VOX or the repeater is armed, or (for the automatic
+  beacon) a menu was open. The automatic beacon tries again later.
+- `Aborted` means the radio left the beacon channel just as it keyed up (for example dual watch or a channel
+  change); it stops transmitting at once.
+- The selected channel must still be analog with **APRS On/Off** on for the automatic beacon, as before. On a
+  digital selected channel the stock DMR APRS rows apply and the analog beacon does not run: this is a limit of
+  this version.
+
+The setting is kept in the radio's settings memory. Writing a codeplug with the CPS, or a factory reset, turns it
+off. If you renumber channels in the CPS, check this setting again.
 
 ### What is sent
 
@@ -135,6 +180,7 @@ beacons try again shortly).
 | Beacon Text | up to 43 characters: letters, digits, space and `. - / , : + ( )` | none (`DM-32UV Kraken` is sent) | Yes |
 | APRS On/Off | stock, per channel; shared with DMR APRS | from the CPS | Yes (stock) |
 | Intervals Set | stock, radio-wide; shared with DMR APRS | from the CPS | Yes (stock) |
+| Beacon Chan | 0 (off) or a memory channel number 1-4000 | 0 (off) | Yes |
 
 Callsign, path and beacon text are kept in the radio's settings memory. Writing a codeplug with the CPS, or a factory
 reset, erases them (and the CW ID setting): set the callsign and the text again afterwards.
@@ -153,6 +199,8 @@ reset, erases them (and the CW ID setting): set the callsign and the text again 
   about twice as often as set).
 - A send cannot be stopped once it starts. It ends by itself after about one second.
 - Use your own callsign. The beacon is your station identification.
+- Beacon only on an APRS frequency (144.390 MHz in North America, 144.800 MHz in Europe), never on a repeater or
+  a voice channel. When the beacon channel is off, the beacon goes out on whatever analog channel is selected.
 
 How it works: [../aprs-submenu.md](../aprs-submenu.md), [../afsk-tx.md](../afsk-tx.md), [../fm-send-ram-tx.md](../fm-send-ram-tx.md)
 
