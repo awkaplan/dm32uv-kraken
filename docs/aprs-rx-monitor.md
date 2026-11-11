@@ -162,6 +162,7 @@ behaviour of GPIO 0x2F at squelch open.
 * `patches/kraken_ui/krk_periodic.c`: `krk_hook_bg_tick`. `kraken_ui.patch.json`: splice `bg_tick_hook` at 0x03013f48, defsym `krk_screen_owner` for blob 2.
 * `patches/kraken_ui/krk_core.c`: `krk_screen_owner`, set/cleared in `krk_run_screen`, hook slot 3 call. `krk_ext.c`: slot 3 = `krk_mon_yield`. `krk.h`.
 * `patches/kraken_ui/krk_aprs_tx.c`: `krk_aprs_tx_busy()`, `krk_mon_yield()` in `krk_aprs_tx_send`.
+* Every frame the decoder finishes (screen or monitor) is also handed to the F18 APRS Messages inbox (`krk_afsk.c` `emit()`, [aprs-messages.md](aprs-messages.md)).
 * `tests/mon_checks.py` (new, called from `tests/kraken_ui_test.py`), `tests/parrot_qemu_test.py` (hook table slot 3 is now `krk_mon_yield`).
 
 ## 3. Checks (47 new, full build 585 PASS, 0 FAIL)

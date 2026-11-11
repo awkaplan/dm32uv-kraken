@@ -133,7 +133,7 @@ Any feature with persistent settings hits the storage problem:
 | Idea | Notes |
 |---|---|
 | Host KISS TNC over the programming cable | The AFSK/AX.25 encoder and decoder already work in both directions; what is missing is a framing layer on the serial link. This would turn the radio into a TNC for a PC and enable iGate use. Scoped in [kiss-tnc-scoping.md](kiss-tnc-scoping.md). The most reachable gap |
-| APRS messaging on FM | Kraken sends beacons and lists stations, but cannot compose or reply to APRS messages |
+| APRS messaging on FM | Receiving is built (F18, a receive-only inbox, [aprs-messages.md](aprs-messages.md)). Sending, replies and automatic acks are not; their design is in the same note (issue #6) |
 | Analog-mode recording | Now possible in principle with the FM receive capture path; storage is the problem |
 | RX noise reduction, automatic volume | Same capture path, plus the CPU budget |
 | Roger beep on DMR, hot-mic emergency | Small, not requested |

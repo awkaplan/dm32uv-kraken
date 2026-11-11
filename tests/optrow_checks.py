@@ -608,9 +608,11 @@ def check_aprs_path(c, s, s2, dwc, SCR, rec, calls):
     dwc.chan_poke(c, b"\x00")
     fcall(c, s["krk_aprs_render"])
     n = read_mem(c, ICNT, 1)[0]
-    want = [0, 8, 4] + list(range(9, 8 + krk_define("KRK_APRS_MAX")))     # stock 0 and 4, then ours in item order
-    items = list(read_mem(c, IL + 2, len(want)))
-    m.report(n == len(want) and items == want and struct.unpack("<H", read_mem(c, IL, 2))[0] == n, f"analog APRS list: {n} rows, items {items} (Upload ID = item 8 at row 1)")
+    core = (REPO / "patches/kraken_ui/krk_core.c").read_text()   # the analog list as krk_core.c builds it (later rows appended)
+    an = [int(t) if t.strip().isdigit() else krk_define(t.strip()) for t in re.search(r"aprs_analog_items\[\d*\]\s*=\s*\{([^}]*)\}", core)[1].split(",")]
+    items = list(read_mem(c, IL + 2, len(an)))
+    m.report(n == len(an) and items == an and an[:7] == [0, 8, 4, 9, 10, 11, 12] and struct.unpack("<H", read_mem(c, IL, 2))[0] == n,
+             f"analog APRS list: {n} rows, items {items} (Upload ID = item 8 at row 1)")
     dwc.chan_poke(c, b"\x10")
     fcall(c, s["krk_aprs_render"])
     n = read_mem(c, ICNT, 1)[0]

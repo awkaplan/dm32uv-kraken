@@ -6,7 +6,8 @@
  * The screen descriptor comes FIRST, at the origin: krk_ext.c slot 7 is the constant 0x030e8000 (blob2 is
  * built before this blob and cannot name its symbols), and krk_core.c reads the descriptor from there.
  * Right behind it (0x030e8020) sits a one-entry hook table that blob2's maintenance tick calls (the TX
- * watchdog, krk_periodic.c) - same trick as blob2's own krk_ext_hooks.
+ * watchdog, krk_periodic.c) - same trick as blob2's own krk_ext_hooks. Entry 1 (0x030e8024) is the F18 APRS Messages
+ * frame hand-off and the Messages screen descriptor sits at 0x030e8028 (krk_aprs_msg.c, docs/aprs-messages.md).
  *
  * SRAM:  .bss.bvm   modem state (krk_bv_modem.c) in kraken_ui4_state - only touched while F13 owns bigbuf
  *        .bss.bvt   framing + sounding + AMBE state at the end of bigbuf (BVT_SIZE bytes; the payload area
@@ -24,9 +25,14 @@ SECTIONS
         KEEP(*(.rodata.krk_bv_screen))
         . = ALIGN(0x20);                    /* 0x030e8020: hook table that blob2's maintenance tick reads (krk_periodic.c) */
         KEEP(*(.rodata.krk_bv_hooks))
+        KEEP(*(.rodata.krk_bv_hooks1))      /* 0x030e8024: F18 APRS Messages frame hand-off (krk_aprs_msg.c), read by blob2's krk_periodic.c */
+        . = ALIGN(4);                       /* 0x030e8028: the Messages screen descriptor, a constant in blob2's APRS rows */
+        KEEP(*(.rodata.krk_msg_screen))
         KEEP(*(.text .text.*))
         *(.rodata .rodata.*)
     } > PATCH_OWN_KRAKEN_UI4_CODE
+    ASSERT(!DEFINED(krk_msg_hooks) || ABSOLUTE(krk_msg_hooks) == ORIGIN(PATCH_OWN_KRAKEN_UI4_CODE) + 0x24, "F18 hook entry must sit at blob 4 origin + 0x24")
+    ASSERT(!DEFINED(krk_aprs_msg_screen) || ABSOLUTE(krk_aprs_msg_screen) == ORIGIN(PATCH_OWN_KRAKEN_UI4_CODE) + 0x28, "F18 Messages descriptor must sit at blob 4 origin + 0x28")
 
     .bss.bvm (NOLOAD) : {
         __bvm_start = .;

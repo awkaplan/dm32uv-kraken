@@ -206,7 +206,8 @@
     "patches/kraken_ui/krk_stock.h",
     "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0002c544": {
@@ -216,7 +217,8 @@
     "patches/kraken_ui/krk_stock.h",
     "tests/aprs_chan_checks.py",
     "tests/f13_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0002e6c0": {
@@ -328,7 +330,8 @@
    "to": "0x0002f0a0",
    "how": "ram: between references 0x2f098 and 0x2f6a8 (0x610 apart), both +0x0",
    "in": [
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0002f800": {
@@ -336,7 +339,8 @@
    "how": "ram: between references 0x2f6a8 and 0x2feb1 (0x809 apart), both +0x0",
    "in": [
     "tests/mi_rng_test.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0002fa00": {
@@ -651,7 +655,8 @@
    "in": [
     "patches/kraken_ui/krk_stock.h",
     "tests/f10_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0003e31e": {
@@ -972,7 +977,8 @@
     "tests/aprs_text_checks.py",
     "tests/f10_checks.py",
     "tests/f13_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x0003fde0": {
@@ -1285,7 +1291,8 @@
     "patches/kraken_ui/krk_stock.h",
     "tests/alert_checks.py",
     "tests/f10_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x03013178": {
@@ -1410,7 +1417,8 @@
    "to": "0x0301b66c",
    "how": "rtc_register_read (same)",
    "in": [
-    "patches/kraken_ui/krk_stock.h"
+    "patches/kraken_ui/krk_stock.h",
+    "tests/msg_checks.py"
    ]
   },
   "0x0301cad0": {
@@ -2659,7 +2667,8 @@
    "in": [
     "patches/kraken_ui/krk_periodic.c",
     "tests/alert_checks.py",
-    "tests/mon_checks.py"
+    "tests/mon_checks.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x030547ae": {
@@ -3426,7 +3435,8 @@
    "in": [
     "patches/kraken_ui/kraken_ui.patch.json",
     "patches/kraken_ui/krk_core.c",
-    "tests/kraken_ui_test.py"
+    "tests/kraken_ui_test.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x030ba928": {
@@ -3441,7 +3451,8 @@
    "how": "flash data: same content near the offset of its neighbours",
    "in": [
     "patches/kraken_ui/kraken_ui.patch.json",
-    "tests/kraken_ui_test.py"
+    "tests/kraken_ui_test.py",
+    "tests/msg_checks.py"
    ]
   },
   "0x030ba930": {

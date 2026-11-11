@@ -75,9 +75,10 @@ descriptor address in the `krk_ext.c` table (`kraken_ui4` at `0x030E8000`, `krak
 | `mi_rng_state` | `0x18007400`-`0x18007600` | 512 B | `mi_rng` (F0a) | DRBG state |
 | `kraken_ui_state` | `0x18007640`-`0x18007A80` | 1088 B | `kraken_ui` (P3) | UI `.bss`: screens and the last-heard ring (uses 0x3FC) |
 | `kraken_aprs_state` | `0x18007A80`-`0x18007B00` | 128 B | `kraken_ui2` | `.bss.aprs` (`KRK_APRS_BSS`): small state of the APRS features of 2026-11-11 (issues #3-#7). Taken from the unused tail of `kraken_ui_state`, because `kraken_ui2_state` is full |
+| `kraken_aprs_inbox` | `0x18007B00`-`0x18007C00` | 256 B | `kraken_ui2`/`kraken_ui4` | APRS messages inbox (F18, issue #6), RAM only, used through `KRK_APRS_INBOX_LO` |
 | `kraken_ui2_state` | `0x18007C40`-`0x18007EB0` | 624 B | `kraken_ui2` | `.bss` of the extension blob |
 
-Unclaimed in the window: `0x180053A0`-`0x18005600`, `0x18007600`-`0x18007640`, `0x18007B00`-`0x18007C40`, `0x18007EB0`-`0x18007FE0`.
+Unclaimed in the window: `0x180053A0`-`0x18005600`, `0x18007600`-`0x18007640`, `0x18007C00`-`0x18007C40`, `0x18007EB0`-`0x18007FE0`.
 `0x18007FE0`-`0x18008000` belongs to dm32uv-re (`overlay_guard`, `ramdump_cursor`).
 
 ## Excluded claims

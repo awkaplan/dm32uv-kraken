@@ -35,6 +35,7 @@ the same QEMU tests; on those two builds every feature is **emulator only** unti
 | B2 | APRS RX | Decodes analog APRS and lists the last 8 stations | decoder on hardware; screen and menu rows emulator only | [APRS](user-guide/aprs.md) |
 | F14 | RX Monitor | Keeps the APRS decoder running at standby | hardware | [APRS](user-guide/aprs.md) |
 | F14b | RX Monitor Alert | A popup at standby with the callsign and start of the text of each received analog APRS packet | hardware | [APRS](user-guide/aprs.md) |
+| F18 | APRS Messages | Receive-only inbox of analog APRS messages to your callsign (3 kept, RAM only); no replies or acks | emulator only (screen checked on a radio) | [APRS](user-guide/aprs.md#messages) |
 | F9 | Parrot | Records a DMR call and replays it as a DMR call | hardware, menu newer | [parrot and burst voice](user-guide/parrot-and-burst-voice.md) |
 | F10 | Satellites | Pass prediction (SGP4) and Doppler-corrected RX/TX for FM satellites | hardware for prediction, tracking and retune on real passes; no contact made, transmit through a satellite not tested | [satellites](user-guide/satellites.md) |
 | F11 | Squelch Mode | Noise-based analog squelch: Off (stock), Normal, Tight | emulator only | [radio settings](user-guide/radio-settings.md) |
@@ -65,7 +66,7 @@ often, and where Kraken stands:
 | Bigger scan lists, and scanning that works reliably | Not built. A zone scan without scan lists looks possible |
 | See the caller's callsign or name | Last Heard (F1) shows the alias or contact name; most reports are CPS contact-import trouble |
 | Quicker talkgroup handling: change it on the radio, show it at standby | Not built; both look possible |
-| Analog APRS | Built: analog beacon (F8) and APRS RX |
+| Analog APRS | Built: analog beacon (F8), APRS RX, and a receive-only message inbox (F18) |
 | Wider frequency ranges | Built: Freq Unlock (F16) |
 | Safe installs with a way back to stock | Web installer (above), and the update file's documented restore |
 | Radio keying up by itself, PTT stuck on | Reported twice; not yet investigated. Safety item |

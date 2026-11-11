@@ -208,6 +208,12 @@
      "label": "Beacon Chan",
      "screen": "&krk_aprs_chan_screen",
      "label_at": "0x030e77c0"
+    },
+    {
+     "key": "msg",
+     "label": "Messages",
+     "screen": "(const struct krk_screen *)(KRK_EXT4_LO + 0x28)",
+     "label_at": "0x030e77e0"
     }
    ],
    "jump_tables": [

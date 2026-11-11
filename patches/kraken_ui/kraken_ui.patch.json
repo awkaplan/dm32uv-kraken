@@ -202,7 +202,8 @@
     "krk_bv_modem.c",
     "krk_bv_frame.c",
     "krk_bv_sound.c",
-    "krk_ambe.c"
+    "krk_ambe.c",
+    "krk_aprs_msg.c"
    ],
    "cflags": [
     "-Os",
@@ -254,7 +255,8 @@
     "krk_vf": "@kraken_ui2:krk_vf",
     "krk_fm_send_opt": "@kraken_ui2:krk_fm_send_opt",
     "krk_on_selected_side": "@kraken_ui2:krk_on_selected_side",
-    "krk_bv_cfg": "@kraken_ui2:krk_bv_cfg"
+    "krk_bv_cfg": "@kraken_ui2:krk_bv_cfg",
+    "krk_call_get": "@kraken_ui3:krk_call_get"
    },
    "libgcc": true
   },
@@ -443,7 +445,7 @@
   {
    "name": "krk_aprs_arr_zh",
    "addr": "0x030e7620",
-   "why": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): items 8..14 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text, Beacon Chan). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
+   "why": "stock APRS zh strings + analog rows (descriptor 0x030ba924 lang 0): items 8..15 (Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text, Beacon Chan, Messages). Upload ID and Upload Beacon reuse the stock strings of items 1 and 6; the rest are ours",
    "parts": [
     {
      "stock_u32": "0x030ba8e4",
@@ -463,7 +465,8 @@
       "@krk_aprs_lbl_rx",
       "@krk_aprs_lbl_mon",
       "@krk_aprs_lbl_text",
-      "@krk_aprs_lbl_chan"
+      "@krk_aprs_lbl_chan",
+      "@krk_aprs_lbl_msg"
      ]
     }
    ]
@@ -491,7 +494,8 @@
       "@krk_aprs_lbl_rx",
       "@krk_aprs_lbl_mon",
       "@krk_aprs_lbl_text",
-      "@krk_aprs_lbl_chan"
+      "@krk_aprs_lbl_chan",
+      "@krk_aprs_lbl_msg"
      ]
     }
    ]
@@ -499,7 +503,7 @@
   {
    "name": "krk_aprs_itemjmp",
    "addr": "0x030e76a0",
-   "why": "APRS per-item jump table: 8 stock case blocks + 7 stub entries (items 8..14: Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text, Beacon Chan)",
+   "why": "APRS per-item jump table: 8 stock case blocks + 8 stub entries (items 8..15: Upload ID, Upload Beacon, Callsign, APRS RX, RX Monitor, Beacon Text, Beacon Chan, Messages)",
    "parts": [
     {
      "stock_u32": "0x030aff54",
@@ -517,6 +521,7 @@
     },
     {
      "u32": [
+      "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
       "@kraken_ui:krk_aprs_item_stub",
@@ -1186,6 +1191,21 @@
      "align": 4
     }
    ]
+  },
+  {
+   "name": "krk_aprs_lbl_msg",
+   "addr": "0x030e77e0",
+   "why": "label of APRS item 15 (Messages), an analog row (docs/aprs-submenu.md)",
+   "parts": [
+    {
+     "string": "Messages",
+     "encoding": "ascii",
+     "nul": true
+    },
+    {
+     "align": 4
+    }
+   ]
   }
  ],
  "splices": [
@@ -1359,7 +1379,7 @@
    "name": "aprs_desc_zh_count",
    "addr": "0x030ba928",
    "expect_u8": "0x08",
-   "u8": "0x0f"
+   "u8": "0x10"
   },
   {
    "name": "aprs_desc_en_ptr",
@@ -1371,14 +1391,14 @@
    "name": "aprs_desc_en_count",
    "addr": "0x030ba930",
    "expect_u8": "0x08",
-   "u8": "0x0f"
+   "u8": "0x10"
   },
   {
    "name": "aprs_item_bound",
    "addr": "0x0303d556",
    "expect": "07 3a",
-   "bytes": "0e 3a",
-   "why": "cmphsi r2,8 -> cmphsi r2,15 (raw imm = value-1): items 8..14 are ours"
+   "bytes": "0f 3a",
+   "why": "cmphsi r2,8 -> cmphsi r2,16 (raw imm = value-1): items 8..15 are ours"
   },
   {
    "name": "aprs_item_table_ptr",

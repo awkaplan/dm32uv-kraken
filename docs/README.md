@@ -56,6 +56,7 @@ The stock firmware corpus, patch tools and Docker build image these notes refer 
 | [aprs-stock-gaps.md](aprs-stock-gaps.md) | Stock's unused analog APRS mode and the bearing hemisphere bug (F7) |
 | [aprs-positions.md](aprs-positions.md) | How stock stores received APRS/GPS positions |
 | [aprs-rx-monitor.md](aprs-rx-monitor.md) | F14: APRS decoding at standby |
+| [aprs-messages.md](aprs-messages.md) | F18: APRS messages inbox (receive only); design for sending and acks |
 | [kiss-tnc-scoping.md](kiss-tnc-scoping.md) | Scoping a host KISS TNC (not built) |
 | [last-heard-hooks.md](last-heard-hooks.md) | F1: hook points for the last-heard list |
 | [dmr-ber.md](dmr-ber.md) | F3: DMR link quality from the modem's per-burst registers |

@@ -8,7 +8,7 @@ turned off in the CPS. Its rows follow the mode of the selected channel:
 
 | Selected channel | Rows |
 |---|---|
-| Analog | `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `APRS RX`, `RX Monitor`, `Beacon Text` |
+| Analog | `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`, `APRS RX`, `RX Monitor`, `Beacon Text`, `Beacon Chan`, `Messages` |
 | Digital | the 8 stock rows: `APRS On/Off`, `Upload ID`, `Upload Type`, `Report Channel`, `Intervals Set`, `APRS Info`, `Upload Beacon`, `Delete All` |
 
 `Upload ID` and `Upload Beacon` mean different things in the two lists. On an analog channel they are Kraken's
@@ -300,6 +300,43 @@ It does not show:
   the receive audio may stop reaching the decoder there (see the developer note).
 
 How it works: [../aprs-rx-monitor.md](../aprs-rx-monitor.md)
+
+## Messages
+
+Shows APRS text messages sent to your callsign on analog APRS. This is receive only: the radio does not reply and does not
+send the acknowledgement ("ack") that tells the sender the message arrived.
+
+**Status:** checked in the emulator. On a radio only the screen has been checked (with a test message placed in memory); receiving a message over the air has not been tested.
+**Where:** **Menu > APRS > Messages** (analog channels only)
+
+### Using it
+1. Save your callsign and SSID under **Menu > APRS > Callsign**. Only messages to exactly that callsign-SSID are kept
+   (for example `N0CALL-5`; a message to `N0CALL-6` or `N0CALL` is not).
+2. Messages are received only while the APRS decoder runs: while **APRS RX** is open, or at standby with **RX Monitor** on,
+   on an analog channel (for example 144.390 MHz in North America).
+3. Open **Menu > APRS > Messages**. The newest message is shown first: sender and how long ago it arrived (`12s`, `4m`,
+   `1h`), then the text. `Messages 1/3` at the top means message 1 of 3.
+4. `Down` shows the next older message, `Up` the next newer one. Press `Back` to leave.
+
+The screen says `No messages` when nothing has arrived, and `Set callsign first` when no callsign is saved. Opening the
+screen never transmits.
+
+### What the sender sees
+Because this radio sends no acknowledgement, the sending station repeats the message several times, usually for a few
+minutes up to about half an hour, and then reports it as not delivered (for example "no ack" or "failed"). The message did
+arrive. The repeats are shown once: a copy of a message already in the list from the last 30 minutes is not added again.
+If you need the sender to know, answer by other means (voice, or another APRS device).
+
+### Limits
+- Receive only. No replies, no acknowledgements, no sending.
+- Keeps the 3 newest messages; the oldest drops off. Lost at power-off.
+- Shows the first 59 characters of a message (APRS allows 67).
+- Nothing at standby shows that a message arrived; open the screen to check.
+- Acks, bulletins and messages to other stations are not listed.
+- With stock power save on, RX Monitor may not hear anything at standby (a known receive limit, not yet fixed). The ages
+  come from the radio's clock, so they stay correct in power save; if the clock is set back, an age shows `?`.
+
+How it works: [../aprs-messages.md](../aprs-messages.md)
 
 ## Bearing fix for DMR APRS Info
 

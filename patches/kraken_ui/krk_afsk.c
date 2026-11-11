@@ -222,6 +222,15 @@ static void put_call(char **o, const unsigned char *a, int max)
     *o = p;
 }
 
+/* F18 APRS Messages (krk_periodic.c -> blob 4 krk_aprs_msg.c, docs/aprs-messages.md) gets every decoded frame: the line, then
+ * the frame without its FCS. The weak empty default keeps this decoder self-contained for the host tests and tools. */
+void __attribute__((weak)) krk_aprs_msg_frame(const char *line, const unsigned char *f, int len)
+{
+    (void)line;
+    (void)f;
+    (void)len;
+}
+
 static void emit(void)
 {
     const unsigned char *f = S.frame;
@@ -256,6 +265,7 @@ static void emit(void)
     *o = 0;
     if (S.nlines < AFSK_LINES) S.nlines++;
     S.nframes++;
+    krk_aprs_msg_frame(S.line[0], f, len);       /* F18 APRS Messages: the whole frame (the line is cut at 60) */
 }
 
 static void hdlc_bit(int bit)

@@ -19,7 +19,7 @@ fit anywhere else are in a new **KRAKEN** category at the end of the top menu.
 | Page | Features |
 |---|---|
 | [Installing Kraken](install.md) | The update file, backup, install, going back to stock |
-| [APRS](aprs.md) | Analog APRS beacon, APRS RX stations list, RX Monitor, DMR APRS bearing fix |
+| [APRS](aprs.md) | Analog APRS beacon, APRS RX stations list, RX Monitor, Messages inbox, DMR APRS bearing fix |
 | [Meters and receive tools](receive-tools.md) | RSSI Meter, Band Scope, Last Heard, GPS Grid, DMR Link, About |
 | [Power, squelch and frequency range](radio-settings.md) | TX Power Trim, Squelch Mode, Squelch Survey, Freq Unlock |
 | [Parrot and Burst Voice](parrot-and-burst-voice.md) | DMR parrot (record and replay), Burst Voice |
@@ -42,6 +42,7 @@ Rows marked *digital* appear only on a digital channel.
 | | Callsign | Your callsign and SSID for APRS | [APRS](aprs.md) |
 | | APRS RX | List of analog APRS stations heard | [APRS](aprs.md) |
 | | RX Monitor | Decode APRS in the background at standby, with an optional popup per packet | [APRS](aprs.md) |
+| | Messages | Read APRS messages sent to your callsign (receive only) | [APRS](aprs.md#messages) |
 | **Call Log** | Last Heard | Recent DMR stations heard | [Receive tools](receive-tools.md) |
 | **GNSS** | GPS Grid | Maidenhead locator from GPS | [Receive tools](receive-tools.md) |
 | **Settings > Radio Settings** | TX Power Trim | Finer transmit power steps | [Power, squelch, range](radio-settings.md) |

@@ -31,6 +31,7 @@ from gdb_rsp import read_mem
 import dw_checks as dwc
 import mon_checks
 import alert_checks
+import msg_checks
 import optrow_checks
 import convert_checks
 import aprs_text_checks
@@ -652,6 +653,13 @@ def check_exit_and_rssi(c, s):
     tick(0x10, [0xC0] * 4, enter=False)
     m.report(rd_i(24) == 0xC0 - 320, f"digital 1 s window closes after the 6th tick ({1000 // (100 + 60)} per second; avg {rd_i(24)} half-dB, want {0xC0 - 320})")
 
+def aprs_analog_items():
+    """The analog APRS list (item numbers) from krk_core.c's aprs_analog_items[], names resolved through krk_menu_rows.h."""
+    core = (REPO / "patches/kraken_ui/krk_core.c").read_text()
+    toks = [t.strip() for t in re.search(r"aprs_analog_items\[\d*\]\s*=\s*\{([^}]*)\}", core)[1].split(",")]
+    return [int(t) if t.isdigit() else krk_define(t) for t in toks]
+
+
 def check_aprs_sublist(c, s, s2):
     """Stock APRS sub-list per channel mode (krk_aprs_render) and the APRS RX row (item 11): analog = 7 rows incl. APRS RX and RX Monitor,
     digital = the 8 stock rows; selecting item 11 hands the stations screen to the runner with krk_aprs_render as the
@@ -1162,6 +1170,7 @@ def main():
         print("== F14 RX Monitor")
         mon_checks.check_mon(c, s, s2, img, STOCK_IMG.read_bytes(), dwc)
         alert_checks.unit_checks(c, s, s2)          # F14b APRS RX alert (issue #5)
+        msg_checks.check_msg(c, s, s2, syms(ELF3), syms(ELF4), img, dwc)   # F18 APRS Messages inbox (tests/msg_checks.py)
         check_f12_review(c, s, s2, img)              # review fixes 2026-10-29
         check_sweeps(c, s, s2, img)                  # one-action sweeps: F3 key 2, F11 key 6, F12 P1
         check_f10(c, img, s2, syms(ELF3))

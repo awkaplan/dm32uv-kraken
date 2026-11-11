@@ -17,6 +17,9 @@ int krk_afsk_feed(const short *x, int n);
  * truncated); line 0 is the newest. Returns the number of valid lines. */
 unsigned krk_afsk_frames(void);
 int krk_afsk_line(int i, char *out /* >= AFSK_LINE_LEN + 1 */);
+/* Called for every decoded frame with its line and the frame without its FCS (len bytes); a weak empty default in krk_afsk.c,
+ * in the image the F18 APRS Messages hand-off (krk_periodic.c, to blob 4's krk_aprs_msg.c). */
+void krk_aprs_msg_frame(const char *line, const unsigned char *f, int len);
 /* Diagnostics: last decision energy ratio proxy and current bit-PLL lock quality (0..255). */
 int krk_afsk_quality(void);
 /* HDLC flags (0x7E) seen and frames rejected by the FCS, since reset. */

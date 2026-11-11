@@ -44,8 +44,9 @@ Docker image, each against the combined image:
 
 - `mi_rng_test.py` for the `mi_rng` patch.
 - `kraken_ui_test.py` for the `kraken_ui` patch. It runs on a halted machine (no boot) and calls the patch
-  code over the gdb stub. It pulls in the feature checks: `dw_checks.py`, `mon_checks.py`, `alert_checks.py`, `optrow_checks.py`,
-  `convert_checks.py`, `aprs_text_checks.py`, `aprs_chan_checks.py`, `f10_checks.py`, `f13_checks.py` and `parrot_qemu_test.py`. In a second thread it also
+  code over the gdb stub. It pulls in the feature checks: `dw_checks.py`, `mon_checks.py`, `alert_checks.py`, `msg_checks.py`,
+  `optrow_checks.py`, `convert_checks.py`, `aprs_text_checks.py`, `aprs_chan_checks.py`, `f10_checks.py`, `f13_checks.py` and
+  `parrot_qemu_test.py`. In a second thread it also
   boots the image and walks the stock menu by key: `optrow_checks.boot_checks`, `chanset_rows_e2e.py`,
   `bvnest_e2e.py`, `alert_checks.boot_checks` and `aprs_beacon_e2e.py` (the analog automatic APRS beacon, issue #7).
 

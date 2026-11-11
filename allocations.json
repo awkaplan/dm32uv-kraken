@@ -37,6 +37,14 @@
       "source": "patches/kraken_ui/"
     },
     {
+      "name": "kraken_aprs_inbox",
+      "space": "sram",
+      "start": "0x18007b00",
+      "end_exclusive": "0x18007c00",
+      "owner": "kraken_ui2/kraken_ui4 (APRS messages inbox, issue #6, F18): received APRS messages, RAM only (lost at power-off). Reached through KRK_APRS_INBOX_LO (krk_claims.h), not a linker section. Taken 2026-11-11 from the unused tail of kraken_ui_state.",
+      "source": "patches/kraken_ui/krk_aprs_msg.c"
+    },
+    {
       "name": "kraken_aprs_state",
       "space": "sram",
       "start": "0x18007a80",

@@ -11,6 +11,7 @@
  */
 #include "krk.h"
 #include "krk_vframe.h"
+#include "krk_afsk.h"
 
 void krk_parrot_tick(void);
 
@@ -26,6 +27,17 @@ static void bv_watchdog(void)
 
     if ((u32)f >= KRK_EXT4_LO && (u32)f < KRK_EXT4_HI)
         f();
+}
+
+/* F18 APRS Messages (blob ui4, krk_aprs_msg.c krk_msg_rx): every decoded frame goes through entry 1 of the same table
+ * (0x030e8024, kraken_ui4.ld), range-checked as above. Strong definition of krk_afsk.c's weak hand-off. */
+typedef void (*msg_rx_fn)(const char *line, const unsigned char *f, int len);
+void krk_aprs_msg_frame(const char *line, const unsigned char *f, int len)
+{
+    msg_rx_fn fn = ((const msg_rx_fn *)KRK_UI4_HOOK_TABLE)[1];
+
+    if ((u32)fn >= KRK_EXT4_LO && (u32)fn < KRK_EXT4_HI)
+        fn(line, f, len);
 }
 
 #define stock_maint_led_tick ((void (*)(void))0x03068224)

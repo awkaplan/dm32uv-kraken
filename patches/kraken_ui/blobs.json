@@ -45,7 +45,7 @@
  },
  {
   "name": "kraken_ui4",
-  "sources": ["krk_bvscr.c", "krk_bvmsg.c", "krk_bv_modem.c", "krk_bv_frame.c", "krk_bv_sound.c", "krk_ambe.c"],
+  "sources": ["krk_bvscr.c", "krk_bvmsg.c", "krk_bv_modem.c", "krk_bv_frame.c", "krk_bv_sound.c", "krk_ambe.c", "krk_aprs_msg.c"],
   "opt": "-Os",
   "linker_script": "kraken_ui4.ld",
   "entry": "krk_bv_screen",
@@ -53,7 +53,8 @@
   "imports": [
    {"from": "kraken_ui", "except": ["krk_gps_get"]},
    {"from": "kraken_ui", "syms": ["krk_key_scan"]},
-   {"from": "kraken_ui2", "syms": ["krk_vf_service", "krk_vf_tx_begin", "krk_vf_tx_end", "krk_vf_tx_quiet", "krk_vf_rx_sink", "krk_vf_release", "krk_vf_press", "krk_vf_ticks", "krk_vf_silence", "krk_vf_big_claim", "krk_vf_big_release", "krk_vf", "krk_fm_send_opt", "krk_on_selected_side", "krk_bv_cfg"]}
+   {"from": "kraken_ui2", "syms": ["krk_vf_service", "krk_vf_tx_begin", "krk_vf_tx_end", "krk_vf_tx_quiet", "krk_vf_rx_sink", "krk_vf_release", "krk_vf_press", "krk_vf_ticks", "krk_vf_silence", "krk_vf_big_claim", "krk_vf_big_release", "krk_vf", "krk_fm_send_opt", "krk_on_selected_side", "krk_bv_cfg"]},
+   {"from": "kraken_ui3", "syms": ["krk_call_get"]}
   ],
   "libgcc": true
  },
