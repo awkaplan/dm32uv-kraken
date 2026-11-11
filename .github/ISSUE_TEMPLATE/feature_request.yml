@@ -1,0 +1,82 @@
+name: Feature request
+description: Something you would like Kraken to do that it does not do yet
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please put one feature in each request, so each one can be tracked and closed
+        on its own.
+
+        Before you write it up, have a look at the
+        [feature ideas list](https://github.com/awkaplan/dm32uv-kraken/blob/main/docs/feature-ideas.md).
+        Many ideas are already known, and some are blocked by the radio's hardware (for example, the DM-32UV
+        has no Bluetooth).
+
+        Something already in Kraken that does not work as the user guide says? Use **Bug report** instead.
+
+        Requests are public. Do not post callsigns, DMR IDs, locations or serial numbers.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - APRS
+        - DMR (digital)
+        - Analog (FM)
+        - Receive tools (RSSI meter, band scope, squelch, satellites)
+        - Transmit features (CW ID, VOX, Burst Voice, repeater)
+        - GPS
+        - Menus, settings and display
+        - Web installer
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What should the radio do?
+      description: Describe the feature as you would use it. Say what you would press and what the radio would show or do.
+      placeholder: |
+        In Menu > APRS, a "Beacon Text" row where I can type the text my beacon sends,
+        instead of the fixed "DM-32UV Kraken".
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would you use it?
+      description: When you would use it, and what you do today without it.
+    validations:
+      required: true
+  - type: textarea
+    id: elsewhere
+    attributes:
+      label: Other radios that do this
+      description: If another radio does this (AnyTone, Kenwood, TYT, OpenGD77, ...), say which, and how it works there.
+  - type: input
+    id: firmware
+    attributes:
+      label: Radio firmware
+      description: Menu > Device Info > Firmware Ver, for example DM32.00.01.048. Optional.
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else
+      description: Menu path you would expect, settings it would need, photos or links.
+  - type: markdown
+    attributes:
+      value: |
+        A feature that can transmit is always off after install and needs you to turn it on, and automatic
+        transmitters show a tag on the standby screen. That is a project rule, so a request may be built a
+        little differently from how it is described here.
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: I checked the feature ideas list and the open issues for this idea.
+          required: true
+        - label: This request has no callsigns, DMR IDs, locations or serial numbers.
+          required: true
