@@ -23,7 +23,7 @@
  *
  * The interval is real time. It is counted in OS ticks, but those run about twice as fast as real
  * time while stock power save has the radio asleep (2026-11-06, on hardware, Save 1:4: 2.06x, "1 min" came
- * out at about 30 s; docs/fm-send-ram-tx.md 6.3), so real_time() takes the surplus back out against
+ * out at about 30 s; docs/fm-send-ram-tx.md 6.3), so krk_real_time() takes the surplus back out against
  * the RTC's seconds register.
  */
 #include "krk.h"
@@ -169,27 +169,28 @@ static void cw_init(void)
     CW.magic = CW_MAGIC;        /* last */
 }
 
-/* Keeps the tick-counted interval on real time: whenever the RTC's seconds are seen to change, the
+/* Keeps a tick-counted interval on real time: whenever the RTC's seconds are seen to change, the
  * difference between the ticks counted since the previous change and the real seconds that passed
- * moves CW.last (later for fast ticks, earlier for slow ones; the errors of single readings cancel
+ * moves *last (later for fast ticks, earlier for slow ones; the errors of single readings cancel
  * from one change to the next). An RTC that stands still or is absent (QEMU) changes nothing. The
- * seconds are compared modulo 60: the scheduler runs about once a second, and a clock set by hand or
- * by GPS in between shifts one interval by under a minute. */
-static void real_time(u32 now)
+ * seconds are compared modulo 60: the caller runs about once a second, and a clock set by hand or
+ * by GPS in between shifts one interval by under a minute. *sec = RTC_NONE (re-)starts it. Shared
+ * with the analog automatic beacon (krk_aprs_tx.c krk_hook_aprs_tick). */
+void krk_real_time(u32 *last, u8 *rsec, u32 *rtick, u32 now)
 {
     unsigned sec = rtc_reg(0);
     int surplus;
 
-    if (sec == CW.rtc_sec)
+    if (sec == *rsec)
         return;
-    if (CW.rtc_sec < 60 && sec < 60) {
-        surplus = (int)(now - CW.rtc_tick) - (int)(((sec + 60 - CW.rtc_sec) % 60) * TICK_HZ);
-        if (surplus > (int)(now - CW.last))
-            surplus = (int)(now - CW.last);     /* never ahead of the tick: that reads as a reboot */
-        CW.last += (u32)surplus;
+    if (*rsec < 60 && sec < 60) {
+        surplus = (int)(now - *rtick) - (int)(((sec + 60 - *rsec) % 60) * TICK_HZ);
+        if (surplus > (int)(now - *last))
+            surplus = (int)(now - *last);       /* never ahead of the tick: that reads as a reboot */
+        *last += (u32)surplus;
     }
-    CW.rtc_sec = (u8)sec;
-    CW.rtc_tick = now;
+    *rsec = (u8)sec;
+    *rtick = now;
 }
 
 static unsigned cfg_min(unsigned cfg)
@@ -241,7 +242,7 @@ void krk_cwid_tick(void)
         CW.rtc_sec = RTC_NONE;
         return;
     }
-    real_time(now);
+    krk_real_time(&CW.last, &CW.rtc_sec, &CW.rtc_tick, now);
     period = cfg_min(krk_cwid_cfg()) * 60u * TICK_HZ;
     if (now - CW.last < period)
         return;

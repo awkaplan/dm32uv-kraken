@@ -20,7 +20,9 @@
 
 /* sram */
 #define KRK_UI_STATE_LO             0x18007640u
-#define KRK_UI_STATE_HI_EXCL        0x18007c40u
+#define KRK_UI_STATE_HI_EXCL        0x18007a80u
+#define KRK_APRS_STATE_LO           0x18007a80u
+#define KRK_APRS_STATE_HI_EXCL      0x18007b00u
 #define KRK_UI2_STATE_LO            0x18007c40u
 #define KRK_UI2_STATE_HI_EXCL       0x18007eb0u
 #define KRK_AFSK_STATE_LO           0x18004c00u

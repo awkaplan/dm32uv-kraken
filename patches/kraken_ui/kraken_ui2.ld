@@ -37,6 +37,11 @@ SECTIONS
         *(.bss.big)
     } > PATCH_OWN_KRAKEN_BIGBUF
 
+    /* APRS features of 2026-11-11 (issues #3-#7): kraken_ui2_state is full, so their small state has its own claim */
+    .bss.aprs (NOLOAD) : {
+        *(.bss.aprs)
+    } > PATCH_OWN_KRAKEN_APRS_STATE
+
     .bss (NOLOAD) : {
         *(.bss .bss.*)
         *(COMMON)

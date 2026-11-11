@@ -440,9 +440,11 @@ int krk_fm_send(int (*fill)(void *ctx, volatile u8 *h), void *ctx, const char **
  * channel change; krk_stubs.S krk_hook_aprs_mode extends it to analog channels with APRS On), then
  * on a GPS fix ([0x38c6c] bit 6) or the fixed-position upload type ([0x40078] bit 2), then calls
  * the tick 0x030625bc: counter [0x40084]++ ; at the interval [0x4007c] (seconds, 0 = off, >= 30),
- * not TX-inhibited, no CPS link, counter = 0, event_queue_reset, not scanning/busy, channel TX
- * allowed, then the DMR send 0x03062510. The manifest replaces the fix gate and the tick call with
- * krk_hook_aprs_tick: on a DIGITAL channel it is the stock sequence unchanged; on an ANALOG channel
+ * not TX-inhibited, screen-mode byte [0x320af] == 0, counter = 0, event_queue_reset, not
+ * scanning/busy, channel TX allowed, then the DMR send 0x03062510. (The loop itself skips the whole
+ * block while [0x320af] is 7..0x3f, a menu. The byte reads 0 at standby only until stock's "go to
+ * standby" event 0x2c stores 0x5b, so the analog path below does not copy that == 0 test: issue #7.)
+ * The manifest replaces the fix gate and the tick call with krk_hook_aprs_tick: on a DIGITAL channel it is the stock sequence unchanged; on an ANALOG channel
  * the same counter and interval drive an AFSK beacon, without the fix gate (no fix = status packet,
  * as Upload Beacon sends). The manual Upload Beacon key (programmable key, 0x030158b8) goes through
  * krk_hook_aprs_send_now the same way. The hooks run in the maintenance task (0x180-word stack). */
@@ -455,11 +457,16 @@ int krk_fm_send(int (*fill)(void *ctx, volatile u8 *h), void *ctx, const char **
 
 /* Analog interval timing uses the uC/OS tick (OSTickCtr, 100 Hz, rtos-and-memory.md) rather than
  * the stock seconds counter, because with dual watch on this hook only runs while a side with APRS
- * active is loaded, which would stretch the interval. A gap of more than 10 s between calls means APRS
- * was off or inactive: re-arm, so the first beacon comes one interval after it becomes active. */
+ * active is loaded and the dual-watch state [0x400d8] is 0 or 1 (not dwelling on a signal), which
+ * would stretch the interval. A gap of more than 10 s between calls means APRS
+ * was off or inactive, or a menu was open (the loop skips the hook there): re-arm, so the first beacon
+ * comes one interval after it becomes active. The tick runs about 2x fast while stock power save has
+ * the radio asleep (docs/fm-send-ram-tx.md 6.3): krk_real_time (krk_cwid.c, as the CW ID) corrects
+ * last_send against the RTC seconds. */
 #define TICK_HZ  100u
 #define ARM_MAGIC 0x41524d44u
 static struct { u32 magic, last_send, last_call; } T;
+static struct { u32 tick; u8 sec; } TR KRK_APRS_BSS;   /* krk_real_time's RTC stamp (8 B, claim kraken_aprs_state) */
 
 void krk_hook_aprs_tick(void)
 {
@@ -475,13 +482,15 @@ void krk_hook_aprs_tick(void)
     if (T.magic != ARM_MAGIC || now - T.last_call > 10u * TICK_HZ) {
         T.magic = ARM_MAGIC;
         T.last_send = now;
+        TR.sec = 0xff;
     }
     T.last_call = now;
+    krk_real_time(&T.last_send, &TR.sec, &TR.tick, now);
     interval = APRS_INTERVAL;
     if (interval < 30 || now - T.last_send < interval * TICK_HZ)
         return;
-    if (tx_is_inhibited() || UI_MODE_BYTE /* stock's "no CPS link" gate */ || !krk_channel_on_selected())
-        return;                                 /* due: try again next second */
+    if (tx_is_inhibited() || krk_ui_in_menu() || krk_screen_owner == KRK_SCR_MAGIC || !krk_channel_on_selected())
+        return;                                 /* due, but TX inhibited or a menu / one of our screens up: next second */
     APRS_COUNTER = 0;
     event_queue_reset();
     if ((UI_BUSY_FLAGS & 0x18) || (krk_channel_flags() & 0x08)) {

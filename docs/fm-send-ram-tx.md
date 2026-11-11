@@ -243,7 +243,9 @@ of the route, and they are left on afterwards (stock's own state after a channel
 reprograms the clocks and timer ch0 (`LoadCount` = clock variable / 100: 840000 awake, 240000
 asleep), and the result is not 100 Hz. Every tick-based interval is short while the radio
 power-saves: the CW ID's "1 min" came out at about 30 s. The CW ID corrects its own timer against
-the RTC seconds (`docs/cw-id.md`); the analog automatic beacon's interval is not corrected.
+the RTC seconds (`docs/cw-id.md`). Since 2026-11-11 the analog automatic beacon's interval uses the same
+correction (`krk_real_time`, krk_cwid.c, called from `krk_hook_aprs_tick`; not yet measured on a radio, and QEMU cannot
+show it: the emulator does not run the power-save clocks).
 
 Confirmed on the air with 6.1 to 6.3 fixed (cable quiet, Save 1:4, SDR recording): five CW IDs in a
 row carried their Morse, 63.3-64.5 s apart at Interval 1 min (`docs/cw-id.md`).

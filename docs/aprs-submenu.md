@@ -189,14 +189,46 @@ are in the stock image; expected bytes are in the manifest.
 | Site | Stock | Patch |
 |---|---|---|
 | `0x03057aa8` in `channel_change_apply_dispatcher` | `cmpnei r3,0x30` (4 bytes) of `cmpnei r3,0x10; bf set; cmpnei r3,0x30; bt clear` (r3 = mode nibble) deciding `[0x40078]` bit 0 after the report-mode test (`andi 0xc; cmpnei 4`) | `bsr krk_hook_aprs_mode` (krk_stubs.S): re-executes the compare and, when r3 is not 0x30, sets C from `r3 != 0`; the stock `bt 0x03057aee` at `0x03057aac` is kept. Analog channels with APRS On now get bit 0 |
-| `0x03054888..0x030548a4` in `ui_periodic_maintenance_task_loop` | the GPS-fix (`[0x38c6c]&0x40`) or fixed-position (`[0x40078]&4`) gate and `bsr 0x030625bc` (the tick), after the `[0x3fdc0]&4` and bit-0 gates | `bsr krk_hook_aprs_tick` (kraken_ui2) + `br16 0x030548a4` + nop16 filler. Digital: the hook applies the same gate and calls the stock tick. Analog: `[0x40084]++`, at `[0x4007c]` (>= 30 s) with TX not inhibited and `[0x320af]` clear: counter = 0, `event_queue_reset` (0x03054d80), skip when `[0x3e31f]&0x18` or the channel forbids TX (`[0x3e1e4]&8`), else `krk_aprs_tx_send`; "Channel busy" sets the counter to interval - 5 |
+| `0x03054888..0x030548a4` in `ui_periodic_maintenance_task_loop` | the GPS-fix (`[0x38c6c]&0x40`) or fixed-position (`[0x40078]&4`) gate and `bsr 0x030625bc` (the tick), after the `[0x3fdc0]&4` and bit-0 gates | `bsr krk_hook_aprs_tick` (kraken_ui2) + `br16 0x030548a4` + nop16 filler. Digital: the hook applies the same gate and calls the stock tick. Analog: `[0x40084]++`, at `[0x4007c]` (>= 30 s) with TX not inhibited, no menu (`krk_ui_in_menu`) and no Kraken screen (`krk_screen_owner`): counter = 0, `event_queue_reset` (0x03054d80), skip when `[0x3e31f]&0x18` or the channel forbids TX (`[0x3e1e4]&8`), else `krk_aprs_tx_send`; "Channel busy" sets the counter to interval - 5 |
 | `0x030158b8` in the programmable-key handler `0x03015824` | `bsr 0x03062510` (void(void), the DMR send; the last instruction before `pop`) | `bsr krk_hook_aprs_send_now`: AFSK on analog, stock on digital. The key path's own gates (bit 0, fix or fixed, not busy) are unchanged |
 
 Stack: the hooks run in the maintenance task (OSTaskCreate at 0x03054496, stack 0x180 words). The send
 path uses roughly 400 bytes (RMC copy 0x96, info 64, frame/tone buffers are static).
 Design choice: on analog the no-fix case sends a status packet (as Upload Beacon does) instead of staying
 silent, so indoor bench tests of the interval work; the fixed-position upload type is not offered on
-analog. Stock's "APRS enabled" CPS gate `[0x3fdc0]&4` still applies in both modes.
+analog. Stock's "APRS enabled" gate `[0x3fdc0]&4` still applies in both modes.
+
+**Gates, corrected 2026-11-11 (issue #7; QEMU-verified on all three builds, not yet on a radio).** The analog path
+used to copy the stock tick's `[0x320af] == 0` test, read as a "no CPS link" flag. `0x320af` is the screen-mode byte
+(`docs/menu-exit-timer.md`): 0 after a fresh boot, but stock's "go to standby" event 0x2c stores 0x5b, which a radio
+can show at standby after a menu visit or a TX (QEMU's standby path leaves 0). With 0x5b the due beacon was put off
+every second, forever; the hand-sent Upload Beacon has no such test, which matched the report. The analog path now
+waits only while a menu or one of our screens is up: `krk_ui_in_menu()` (mode 7..0x3f, 0x69, 0x77, as the CW ID and
+VOX) or `krk_screen_owner`. Stock's loop already skips the whole APRS block while the mode is 7..0x3f
+(`0x03054852`..`0x0305485c`: mode 0 or above 0x3f only), so a menu open longer than 10 s re-arms the timer and the
+first beacon comes one interval after standby. The digital path is stock's, unchanged (its own `== 0` test included).
+
+What the booted test found (`tests/aprs_beacon_e2e.py`, run from `tests/kraken_ui_test.py`):
+- `[0x3fdc0]&4` is required: with it clear the loop never reaches the hook (`0x0305486e`) and nothing is sent. The
+  same bit gates the Menu > APRS category itself (`menu_option_gen_idx23` 0x03049cdc, dm32uv-re `docs/menu-system.md`),
+  so a radio that shows the APRS menu has it set.
+- APRS On from the menu sets `[0x40078]` bit 0 at once, without a channel change: the commit,
+  `settings_write_dispatcher` case 0x58 (`0x0304c2d2` `bsr 0x03061f80`, then `0x0304c2d6`..`0x0304c2e2` insert the
+  value into bit 0), writes it directly (a write watchpoint on 0x40078 caught that store and no other). No hook needed.
+- The loop also skips the block unless the dual-watch state `[0x400d8]` is 0 or 1. In state 2 (dwelling on a side
+  that has a signal) the hook is not called. QEMU's emulated squelch is always open, so there dual watch dwells most
+  of the time and the test turns dual watch off. On a radio a busy other side delays the beacon the same way (a gap
+  over 10 s re-arms it).
+- Open (seen in QEMU, probably an emulator effect): `[0x40078]` bit 0 is one radio-wide bit that
+  `channel_change_apply_dispatcher` recomputes for whichever side it applies. In QEMU, with dual watch on (A analog
+  with APRS On, B digital), a channel apply while side B was loaded (report field 0x30, mode nibble 0x10) cleared the
+  bit, and the emulator's dual-watch flips back to A did not re-apply the channel, so the bit (and Kraken's
+  `krk_channel_on_selected`, which follows the last committed side) stayed on B and the beacon stopped. On a radio
+  every flip re-applies and commits the loaded side (`docs/dual-watch.md`), which would put both back on A. Worth one
+  look with dual watch on during the hardware test. The test's menu scenario checks only that nothing is due while
+  the menu is open.
+- The interval is corrected against the RTC seconds as the CW ID's is (`krk_real_time`, `docs/fm-send-ram-tx.md` 6.3):
+  with stock power save the OS tick runs about 2x fast, so an uncorrected 60 s came out near 30 s.
 
 ### 7.2 Dual watch (v40, 2026-10-28)
 

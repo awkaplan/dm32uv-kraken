@@ -32,9 +32,17 @@
       "name": "kraken_ui_state",
       "space": "sram",
       "start": "0x18007640",
-      "end_exclusive": "0x18007c40",
-      "owner": "kraken_ui patch .bss (screens + last-heard ring)",
+      "end_exclusive": "0x18007a80",
+      "owner": "kraken_ui patch .bss (screens + last-heard ring). Shortened 2026-11-11 to 0x18007a80 for kraken_aprs_state (.bss uses 0x3fc of 0x440).",
       "source": "patches/kraken_ui/"
+    },
+    {
+      "name": "kraken_aprs_state",
+      "space": "sram",
+      "start": "0x18007a80",
+      "end_exclusive": "0x18007b00",
+      "owner": "kraken_ui2 .bss.aprs: small state of the APRS features of 2026-11-11 (issues #3-#7), declared with KRK_APRS_BSS (krk.h). Taken from the unused tail of kraken_ui_state: kraken_ui2_state is full and the gap behind it is kept for private debug builds.",
+      "source": "patches/kraken_ui/kraken_ui2.ld"
     },
     {
       "name": "kraken_ui2_state",

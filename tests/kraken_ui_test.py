@@ -729,6 +729,11 @@ def booted_runs(s, s2):
         import bvnest_e2e as bvn
         print("== Channel Set > Burst Voice nest, end to end (own QEMUs)")
         bvn.run(PATCHED, m.report)
+        # F8 analog automatic APRS beacon (issue #7, docs/aprs-submenu.md 7.1): set up through the menu, sends at standby,
+        # waits while a menu or one of our screens is up, needs [0x3fdc0] & 4 (tests/aprs_beacon_e2e.py; seven QEMUs).
+        import aprs_beacon_e2e as bcn
+        print("== APRS automatic beacon, end to end (own QEMUs)")
+        bcn.run(PATCHED, m.report)
     except Exception:
         print("FAIL  booted runs raised:\n" + traceback.format_exc())
 

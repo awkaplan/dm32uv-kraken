@@ -46,8 +46,8 @@ Docker image, each against the combined image:
 - `kraken_ui_test.py` for the `kraken_ui` patch. It runs on a halted machine (no boot) and calls the patch
   code over the gdb stub. It pulls in the feature checks: `dw_checks.py`, `mon_checks.py`, `optrow_checks.py`,
   `convert_checks.py`, `f10_checks.py`, `f13_checks.py` and `parrot_qemu_test.py`. In a second thread it also
-  boots the image and walks the stock menu by key: `optrow_checks.boot_checks`, `chanset_rows_e2e.py` and
-  `bvnest_e2e.py`.
+  boots the image and walks the stock menu by key: `optrow_checks.boot_checks`, `chanset_rows_e2e.py`,
+  `bvnest_e2e.py` and `aprs_beacon_e2e.py` (the analog automatic APRS beacon, issue #7).
 
 `tools/build.sh --no-test` builds without testing.
 

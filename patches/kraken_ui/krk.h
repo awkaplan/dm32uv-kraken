@@ -11,6 +11,15 @@
 #ifndef KRK_FEAT                    /* tests/test_dmrlink.py defines it away */
 #define KRK_FEAT __attribute__((section(".bss.feat")))
 #endif
+/* Small state of the APRS features of 2026-11-11, in the claim kraken_aprs_state (.bss.aprs, kraken_ui2.ld).
+ * Host test builds (Mach-O on a Mac) have no such section: there it is plain .bss. */
+#ifndef KRK_APRS_BSS
+#ifdef __ELF__
+#define KRK_APRS_BSS __attribute__((section(".bss.aprs")))
+#else
+#define KRK_APRS_BSS
+#endif
+#endif
 
 #define KRK_BG      0x0000      /* black */
 #define KRK_FG      0xFFFF      /* white */
@@ -289,6 +298,7 @@ int krk_tx_arm(const char *line1);  /* "<line1> / TRANSMITS" arm popup; 1 if OK 
 extern const char *const krk_onoff_labels[2];   /* "ON", "OFF" (index 0 = on; krk_cwid.c) */
 extern const char *const krk_offon_labels[2];   /* "Off", "On" (index 1 = on; krk_scramble.c) */
 int krk_ui_in_menu(void);           /* stock screen-mode byte says a menu is open (krk_cwid.c) */
+void krk_real_time(u32 *last, u8 *rsec, u32 *rtick, u32 now);   /* moves *last so an OS-tick interval keeps RTC time (power save runs the tick ~2x fast); *rsec = 0xff restarts it (krk_cwid.c) */
 int krk_nearest8(const u8 *vals, unsigned v);   /* index of the entry of vals[8] nearest to v (krk_cwid.c) */
 /* Draws the popup over whatever is on screen (no clear, no wait). */
 void krk_popup_draw(int kind, const char *line1, const char *line2);

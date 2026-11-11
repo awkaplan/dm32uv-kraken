@@ -351,7 +351,8 @@
    "to": "0x000320af",
    "how": "ram: referenced by stock code",
    "in": [
-    "patches/kraken_ui/krk_stock.h"
+    "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_beacon_e2e.py"
    ]
   },
   "0x000320b0": {
@@ -555,6 +556,7 @@
    "how": "ram: between references 0x3e1dc and 0x3e1ed, both +0x0",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_beacon_e2e.py",
     "tests/dw_checks.py",
     "tests/f13_checks.py",
     "tests/kraken_ui_test.py",
@@ -624,6 +626,7 @@
    "how": "ram: between references 0x3e318 and 0x3e32a, both +0x0",
    "in": [
     "patches/kraken_ui/krk_stock.h",
+    "tests/aprs_beacon_e2e.py",
     "tests/f13_checks.py"
    ]
   },
@@ -912,6 +915,7 @@
    "in": [
     "patches/kraken_ui/kraken_ui.patch.json",
     "patches/kraken_ui/krk_stubs.S",
+    "tests/aprs_beacon_e2e.py",
     "tests/kraken_ui_test.py"
    ]
   },
@@ -944,14 +948,16 @@
    "to": "0x00040078",
    "how": "ram: referenced by stock code",
    "in": [
-    "patches/kraken_ui/krk_aprs_tx.c"
+    "patches/kraken_ui/krk_aprs_tx.c",
+    "tests/aprs_beacon_e2e.py"
    ]
   },
   "0x0004007c": {
    "to": "0x0004007c",
    "how": "ram: between references 0x40078 and 0x400a8, both +0x0",
    "in": [
-    "patches/kraken_ui/krk_aprs_tx.c"
+    "patches/kraken_ui/krk_aprs_tx.c",
+    "tests/aprs_beacon_e2e.py"
    ]
   },
   "0x00040084": {
@@ -966,6 +972,7 @@
    "how": "ram: referenced by stock code",
    "in": [
     "patches/kraken_ui/krk_core.c",
+    "tests/aprs_beacon_e2e.py",
     "tests/dw_checks.py"
    ]
   },
@@ -1312,6 +1319,13 @@
    "in": [
     "patches/kraken_ui/krk_txtrim.c",
     "tests/kraken_ui_test.py"
+   ]
+  },
+  "0x0301bb44": {
+   "to": "0x0301ba5c",
+   "how": "rssi_meter_level_update_and_fault_reset (same)",
+   "in": [
+    "tests/aprs_beacon_e2e.py"
    ]
   },
   "0x0301c2d4": {
@@ -2594,7 +2608,8 @@
    "to": "0x03054cdc",
    "how": "event_queue_reset (same)",
    "in": [
-    "patches/kraken_ui/krk_aprs_tx.c"
+    "patches/kraken_ui/krk_aprs_tx.c",
+    "tests/aprs_beacon_e2e.py"
    ]
   },
   "0x03055850": {

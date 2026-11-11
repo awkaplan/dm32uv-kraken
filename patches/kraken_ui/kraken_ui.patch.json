@@ -21,7 +21,8 @@
   "kraken_bigbuf",
   "kraken_ui4_code",
   "kraken_ui4_state",
-  "kraken_ui5_code"
+  "kraken_ui5_code",
+  "kraken_aprs_state"
  ],
  "symbols": {
   "SUBTYPE_ICON_LIST": 2

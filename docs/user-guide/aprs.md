@@ -22,7 +22,7 @@ With dual watch on, the list follows the side you selected with A/B, not the sid
 Sends your position (or a status text when the radio has no GPS fix) as a standard APRS packet on the current
 analog channel, by hand or on a timer. Any APRS receiver, digipeater or igate can decode it.
 
-**Status:** works on hardware; the menu layout described here is newer and has only been checked in the emulator.
+**Status:** works on hardware, by hand and on the automatic timer (DM32.00.01.048, 2026-11-11: three beacons 31 s apart at a 30 s interval). The timer's power-save correction is not yet confirmed on a radio.
 **Where:** **Menu > APRS** (analog channels only): `APRS On/Off`, `Upload ID`, `Intervals Set`, `Upload Beacon`, `Callsign`
 
 ### Set your callsign
@@ -72,6 +72,11 @@ digital channels.
 2. Set **Menu > APRS > Intervals Set** to the interval you want. Off stops the automatic beacon.
 3. Return to standby. The first beacon goes out one interval later, then one every interval.
 
+- APRS On/Off takes effect at once. You do not need to change channel or restart the radio.
+- While a menu or a Kraken screen is open, a due beacon waits and goes out when you are back at standby. If the menu
+  was open for more than about 10 seconds, the timer starts again at standby: the next beacon is one interval later.
+- With dual watch on, while the radio has stopped on the other channel for a signal, the timer does not run.
+
 - If the channel is busy when a beacon is due, the radio tries again 5 seconds later until it gets through.
 - If the radio is scanning or the channel does not allow transmit, that beacon is skipped.
 - Intervals shorter than 30 seconds do not send.
@@ -111,11 +116,15 @@ erases them (and the CW ID setting): set the callsign again afterwards.
 ### Limits
 - Analog channels only. On a digital channel the stock DMR APRS rows and sends apply.
 - The automatic analog beacon has not yet been confirmed on a radio; the hand-sent beacon has (decoded off the
-  air by an independent decoder). After setting up the timer, check with a receiver or an APRS website that
-  beacons arrive.
-- The automatic beacon may also need APRS enabled in the CPS (the stock DMR beacon does). If APRS On/Off is set
-  in the CPS, choose the Digital report mode: stock ignores the Analog value, and so does Kraken.
-- With stock power save on, the interval can run short (up to about twice as often as set).
+  air by an independent decoder). Up to v0.2.0-alpha.1 the automatic beacon never sent once a menu had been used
+  (issue #7); the fix has been checked in the emulator only. After setting up the timer, check with a receiver or
+  an APRS website that beacons arrive.
+- The automatic beacon needs stock's APRS function enabled. This is the same setting that makes **Menu > APRS**
+  appear: if you can open that menu, it is on. If APRS On/Off is set in the CPS, choose the Digital report mode:
+  stock ignores the Analog value, and so does Kraken.
+- Stock power save makes the radio's internal timer run fast. The beacon interval is checked against the radio's
+  clock, as the CW ID's is, so it stays as set (checked in the emulator only; before this fix it could run up to
+  about twice as often as set).
 - A send cannot be stopped once it starts. It ends by itself after about one second.
 - Use your own callsign. The beacon is your station identification.
 

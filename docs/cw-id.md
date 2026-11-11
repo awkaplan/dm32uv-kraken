@@ -101,7 +101,7 @@ The analog automatic beacon uses the same sender.
 ## The interval is real time
 
 The interval is counted in OS ticks, and those run about twice as fast as real time while the radio
-power-saves (measured 2.06x at Save 1:4): "1 min" came out at about 30 s. `real_time()` corrects
+power-saves (measured 2.06x at Save 1:4): "1 min" came out at about 30 s. `krk_real_time()` (shared with the analog automatic beacon since 2026-11-11) corrects
 it: each time the scheduler sees the RTC's seconds register change (`rtc_register_read`
 @0x0301c2d4, register 0, a locked I2C read stock makes from several tasks), it compares the ticks
 counted since the previous change with the real seconds that passed and moves the timer's start by
