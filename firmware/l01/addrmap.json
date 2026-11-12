@@ -1078,6 +1078,13 @@
     "tests/parrot_qemu_test.py"
    ]
   },
+  "0x00048000": {
+   "to": "0x00047ffc",
+   "how": "ram: between references 0x47f94 and 0x4805c, both -0x4",
+   "in": [
+    "tests/qemu_menu.py"
+   ]
+  },
   "0x00048160": {
    "to": "0x0004815c",
    "how": "ram: referenced by stock code",
@@ -4067,7 +4074,8 @@
    "to": "0x18000000",
    "how": "SRAM: unchanged (all 125 stock references keep their address)",
    "in": [
-    "tests/mi_rng_test.py"
+    "tests/mi_rng_test.py",
+    "tests/qemu_menu.py"
    ]
   },
   "0x18000a90": {
