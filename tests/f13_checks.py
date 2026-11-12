@@ -2,9 +2,9 @@
 
     docker run ... python3 /w/dm32uv-unleashed/tests/f13_checks.py        (tools/build.sh mounts the workspace; see the header of main())
 
-  1. static: blob 4 placement and size, the descriptor at 0x030e8000 in KRAKEN slot 7, the hook table at 0x030e8020, the claims
-     (state, bigbuf tail), the Back-on-invalid-extension change in krk_core.c (build_list `continue`) run on a second machine whose
-     blob 4 sectors are erased: the list must still show the rows behind the missing blob.
+  1. static: the descriptor in Channel Set slot 1, code and state inside Kraken's claims (tools/pack_kraken.py places them), the
+     bigbuf tail, and the skip-an-invalid-row path of krk_core.c (krk_hook_gen) run on a second machine whose Burst Voice / DMR Link
+     descriptor has an erased label word: the generator must still append the other rows.
   2. the BV1 modem on the CK803S under QEMU: the fixed 12-unit message gives the SAME PCM as the host build (tests/data/f13_burst.pcm,
      written by tests/test_f13.py), and the receiver, fed the host-generated burst from memory 256 samples at a time, decodes it on target
      and the screen stores the units as the received message.
@@ -20,7 +20,7 @@ import struct
 import sys
 import tempfile
 
-from build_artifacts import EXT_TABLE, REPO, STOCK_IMG, elf, syms, krk_define      # first: puts the tool directories on sys.path
+from build_artifacts import EXT_TABLE, REPO, STOCK_IMG, elf, in_claims, syms, krk_define      # first: puts the tool directories on sys.path
 import mi_rng_test as m
 import dw_checks as dwc
 import target as tg
@@ -30,10 +30,8 @@ from qemu_menu import OS_TICKS, free_port
 from target import halted_machine
 
 DATA = REPO / "tests/data"
-BLOB4, BLOB4_END = alloc("kraken_ui4_code")
 BIG, _BIG_END = alloc("kraken_bigbuf")
 BIG_LEN, BVT_SIZE = _BIG_END - BIG, 0x200
-STATE4, STATE4_END = alloc("kraken_ui4_state")
 BIG_SC = 92 * 27 + 2106                    # krk_bvscr.c: message, payload buffer, then the 512-byte sample scratch
 BPAY, SCP = BIG + 92 * 27, BIG + BIG_SC     # payload buffer and sample scratch addresses (the tail from BIG + 0x1400 is state: never scribble there)
 OSFLAG_POST, TX_INHIBIT, RX_ACTIVE = 0x0300C494, 0x0302ED50, 0x0300F2A4
@@ -189,11 +187,9 @@ def check_f13(c, img, s1, s2):
     gunits = bytes.fromhex(golden["units_hex"])
     ok = m.report
 
-    print("== F13 static: blob 4, descriptor, slot 7, hook table, claims")
-    binp = elf4.with_suffix(".bin").read_bytes()
-    ok(len(binp) <= BLOB4_END - BLOB4 and img[BLOB4 - 0x3000000:BLOB4 - 0x3000000 + len(binp)] == binp,
-       f"kraken_ui4 image bytes at {BLOB4:#x} equal the ELF output ({len(binp)} of {BLOB4_END - BLOB4} bytes, {100 * len(binp) // (BLOB4_END - BLOB4)} %)")
-    ok(a4["krk_bv_screen"] == BLOB4, f"krk_bv_screen at {a4['krk_bv_screen']:#x}")
+    print("== F13 static: descriptor, Channel Set slot, claims")
+    BV_SCR = a4["krk_bv_screen"]
+    ok(in_claims(BV_SCR, "flash", 20), f"krk_bv_screen at {BV_SCR:#x}, inside a Kraken flash claim")
     # Burst Voice left the KRAKEN list on 2026-11-03 for the stock Channel Set menu
     # (docs/chanset-submenu.md): its slot is the SECOND Channel Set slot, which follows the
     # KRAKEN, APRS and Radio Settings slots. The counts come from krk.h / krk_menu_rows.h so a layout change
@@ -201,31 +197,28 @@ def check_f13(c, img, s1, s2):
     cs0 = krk_define("KRK_EXT_MAX") + krk_define("KRK_APRS_MAX") + krk_define("KRK_RS_MAX")
     BV, DMR = krk_define("KRK_CS_ITEM_BV"), krk_define("KRK_CS_ITEM_DMRLINK")
     ok(rd32(EXT_TABLE + 4 * 14) == 0, f"KRAKEN extension slot 14 retired (was blob 4): {rd32(EXT_TABLE + 4 * 14):#x}")
-    ok(rd32(EXT_TABLE + 4 * (cs0 + 1)) == BLOB4,
-       f"Channel Set slot 1 (item 23) = {rd32(EXT_TABLE + 4 * (cs0 + 1)):#x} (blob 4 origin)")
-    desc = [rd32(BLOB4 + 4 * i) for i in range(4)]
+    ok(rd32(EXT_TABLE + 4 * (cs0 + 1)) == BV_SCR,
+       f"Channel Set slot 1 (item 23) = {rd32(EXT_TABLE + 4 * (cs0 + 1)):#x} (krk_bv_screen)")
+    desc = [rd32(BV_SCR + 4 * i) for i in range(4)]
     lbl = img[desc[0] - 0x3000000:].split(b"\0")[0]
     ok(lbl == b"Burst Voice" and desc[1] == a4["bv_enter"] and desc[2] == a4["bv_tick"] and desc[3] == a4["bv_exit"]
-       and struct.unpack("<H", img[BLOB4 - 0x3000000 + 16:BLOB4 - 0x3000000 + 18])[0] == 1,
-       f"descriptor: label {lbl}, enter/tick/exit in blob 4, tick_ms 1")
-    ok(all(BLOB4 <= x < BLOB4_END for x in desc), "descriptor and label inside KRK_EXT4_LO/HI (krk_core.c ext_ok)")
-    ok(a4["krk_bv_hooks"] == BLOB4 + 0x20 and rd32(BLOB4 + 0x20) == a4["krk_bv_wd_tick"], f"hook table at {a4['krk_bv_hooks']:#x} -> krk_bv_wd_tick {rd32(BLOB4 + 0x20):#x}")
-    ok(STATE4 <= a4["W"] and a4["W"] + sz4["W"] <= STATE4_END and sz4["W"] == W_SIZE, f"W (watchdog, ownership) {a4['W']:#x} + {sz4['W']} B in kraken_ui4_state")
+       and struct.unpack("<H", img[BV_SCR - 0x3000000 + 16:BV_SCR - 0x3000000 + 18])[0] == 1,
+       f"descriptor: label {lbl}, enter/tick/exit, tick_ms 1")
+    ok(all(in_claims(x, "flash") for x in desc), "descriptor, label and handlers inside Kraken's flash claims")
+    ok(in_claims(a4["W"], "sram", sz4["W"]) and sz4["W"] == W_SIZE, f"W (watchdog, ownership) {a4['W']:#x} + {sz4['W']} B in a Kraken SRAM claim")
     bvm_end = a4["__bvm_end"]
-    ok(a4["__bvm_start"] == STATE4 and bvm_end <= a4["W"] and a4["W"] + W_SIZE <= STATE4_END,
-       f"modem state {a4['__bvm_start']:#x}..{bvm_end:#x} ({bvm_end - a4['__bvm_start']} B) + W = {a4['W'] + W_SIZE - STATE4} of {STATE4_END - STATE4} B")
+    ok(in_claims(a4["__bvm_start"], "sram", bvm_end - a4["__bvm_start"]) and bvm_end > a4["__bvm_start"],
+       f"modem state {a4['__bvm_start']:#x}..{bvm_end:#x} ({bvm_end - a4['__bvm_start']} B) in a Kraken SRAM claim (link.json group bvm)")
     tail = BIG + BIG_LEN - BVT_SIZE
     ok(a4["__bvt_start"] == tail and a4["__bvt_end"] <= BIG + BIG_LEN and tail <= a4["S"] and a4["S"] + sz4["S"] <= a4["__bvt_end"] and sz4["S"] == S_SIZE,
        f"tail {a4['__bvt_start']:#x}..{a4['__bvt_end']:#x} ({a4['__bvt_end'] - a4['__bvt_start']} of {BVT_SIZE} B) holds framing, AMBE and S ({sz4['S']} B) inside the bigbuf claim")
-    ok(a4["krk_bv_tx_fill"] != 0 and BLOB4 <= a4["krk_bv_tx_fill"] < BLOB4_END, "modem, framing, AMBE linked in blob 4")
-    ok(stock[BLOB4 - 0x3000000:BLOB4_END - 0x3000000] != img[BLOB4 - 0x3000000:BLOB4_END - 0x3000000] and
-       img[BLOB4_END - 0x3000000:BLOB4_END - 0x3000000 + 4] != b"\xff" * 4, "the sectors behind blob 4 belong to blob 2 (neighbour intact)")
+    ok(a4["krk_bv_tx_fill"] != 0 and in_claims(a4["krk_bv_tx_fill"], "flash"), "modem, framing, AMBE linked")
 
-    # --- second machine: blob 4 erased -> a missing blob appends no row, and the OTHER appended row
-    # is still appended (krk_core.c krk_hook_gen skips an unfilled slot).
+    # --- second machine: a descriptor whose label word is erased appends no row, and the OTHER appended rows
+    # are still appended (krk_core.c krk_hook_gen skips a row that fails ext_ok).
     # Burst Voice moved to the stock Channel Set menu on 2026-11-03 (docs/chanset-submenu.md), so the
     # property is now checked on the Channel Set generator rather than the KRAKEN list builder.
-    print("== F13 missing blob: the Channel Set generator appends no row for it and keeps the other")
+    print("== F13 invalid row: the Channel Set generator appends no row for it and keeps the others")
 
     CNT, LST = 0x0003E5F8, 0x0003E5FA           # the cells the generator fills (count u16, items)
 
@@ -246,22 +239,21 @@ def check_f13(c, img, s1, s2):
         with halted_machine(path, port=free_port()) as c2:
             return cs_items(c2)
 
-    # Items 24..30 are the Scrambler pair and the five Parrot rows, which live in blob 2 and so are
-    # unaffected by erasing blob 4 or 5 (2026-11-03, docs/chanset-submenu.md).
+    # Items 24..30 are the Scrambler pair and the five Parrot rows (2026-11-03, docs/chanset-submenu.md).
     BLOB2_ITEMS = list(range(krk_define("KRK_CS_ITEM_SCRON"), krk_define("KRK_CS_ITEM_PARSTAT") + 1))
     with_blob = cs_items(c)
     ok(with_blob == [DMR, BV] + BLOB2_ITEMS,
-       f"both blobs present: Channel Set generator appends {with_blob} (want {[DMR, BV] + BLOB2_ITEMS})")
-    without = cs_items_without(BLOB4, BLOB4_END)
+       f"every row valid: Channel Set generator appends {with_blob} (want {[DMR, BV] + BLOB2_ITEMS})")
+    without = cs_items_without(BV_SCR, BV_SCR + 4)
     ok(without == [DMR] + BLOB2_ITEMS,
-       f"blob 4 erased: only Burst Voice (item {BV}) is gone, DMR Link and the blob-2 rows stay: {without} "
+       f"Burst Voice label word erased: only Burst Voice (item {BV}) is gone, DMR Link and the other rows stay: {without} "
        f"(want {[DMR] + BLOB2_ITEMS})")
 
-    # same for blob 5 (F3 DMR link, the reclaimed ramdump_probe sector)
-    print("== F3 missing blob 5: the Channel Set generator skips DMR Link and keeps Burst Voice")
-    without5 = cs_items_without(*alloc("kraken_ui5_code"))
+    print("== F3 invalid row: the Channel Set generator skips DMR Link and keeps Burst Voice")
+    DMR_SCR = a4["krk_dmrlink_screen"]
+    without5 = cs_items_without(DMR_SCR, DMR_SCR + 4)
     ok(without5 == [BV] + BLOB2_ITEMS,
-       f"blob 5 erased: only DMR Link (item {DMR}) is gone, Burst Voice and the blob-2 rows stay: {without5} "
+       f"DMR Link label word erased: only DMR Link (item {DMR}) is gone, Burst Voice and the other rows stay: {without5} "
        f"(want {[BV] + BLOB2_ITEMS})")
 
     # ------------------------------------------------------------------------------------------------------------------

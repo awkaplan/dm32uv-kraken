@@ -18,7 +18,7 @@ import re
 import struct
 
 import mi_rng_test as m
-from build_artifacts import REPO
+from build_artifacts import REPO, in_claims
 from claims import claim
 from gdb_rsp import read_mem
 from qemu_menu import HIST, OS_TICKS, PATHS, UI_MODE, run_scenarios
@@ -39,8 +39,7 @@ def grey(fr):
 def unit_checks(c, s, s2):
     print("== F14b APRS RX alert: state, option row, the background-loop hook")
     A, M, RING = s2["A"], s2["M"], s2["ring"]
-    lo, hi = claim("kraken_aprs_state")
-    m.report(lo <= A and A + 24 <= hi, f"alert state A {A:#x}+24 B inside kraken_aprs_state {lo:#x}-{hi:#x}")
+    m.report(in_claims(A, "sram", 24), f"alert state A {A:#x}+24 B inside a Kraken SRAM claim")
     w8 = lambda a, v: m.wmem(c, a, bytes([v & 0xFF]))
 
     # the option row: labels, get/set through the real Monitor

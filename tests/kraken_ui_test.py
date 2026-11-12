@@ -23,7 +23,7 @@ import sys
 import threading
 import traceback
 
-from build_artifacts import EXT_TABLE, HOOK_TBL, PATCHED, REPO, STOCK_IMG, TBL_SLOTS, elf, syms, krk_define, krk_ext_ranges, stock_is  # first: puts the tool directories on sys.path
+from build_artifacts import EXT_TABLE, HOOK_TBL, PATCHED, REPO, SCRATCH_SRAM, STOCK_IMG, TBL_SLOTS, elf, in_claims, syms, krk_define, krk_ext_ranges, stock_is  # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from build_patch import decode_branch
 from claims import claim
@@ -42,8 +42,8 @@ from target import CANARY, call_via, cstr, fcall, halted_machine, r32, w32
 ELF = elf(1)
 ELF2 = elf(2)
 ELF3 = elf(3)
-ELF4 = elf(4)           # F13 Burst Voice
-ELF5 = elf(5)           # F3 DMR link (moved out of blob 2 on 2026-10-30)
+ELF4 = elf(4)           # F13 Burst Voice (Kraken is one link: elf(n) is the same ELF for every n)
+ELF5 = elf(5)           # F3 DMR link
 STOCK_INTERP = 0x0301B424
 TRIM_MAGIC = 0x54524D31
 
@@ -785,18 +785,17 @@ def main():
         table = rd32(slot)
         m.report(rd32(table + 4 * idx) == want, f"{name} table {table:#x}[10] -> {rd32(table + 4 * idx):#x} (want {want:#x})")
 
-    print("== extension blob table (0x030ee000) and the stock APRS sub-list extension")
+    print(f"== extension screen table (krk_ext_screens {EXT_TABLE:#x}) and the stock APRS sub-list extension")
     nx, na, nrs, ncs = (krk_define(f"KRK_{k}_MAX") for k in ("EXT", "APRS", "RS", "CS"))
     CS0 = krk_define("KRK_CS_ITEM_DMRLINK")      # the first appended Channel Set item; the stock items are 0..CS0-1
     slots = [rd32(EXT_TABLE + 4 * i) for i in range(TBL_SLOTS)]
     # The runtime check in krk_core.c (ext_ok) drops any screen whose descriptor or label lies outside
-    # [KRK_EXT_LO, KRK_EXT_HI): test against those same constants, not the allocation, so a blob that
-    # outgrows the bound fails here instead of silently losing menu rows (v34, 2026-10-27).
+    # program flash [KRK_PFLASH_LO, KRK_PFLASH_HI): test against those same constants.
     ext_rng = krk_ext_ranges()
     ext_ok = lambda a: any(lo <= a < hi for lo, hi in ext_rng)
     lbl = lambda p_: img[rd32(p_) - 0x3000000:].split(b"\0")[0] if ext_ok(p_) and ext_ok(rd32(p_)) else None
     bad = [f"{p_:#x}" for p_ in slots if p_ and not (ext_ok(p_) and ext_ok(rd32(p_)))]
-    m.report(not bad, f"every extension screen and label inside {[f'[{lo:#x},{hi:#x})' for lo, hi in ext_rng]} (KRK_EXT*_LO/HI): bad {bad}")
+    m.report(not bad, f"every extension screen and label inside {[f'[{lo:#x},{hi:#x})' for lo, hi in ext_rng]} (KRK_PFLASH_LO/HI): bad {bad}")
     # Slots 1 and 2 are empty since 2026-11-03: APRS RX lives only in the stock APRS menu (item 11,
     # checked below) and TX Power Trim, being radio-wide, moved to stock Radio Settings (the
     # KRK_RS_TABLE entry checked further down). Neither appears in the KRAKEN list any more.
@@ -816,17 +815,9 @@ def main():
     # Slots 14 (Burst Voice) and 15 (DMR Link) were retired on 2026-11-03: both are per-channel
     # features, so they moved to the stock Channel Set menu (the KRK_CS_TABLE entries checked below).
     m.report(slots[14] == 0 and slots[15] == 0, f"KRAKEN extension slots 14, 15 retired with Burst Voice and DMR Link: {[slots[14], slots[15]]}")
-    (b5lo, b5hi), (fslo, fshi) = claim("kraken_ui5_code"), claim("kraken_feat_state")
-    # kraken_ui5's .bss.feat is appended to the shared kraken_feat_state claim (kraken_ui5.ld). allocations.json shrank that
-    # claim to end at 0x180053a0 on 2026-10-30 (the SRAM after it is reserved), so lqst is bounded by the
-    # claim itself, with its linked size (a hard-coded 0xe8 here was stale: lqst is 0xc4 and ends exactly at the claim end).
-    lq_end = sum(syms(ELF5, sizes=True)["lqst"][0])
-    m.report(s2["lq_enter"] >= b5lo and s2["lqst"] >= fslo
-             and s2["lq_screen_tick"] < b5hi and lq_end <= fshi,
-             f"F3 DMR link blob kraken_ui5 still linked: code inside [{b5lo:#x},{b5hi:#x}), lqst [{s2['lqst']:#x},{lq_end:#x}) inside kraken_feat_state [{fslo:#x},{fshi:#x})")
-    sec = img[b5lo - 0x3000000:b5hi - 0x3000000]
-    m.report(sec != b"\xff" * 0x1000 and rd32(b5lo) in range(b5lo, b5hi),
-             f"blob kraken_ui5 is present in the reclaimed ramdump_probe sector {b5lo:#x} (label pointer inside it)")
+    lq = syms(ELF5, sizes=True)["lqst"][0]
+    m.report(in_claims(s2["lq_enter"], "flash") and in_claims(s2["lq_screen_tick"], "flash") and in_claims(lq[0], "sram", lq[1]),
+             f"F3 DMR link linked: code inside Kraken's flash claims, lqst [{lq[0]:#x},+{lq[1]}) inside a Kraken SRAM claim")
     # Slots 3 and 4 (the Scrambler Off/On switch and the numeric Key) were retired on 2026-11-03: both
     # are per-channel and digital, so they moved to stock Channel Set. Scrambler Fmt (slot 5) stays in
     # the KRAKEN list - it is a key-format / interop knob, not part of the user-facing pair.
@@ -865,7 +856,7 @@ def main():
     # the nested layout asked for. They are FLAT rows: grouping them under two nested parent rows with
     # child lists was built and measured and does not work on this firmware - docs/nested-submenu.md.
     cs = nx + na + nrs
-    want_cs = ([(b"DMR Link", claim("kraken_ui5_code")[0]), (b"Burst Voice", claim("kraken_ui4_code")[0])]
+    want_cs = ([(b"DMR Link", s2["krk_dmrlink_screen"]), (b"Burst Voice", s2["krk_bv_screen"])]
                + [(b"Scrambler On/Off", s2["krk_scramble_on_screen"]), (b"Key", s2["krk_scrkey_row"]),
                   (b"Parrot On/Off", s2["krk_parrot_arm_screen"]), (b"Replay Audio", s2["krk_parrot_play_screen"]),
                   (b"Check", s2["krk_parrot_check_screen"]), (b"Clear Audio", s2["krk_parrot_clear_screen"]),
@@ -1019,8 +1010,7 @@ def main():
         e = entry(0)
         m.report(e["count"] == 1 and e["hits"] == 2 and e["rssi"] == 200, f"repeated header refreshes the open entry: hits {e['hits']}, rssi {e['rssi']}")
 
-        alias_src = claim("kraken_ui_state2")[0]
-        feat = claim("kraken_feat_state")[0]       # the alias hook's destination buffer
+        alias_src, feat = SCRATCH_SRAM, SCRATCH_SRAM + 0x40     # source and destination buffers of the alias hook
         m.wmem(c, alias_src, b"N0CALL Bob\0".ljust(0x20, b"\0"))
         hit, abi, _ = run_hook(s["krk_hook_lh_alias"], 0x0002B338, args=(feat, alias_src, 0x20), fake_return=False)
         e = entry(0)
@@ -1047,7 +1037,7 @@ def main():
         run_hook(s["krk_hook_lh_alias"], 0x0002B338, args=(feat, alias_src, 0x20), fake_return=False)
         m.report(entry(0)["have_alias"] == 0, "alias for a different source ID is not attached")
         print("== top-level list: APRS always shown, KRAKEN appended (both builders)")
-        CUR, BUF = 0x18005800, 0x18005810            # count (u16) and item buffer, as r4/r5 point at
+        CUR, BUF = SCRATCH_SRAM, SCRATCH_SRAM + 0x10   # count (u16) and item buffer, as r4/r5 point at (SRAM no Kraken build uses)
         def run_append(fn, stop, items):
             m.wmem(c, CUR, struct.pack("<H", len(items)))
             m.wmem(c, BUF, bytes(items) + b"\xEE" * 8)

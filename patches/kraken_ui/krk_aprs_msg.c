@@ -175,10 +175,6 @@ void krk_msg_rx(const char *line, const unsigned char *f, int len)
     ib->sel = 0;                                    /* the screen opens on the newest */
 }
 
-void (*const krk_msg_hooks[1])(const char *, const unsigned char *, int) MSG_SECTION(".rodata.krk_bv_hooks1") = {
-    krk_msg_rx,
-};
-
 /* ---- the Messages screen (APRS > Messages, analog list): one message per page, newest first ---------------------- */
 
 static void msg_draw(void)

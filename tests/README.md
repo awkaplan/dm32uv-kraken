@@ -71,9 +71,10 @@ Every QEMU test also runs for the L01 and 049 builds, from the translated copy `
 an image (`img[0x3D556:0x3D558]`) counts as a flash offset; build images through `build_artifacts.COMPOSE`.
 `web_flasher_test.mjs` also installs the L01 and 049 builds on a simulated radio when their builds exist.
 
-QEMU helpers: `build_artifacts.py` (where the build's ELFs and image are, symbol lookup), `claims.py`
-(reads `allocations.json`), `target.py` (calls into patch code on a halted machine), `qemu_menu.py`
-(booted runs driven by key sequences).
+QEMU helpers: `build_artifacts.py` (where the build's ELF and image are, symbol lookup, the claims `tools/pack_kraken.py`
+generated: `in_claims()`, `piece()`), `claims.py` (reads `allocations.json`'s pinned claims), `target.py` (calls into patch
+code on a halted machine), `qemu_menu.py` (booted runs driven by key sequences). Kraken is one link and its addresses move
+from build to build: read them from the ELF (`syms()`), never write one into a test.
 
 Useful environment variables: `DM32_TIMEOUT_SCALE` multiplies the booted-run timeouts on a slow host.
 

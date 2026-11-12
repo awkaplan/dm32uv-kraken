@@ -20,13 +20,13 @@ a host:
 
 | host | items | rows live in | option rows? |
 |---|---|---|---|
-| APRS (category 9) | 8.. | `krk_ext.c` (blob 2) | yes |
-| Call Log (category 4) | 4.. | `krk_core.c` (main blob) | no: screens only |
-| GNSS (category 8) | 5.. | `krk_core.c` (main blob) | no: screens only |
-| Radio Settings (Settings item 0) | 4.. | `krk_ext.c` (blob 2) | yes |
-| Channel Set (Settings item 1) | 22.., at most 32 in all | `krk_ext.c` (blob 2) | yes |
+| APRS (category 9) | 8.. | `krk_ext.c` | yes |
+| Call Log (category 4) | 4.. | `krk_core.c` | no: screens only |
+| GNSS (category 8) | 5.. | `krk_core.c` | no: screens only |
+| Radio Settings (Settings item 0) | 4.. | `krk_ext.c` | yes |
+| Channel Set (Settings item 1) | 22.., at most 32 in all | `krk_ext.c` | yes |
 
-All hosts share one implementation: `krk_host_row` (range and blob checks), `krk_host_open` (option
+All hosts share one implementation: `krk_host_row` (range and pointer checks), `krk_host_open` (option
 level or screen), `krk_host_commit` (commit, then refill the list's cells) and `krk_hook_gen` (append
 the rows after the stock generator has run). Each host's section in `krk_core.c` keeps only what is
 particular to it: how stock hands over the item, and the `restore` that refills its cells. The Radio
@@ -59,9 +59,9 @@ output is stale.
 ### A row with its own jump-table entries (`stubs`, 2026-11-06)
 
 A row of a host that dispatches through `jump_tables` may replace the host's stub in any of them:
-`"stubs": {"<table key>": "<blob>:<symbol>" | "0x<stock address>"}`. The generator writes that entry instead of `@<host stub>`
+`"stubs": {"<table key>": "kraken:<symbol>" | "0x<stock address>"}`. The generator writes that entry instead of `@<host stub>`
 for that row and refuses a key that is not one of the host's tables. A raw address reuses a stock case block. The one user is
-the Channel Set Burst Voice row: `itemjmp` (the level-4 init) -> `kraken_ui2:krk_cs_bv_kids_stub` (its child list) and
+the Channel Set Burst Voice row: `itemjmp` (the level-4 init) -> `kraken:krk_cs_bv_kids_stub` (its child list) and
 `okjmp` (the level-4 OK) -> `0x0304e254`, stock row 15's `set_mode(0x23, 1)` arm (`stubs_why` says why). Its level-5 splices
 are lines of `hooks.json` (`cs_l5_*_hook`), like the Other Func level-6 ones.
 
@@ -97,29 +97,27 @@ three more things, so the manifest is hand-written only where a site or a screen
 | source | generator | output |
 |---|---|---|
 | `patches/kraken_ui/hooks.json` | `tools/gen_manifest.py` | the 41 branch-hook splices of `kraken_ui.patch.json` |
-| `patches/kraken_ui/blobs.json` | `tools/gen_manifest.py` | its `blobs`: cflags/ldflags, `defsym` |
-| `allocations.json` | `tools/gen_claims.py` | `krk_claims.h` and the `KRK_EXT*` region of `krk.h` |
+| `patches/kraken_ui/link.json` | `tools/gen_manifest.py` | its `pack`: the sources with their full cflags, gc roots, SRAM rules |
+| `allocations.json` | `tools/gen_claims.py` | `krk_claims.h` (the pinned claims) |
 
 - `hooks.json`: one line per site `{name, addr, expect | expect_branch, target, why}`. `expect_branch` is a name from
   dm32uv-re's `dm32_stock_symbols.ld` (written `@stock:<name>` in the manifest; a raw `0x` address also works). `t` picks a
   why-template (`band_check`, `parrot_tx`, `parrot_rx`) filled from the hook's own fields; `bias` is the IRAM-load-image
   offset added to `target` (the vocoder-window sites run at flash + -0x030afc20). The five generator-call sites are
   not here but `gen_sites` of their host.
-- `blobs.json`: `defaults` (cflags with `opt` replaced per blob, ldflags), per blob its sources, linker script, entry,
-  `exports` (the symbols other blobs may use) and `imports` (`{from, except}` = all of that blob's exports minus some,
-  `{from, syms}` = named ones). The builder takes neither defaults nor lists, so the generated manifest is fully expanded.
-- `gen_claims.py` writes `krk_claims.h` (`KRK_<CLAIM>_LO/_HI_EXCL`, the claim names without `kraken_`, plus the pinned
-  `KRK_UI4_HOOK_TABLE` = blob 4 origin + 0x20) and, between two marker comments in `krk.h`, the historical
-  `KRK_EXT_LO/HI`, `KRK_EXT3/4/5_LO/HI` as literals (the tests regex them out of `krk.h`'s text, so they cannot be aliases).
-  `KRK_EXT_HI` is the `kraken_ui_code2` claim end (0x030f7000). Until 2026-11-06 it was a hand-copied 0x030f8000, stale
-  since the 2026-10-30 shrink took 0x030f7000-0x030f8000 out of the claim, so `ext_ok()` and `krk_ext_hook()` accepted
-  pointers into flash that is not Kraken's.
+- `link.json`: `defaults` (cflags with `opt`), the `sources` in link order (per file `opt`, extra `cflags`, `keep`), the
+  `keep` patterns and the `sram_groups`. `tools/pack_kraken.py` turns the expanded `pack` into the builder's blobs at
+  build time ([flash-allocation.md](flash-allocation.md), "How Kraken is placed"); the committed manifest has no `blobs`.
+  Kraken symbols are written `@kraken:<symbol>` everywhere in the manifest and the specs.
+- `gen_claims.py` writes `krk_claims.h` (`KRK_<CLAIM>_LO/_HI_EXCL`, the claim names without `kraken_`) for the pinned
+  claims. Table pointers are checked against program flash (`KRK_PFLASH_LO/HI` in `krk.h`, `ext_ok()`, `krk_ext_hook()`):
+  a zero slot is skipped. Until 2026-11-11 they were checked against each blob's range, because a blob could be missing.
 - A new hook: add a line to `hooks.json`, run `tools/gen_manifest.py` (new entries are appended to `splices`).
 
 ### Adding a row to an existing host
 
-1. Write the screen (section 1). Rows of the blob-2 hosts must be linked in blob 2, or referenced by
-   their blob origin (`KRK_EXT4_LO`, `KRK_EXT5_LO`) with the screen descriptor placed first in that blob.
+1. Write the screen (section 1) and add its source to `link.json`. Rows of the APRS, Radio Settings and Channel Set
+   hosts are entries of `krk_ext.c`'s table: declare the screen `extern` there.
 2. Append `{"key", "label", "screen"}` to the host's `rows` in `menu_hosts.json`.
 3. APRS only: the analog list is an explicit order, so also add `KRK_APRS_ITEM_<KEY>` to
    `aprs_analog_items[]` in `krk_core.c`. The digital list shows the stock rows only.

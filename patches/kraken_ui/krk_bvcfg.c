@@ -30,6 +30,8 @@
 #include "krk_bv.h"
 #include "krk_stock.h"
 
+extern const struct krk_screen krk_bv_screen;  /* krk_bvscr.c */
+
 #define BVC_MAGIC   0x31435642u         /* "BVC1" */
 #define BVC_BLOCK   4
 #define BVC_OFF     0xFC0
@@ -163,7 +165,7 @@ void krk_cs_l5_enter(void)
     int c = bv_child();
 
     if (c == 0)
-        krk_run_screen((const struct krk_screen *)KRK_EXT4_LO, krk_cs_bv_kids);
+        krk_run_screen(&krk_bv_screen, krk_cs_bv_kids);
     else if (c > 0)
         krk_opt_enter(&kid_opt[c - 1]);
 }

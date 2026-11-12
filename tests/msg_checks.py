@@ -1,11 +1,11 @@
 """F18 APRS Messages, phase 1, in-target checks (patches/kraken_ui/krk_aprs_msg.c, the decoder hand-off in krk_afsk.c emit),
 called from kraken_ui_test.py on the halted QEMU machine after the F14 RX Monitor checks.
 
-  1. static: the APRS row (label in both language arrays, the constant descriptor 0x030e8028), blob 4's hook entry 1, the claim
-  2. direct injection through blob 2's hand-off krk_aprs_msg_frame (blob 4's hook entry behind it): noise SRAM -> one message; ack, other addressee and a
+  1. static: the APRS row (label in both language arrays, the descriptor krk_aprs_msg_screen), the claim
+  2. direct injection through the hand-off krk_aprs_msg_frame (it calls krk_msg_rx): noise SRAM -> one message; ack, other addressee and a
      repeat are not stored; no callsign -> nothing
   3. end to end: a message frame synthesized as AFSK, fed half by half through the RX Monitor (the real decoder, the fakes of
-     mon_checks for the FM RAM reads), goes through blob 2's hand-off and blob 4's hook entry and lands in the inbox with its whole text; stack depth of that pass
+     mon_checks for the FM RAM reads), goes through the hand-off and lands in the inbox with its whole text; stack depth of that pass
   4. the Messages screen: one message per page, newest first, Down to the older one; nothing in it transmits
 
 The RTC (rtc_register_read) and the callsign record (krk_call_get, blob 3) are faked: QEMU has neither a set RTC nor a saved call.
@@ -50,10 +50,7 @@ def check_msg(c, s, s2, s3, s4, img, dwc):
         m.report(img[lab - 0x03000000:].split(b"\0")[0] == b"Messages" and img[base + 4 - 0x03000000] > item,
                  f"APRS descriptor lang {lang}: item {item} label 'Messages', count {img[base + 4 - 0x03000000]}")
     slot = rd32(EXT_TABLE + 4 * (krk_define("KRK_EXT_MAX") + item - first))
-    m.report(slot == 0x030E8028 == s4["krk_aprs_msg_screen"], f"APRS slot of item {item} = the constant 0x030e8028 = blob 4's krk_aprs_msg_screen ({slot:#x})")
-    hook = rd32(0x030E8024)
-    m.report(hook == s4["krk_msg_rx"] and rd32(0x030E8020) == s4["krk_bv_wd_tick"],
-             f"blob 4 hook table: entry 0 the Burst Voice watchdog, entry 1 krk_msg_rx ({hook:#x})")
+    m.report(slot == s4["krk_aprs_msg_screen"], f"APRS slot of item {item} = krk_aprs_msg_screen ({slot:#x})")
     m.report(hi - lo == 256, f"kraken_aprs_inbox claim {lo:#x}-{hi:#x}: 256 bytes (the struct is 16 + 3 x 80, size-checked at compile time)")
 
     # ---- harness ---------------------------------------------------------------------------------

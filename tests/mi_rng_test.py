@@ -76,10 +76,12 @@ COMPOSE = [sys.executable, str(_TOOLS / "re_tool.py"), "--fw", FW, "compose_qemu
 
 SENTINEL = 0x000169D4          # br16 . in IRAM (the ALPU-failure while(1)); never reached when bypassed
 STACK_A = 0x0002F800           # phase A: above the IRAM load image, nothing else runs
-STACK_B = 0x18007B00           # phase B: SRAM scratch window, unclaimed (allocations.json)
+STACK_B = 0x18005600           # phase B: the top of the SRAM keep_free range 0x180053a0-0x18005600 (allocations.json), which no release
+                               # build uses. Until 2026-11-11 this was 0x18007b00, which grew down into Kraken state: harmless while that
+                               # state had a free tail, a clobbered register set once tools/pack_kraken.py packed it full.
 SCRATCH_A = 0x0002FA00
-SCRATCH_B = 0x18007800
-FAKE_CTX_B = 0x18007B80
+SCRATCH_B = 0x18007F00         # keep_free 0x18007eb0-0x18007fe0, as FAKE_CTX_B: never Kraken state (it is placed per build)
+FAKE_CTX_B = 0x18007F80
 LOOP_START, LOOP_END = 0x0305CAE6, 0x0305CAF8   # MI fill loop in dmr_privacy_key_load_and_mi_draw
 EXPECT_BSR_TARGET = None       # filled from nm (mi_rng_entry)
 
@@ -339,7 +341,7 @@ def phase_b(sym, L, workdir, kernel, iram, sram, boot_s):
         t0 = time.time()
         b, good = hijack_call(c, sym["mi_rng_entry"], 0x5A5A0000)
         busy, cont = struct.unpack("<II", read_mem(c, st + L["busy"], 8))
-        report(good and busy == 0 and cont >= 2000, f"preset busy lock: call still returned after {cont} retries "
+        report(good and busy == 0 and cont >= 2000, f"preset busy lock: call still returned after {cont} retries (registers kept {good}, busy {busy}) "
                f"({time.time() - t0:.1f} s wall), lock released")
 
         # B3: Davies-Meyer finalisation recomputed from what the state left behind

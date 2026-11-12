@@ -7,7 +7,8 @@ Runs INSIDE the dm32uv-re Docker image (see tools/build.sh and docs/building.md)
 Steps:
   0. tools/gen_menu_hosts.py, gen_manifest.py and gen_claims.py with --check: the stock-menu host rows and
      generator-call sites, the branch hooks and the blob list in kraken_ui.patch.json, krk_menu_rows.h and
-     krk_claims.h must match menu_hosts.json, hooks.json, blobs.json and allocations.json.
+     krk_claims.h must match menu_hosts.json, hooks.json, link.json and allocations.json. Before the kraken_ui step,
+     tools/pack_kraken.py places Kraken (one link) in the free space and writes the builder's blobs and claims.
   1. Build each manifest in image.json's order with dm32uv-re's build_manifest_patch.py. Patch N
      uses patch N-1's output image as its --base, so every builder safety check (expected stock
      bytes, erased landing zones, claim overlaps, "every changed byte is declared") runs against
@@ -123,14 +124,29 @@ def build(cfg, out, fw):
     base, steps, owner = stock_path, [], {}
     for i, p in enumerate(cfg["patches"]):
         manifest = W / p["manifest"]
-        name = json.loads(manifest.read_text())["name"]
+        mj = json.loads(manifest.read_text())
+        name = mj["name"]
         step_out = out / "steps" / f"{i:02d}_{name}"
         if step_out.exists():
             shutil.rmtree(step_out)
+        step_extra = list(extra)
+        pack = None
+        if "pack" in mj:
+            # one link, placed in this build's free space: pack_kraken.py writes the builder's manifest (its blobs) and the
+            # claims for exactly what it used (docs/flash-allocation.md, "How Kraken is placed")
+            pack = out / "pack" / name
+            run([sys.executable, HERE / "pack_kraken.py", "--fw", fw["id"], "plan", manifest, "--base", base,
+                 "--registry", registry, *extra, "--out", pack])
+            manifest = pack / manifest.name
+            step_extra += ["--extra-allocations", pack / "claims.json"]
         run([*builder, manifest, "--base", base,
-             *extra, "--require-claims", "--out", step_out])
+             *step_extra, "--require-claims", "--out", step_out])
         summary = json.loads((step_out / "summary.json").read_text())
         img_path = step_out / summary["image"]["file"]
+        if pack:
+            # the built blobs must be the master link, byte for byte; copies kraken_ui.elf/.map into build/ for the tests
+            run([sys.executable, HERE / "pack_kraken.py", "verify", "--out", pack, "--image", img_path,
+                 "--build", step_out / "build"])
         prev = base.read_bytes()
         img = img_path.read_bytes()
         mine = changed_sectors(prev, img)
@@ -334,6 +350,8 @@ def main():
     # the manifest's host rows / hooks / blobs and the C headers are generated: refuse to build from a stale one
     for gen in ("gen_menu_hosts.py", "gen_manifest.py", "gen_claims.py"):
         run([sys.executable, HERE / gen, "--check"])
+    # every Kraken source goes through the pack: no hand-made blob, linker script or unpinned claim (docs/flash-allocation.md)
+    run([sys.executable, HERE / "pack_kraken.py", "lint"])
     others = [f["id"] for f in fws if not fwreg.is_reference(f)]
     if others:
         # every stock address of every non-reference build must have its checked translation

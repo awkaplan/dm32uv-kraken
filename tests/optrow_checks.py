@@ -509,8 +509,11 @@ def check_scrambler_rows(c, s, s2, dwc, SCR, rows, rec, calls):
 
     # numeric commit through the Channel Set OK hook, real setter and state
     cs_open(CS_SCR_KEY)
+    # no fake on krk_popup_draw here: the Out of Range dialog is checked through the stock calls it makes (box, bitmap, text).
+    # Until 2026-11-11 DRAW was faked here too, yet the old runs saw the real box/bitmap/text calls: the emulator missed
+    # that breakpoint in the old layout. With Kraken placed by tools/pack_kraken.py it is hit, so it is gone.
     fkn = {OKP: rec("popup"), TEXT: lambda regs, r0, r1: calls.append(("text", cstr(c, regs["r3"]))) or 0, BOX: rec("box"), BITMAP: rec("bmp"),
-           DLYA: rec("dly"), HPOP: rec("pop"), cat: rec("restore"), MARKS: rec("marks"), DRAW: fdraw}
+           DLYA: rec("dly"), HPOP: rec("pop"), cat: rec("restore"), MARKS: rec("marks")}
     for text, good in ((b"1", 1), (b"1234", 1234), (b"65535", 65535), (b"00042", 42), (b"0", None), (b"65536", None), (b"", None), (b"99999999", None), (b"0000", None)):
         state(key=777, on=1)
         m.wmem(c, EDIT_BUF, text + b"\0")

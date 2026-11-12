@@ -8,296 +8,12 @@
  "name": "kraken_ui",
  "description": "KRAKEN top-level menu category with a sub-list of patch screens (About, RSSI meter, ...).",
  "allocations": [
-  "kraken_ui_code",
-  "kraken_ui_code2",
   "kraken_ui_data",
-  "kraken_ui_state",
-  "kraken_ui2_state",
-  "kraken_afsk_state",
-  "kraken_ui_state2",
-  "kraken_feat_state",
-  "kraken_ui3_code",
-  "kraken_ui3_state",
-  "kraken_bigbuf",
-  "kraken_ui4_code",
-  "kraken_ui4_state",
-  "kraken_ui5_code",
-  "kraken_aprs_state"
+  "kraken_bigbuf"
  ],
  "symbols": {
   "SUBTYPE_ICON_LIST": 2
  },
- "blobs": [
-  {
-   "name": "kraken_ui",
-   "sources": [
-    "krk_core.c",
-    "krk_about.c",
-    "krk_rssi.c",
-    "krk_grid.c",
-    "krk_lastheard.c",
-    "krk_rf.c",
-    "krk_scope.c",
-    "krk_optrow.c",
-    "krk_stubs.S"
-   ],
-   "cflags": [
-    "-O2",
-    "-Wall",
-    "-ffreestanding",
-    "-fno-tree-loop-distribute-patterns",
-    "-ffunction-sections",
-    "-fdata-sections"
-   ],
-   "ldflags": [
-    "--gc-sections"
-   ],
-   "linker_script": "kraken_ui.ld",
-   "entry": "krk_item_ok",
-   "expect_entry": "0x030e4000"
-  },
-  {
-   "name": "kraken_ui3",
-   "sources": [
-    "krk_sat.c",
-    "krk_sat_tles.c",
-    "krk_satrf.c",
-    "krk_satscr.c",
-    "krk_callsign.c",
-    "krk_tapedit.c",
-    "krk_aprs_trec.c"
-   ],
-   "cflags": [
-    "-O2",
-    "-Wall",
-    "-ffreestanding",
-    "-fno-tree-loop-distribute-patterns",
-    "-ffunction-sections",
-    "-fdata-sections"
-   ],
-   "ldflags": [
-    "--gc-sections"
-   ],
-   "linker_script": "kraken_ui3.ld",
-   "entry": "krk_sat_screen",
-   "expect_entry": "0x030f8000",
-   "defsym": {
-    "krk_line": "@kraken_ui:krk_line",
-    "krk_text": "@kraken_ui:krk_text",
-    "krk_cat": "@kraken_ui:krk_cat",
-    "krk_catn": "@kraken_ui:krk_catn",
-    "krk_cati": "@kraken_ui:krk_cati",
-    "krk_catfix": "@kraken_ui:krk_catfix",
-    "krk_pad": "@kraken_ui:krk_pad",
-    "krk_line_cached": "@kraken_ui:krk_line_cached",
-    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
-    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
-    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
-    "krk_hex": "@kraken_ui:krk_hex",
-    "krk_itoa": "@kraken_ui:krk_itoa",
-    "krk_gps_get": "@kraken_ui:krk_gps_get",
-    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
-    "krk_channel_side": "@kraken_ui:krk_channel_side",
-    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
-    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
-    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
-    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
-    "krk_list_cells": "@kraken_ui:krk_list_cells"
-   },
-   "libgcc": true
-  },
-  {
-   "name": "kraken_ui2",
-   "sources": [
-    "krk_ext.c",
-    "krk_aprs_tx.c",
-    "krk_aprs_text.c",
-    "krk_aprs_menu.c",
-    "krk_aprsrx.c",
-    "krk_aprs_alert.c",
-    "krk_afsk.c",
-    "krk_ax25.c",
-    "krk_periodic.c",
-    "krk_scramble.c",
-    "krk_squelch.c",
-    "krk_vox.c",
-    "krk_ofstubs.S",
-    "krk_txtrim.c",
-    "krk_vframe.c",
-    "krk_parrot_sm.c",
-    "krk_parrot.c",
-    "krk_cwid.c",
-    "krk_band.c",
-    "krk_bvcfg.c",
-    "krk_tags.c",
-    "krk_aprs_chan.c"
-   ],
-   "cflags": [
-    "-O2",
-    "-Wall",
-    "-ffreestanding",
-    "-fno-tree-loop-distribute-patterns",
-    "-ffunction-sections",
-    "-fdata-sections"
-   ],
-   "ldflags": [
-    "--gc-sections"
-   ],
-   "linker_script": "kraken_ui2.ld",
-   "entry": "krk_ext_screens",
-   "expect_entry": "0x030ee000",
-   "defsym": {
-    "krk_line": "@kraken_ui:krk_line",
-    "krk_text": "@kraken_ui:krk_text",
-    "krk_cat": "@kraken_ui:krk_cat",
-    "krk_catn": "@kraken_ui:krk_catn",
-    "krk_cati": "@kraken_ui:krk_cati",
-    "krk_catfix": "@kraken_ui:krk_catfix",
-    "krk_pad": "@kraken_ui:krk_pad",
-    "krk_line_cached": "@kraken_ui:krk_line_cached",
-    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
-    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
-    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
-    "krk_hex": "@kraken_ui:krk_hex",
-    "krk_itoa": "@kraken_ui:krk_itoa",
-    "krk_gps_get": "@kraken_ui:krk_gps_get",
-    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
-    "krk_channel_side": "@kraken_ui:krk_channel_side",
-    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
-    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
-    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
-    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
-    "krk_list_cells": "@kraken_ui:krk_list_cells",
-    "krk_screen_owner": "@kraken_ui:krk_screen_owner",
-    "krk_tags_shown": "@kraken_ui:krk_tags_shown",
-    "krk_popup": "@kraken_ui:krk_popup",
-    "krk_popup_draw": "@kraken_ui:krk_popup_draw",
-    "krk_key_scan": "@kraken_ui:krk_key_scan",
-    "krk_opt_enter": "@kraken_ui:krk_opt_enter",
-    "krk_opt_commit": "@kraken_ui:krk_opt_commit",
-    "krk_run_screen": "@kraken_ui:krk_run_screen",
-    "krk_sat_screen": "@kraken_ui3:krk_sat_screen",
-    "krk_sat_tick": "@kraken_ui3:krk_sat_tick",
-    "krk_callsign_screen": "@kraken_ui3:krk_callsign_screen",
-    "krk_call_get": "@kraken_ui3:krk_call_get",
-    "krk_rec_csum": "@kraken_ui3:krk_rec_csum",
-    "krk_aprs_cfg_path": "@kraken_ui3:krk_aprs_cfg_path",
-    "krk_aprs_cfg_set_path": "@kraken_ui3:krk_aprs_cfg_set_path",
-    "krk_cwid_cfg": "@kraken_ui3:krk_cwid_cfg",
-    "krk_cwid_cfg_set": "@kraken_ui3:krk_cwid_cfg_set",
-    "krk_sat_active": "@kraken_ui3:krk_sat_active",
-    "krk_tap_key": "@kraken_ui3:krk_tap_key",
-    "krk_edit_ram": "@kraken_ui3:krk_edit_ram",
-    "krk_aprs_text_load": "@kraken_ui3:krk_aprs_text_load",
-    "krk_aprs_text_store": "@kraken_ui3:krk_aprs_text_store",
-    "krk_aprs_text_cat": "@kraken_ui3:krk_aprs_text_cat"
-   },
-   "libgcc": true
-  },
-  {
-   "name": "kraken_ui4",
-   "sources": [
-    "krk_bvscr.c",
-    "krk_bvmsg.c",
-    "krk_bv_modem.c",
-    "krk_bv_frame.c",
-    "krk_bv_sound.c",
-    "krk_ambe.c",
-    "krk_aprs_msg.c"
-   ],
-   "cflags": [
-    "-Os",
-    "-Wall",
-    "-ffreestanding",
-    "-fno-tree-loop-distribute-patterns",
-    "-ffunction-sections",
-    "-fdata-sections"
-   ],
-   "ldflags": [
-    "--gc-sections"
-   ],
-   "linker_script": "kraken_ui4.ld",
-   "entry": "krk_bv_screen",
-   "expect_entry": "0x030e8000",
-   "defsym": {
-    "krk_line": "@kraken_ui:krk_line",
-    "krk_text": "@kraken_ui:krk_text",
-    "krk_cat": "@kraken_ui:krk_cat",
-    "krk_catn": "@kraken_ui:krk_catn",
-    "krk_cati": "@kraken_ui:krk_cati",
-    "krk_catfix": "@kraken_ui:krk_catfix",
-    "krk_pad": "@kraken_ui:krk_pad",
-    "krk_line_cached": "@kraken_ui:krk_line_cached",
-    "krk_fmt_age": "@kraken_ui:krk_fmt_age",
-    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
-    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
-    "krk_hex": "@kraken_ui:krk_hex",
-    "krk_itoa": "@kraken_ui:krk_itoa",
-    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
-    "krk_channel_side": "@kraken_ui:krk_channel_side",
-    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
-    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
-    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
-    "krk_channel_on_selected": "@kraken_ui:krk_channel_on_selected",
-    "krk_list_cells": "@kraken_ui:krk_list_cells",
-    "krk_key_scan": "@kraken_ui:krk_key_scan",
-    "krk_vf_service": "@kraken_ui2:krk_vf_service",
-    "krk_vf_tx_begin": "@kraken_ui2:krk_vf_tx_begin",
-    "krk_vf_tx_end": "@kraken_ui2:krk_vf_tx_end",
-    "krk_vf_tx_quiet": "@kraken_ui2:krk_vf_tx_quiet",
-    "krk_vf_rx_sink": "@kraken_ui2:krk_vf_rx_sink",
-    "krk_vf_release": "@kraken_ui2:krk_vf_release",
-    "krk_vf_press": "@kraken_ui2:krk_vf_press",
-    "krk_vf_ticks": "@kraken_ui2:krk_vf_ticks",
-    "krk_vf_silence": "@kraken_ui2:krk_vf_silence",
-    "krk_vf_big_claim": "@kraken_ui2:krk_vf_big_claim",
-    "krk_vf_big_release": "@kraken_ui2:krk_vf_big_release",
-    "krk_vf": "@kraken_ui2:krk_vf",
-    "krk_fm_send_opt": "@kraken_ui2:krk_fm_send_opt",
-    "krk_on_selected_side": "@kraken_ui2:krk_on_selected_side",
-    "krk_bv_cfg": "@kraken_ui2:krk_bv_cfg",
-    "krk_call_get": "@kraken_ui3:krk_call_get"
-   },
-   "libgcc": true
-  },
-  {
-   "name": "kraken_ui5",
-   "sources": [
-    "krk_dmrlink.c"
-   ],
-   "cflags": [
-    "-O2",
-    "-Wall",
-    "-ffreestanding",
-    "-fno-tree-loop-distribute-patterns",
-    "-ffunction-sections",
-    "-fdata-sections"
-   ],
-   "ldflags": [
-    "--gc-sections"
-   ],
-   "linker_script": "kraken_ui5.ld",
-   "entry": "krk_dmrlink_screen",
-   "expect_entry": "0x030e1000",
-   "defsym": {
-    "krk_cat": "@kraken_ui:krk_cat",
-    "krk_cati": "@kraken_ui:krk_cati",
-    "krk_line_cached": "@kraken_ui:krk_line_cached",
-    "krk_uart_putc": "@kraken_ui:krk_uart_putc",
-    "krk_uart_puts": "@kraken_ui:krk_uart_puts",
-    "krk_hex": "@kraken_ui:krk_hex",
-    "krk_itoa": "@kraken_ui:krk_itoa",
-    "krk_channel_analog": "@kraken_ui:krk_channel_analog",
-    "krk_channel_side": "@kraken_ui:krk_channel_side",
-    "krk_channel_flags": "@kraken_ui:krk_channel_flags",
-    "krk_channel_mode": "@kraken_ui:krk_channel_mode",
-    "krk_channel_freq": "@kraken_ui:krk_channel_freq",
-    "krk_list_cells": "@kraken_ui:krk_list_cells",
-    "krk_feat_end": "@kraken_ui2:krk_feat_end"
-   },
-   "libgcc": true
-  }
- ],
  "data": [
   {
    "name": "krk_label",
@@ -336,7 +52,7 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_render_stub"
+      "@kraken:krk_render_stub"
      ]
     }
    ]
@@ -364,7 +80,7 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_ok_stub"
+      "@kraken:krk_ok_stub"
      ]
     }
    ]
@@ -392,7 +108,7 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_item_stub"
+      "@kraken:krk_item_stub"
      ]
     }
    ]
@@ -521,14 +237,14 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub",
-      "@kraken_ui:krk_aprs_item_stub"
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub",
+      "@kraken:krk_aprs_item_stub"
      ]
     }
    ]
@@ -1010,15 +726,15 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui2:krk_cs_bv_kids_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub",
-      "@kraken_ui:krk_cs_item_stub"
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_bv_kids_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub",
+      "@kraken:krk_cs_item_stub"
      ]
     }
    ]
@@ -1058,15 +774,15 @@
     },
     {
      "u32": [
-      "@kraken_ui:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
       "0x0304e254",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub",
-      "@kraken_ui:krk_cs_ok_stub"
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub",
+      "@kraken:krk_cs_ok_stub"
      ]
     }
    ]
@@ -1216,7 +932,7 @@
    "why": "menu_option_gen_idx23 after its last stock append: `st16.h r3,(r4,0); br16 0x0304a112` (count store, then the shared tail) -> bsr krk_menu_append, which redoes the store, appends category index 10 and jumps to the tail itself. These 4 bytes exist in every supported build; the padding halfword 048 has after the br16 does not (DM32.01.L01.048 puts a literal word there). Nothing branches to the br16",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_menu_append"
+    "target": "@kraken:krk_menu_append"
    }
   },
   {
@@ -1226,7 +942,7 @@
    "why": "idx24 (VFO-mode top list): `lrw r2,[0x3049fec]; ld.b r2,(r2,0)` -> bsr stub that appends index 10 then re-executes both (krk_stubs.S)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_menu_append24"
+    "target": "@kraken:krk_menu_append24"
    }
   },
   {
@@ -1293,7 +1009,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_txtrim_interp"
+    "target": "@kraken:krk_hook_txtrim_interp"
    }
   },
   {
@@ -1303,7 +1019,7 @@
    "why": "Stock APRS popup bearing/distance ignore N/S/E/W: stub rewrites W/S stack doubles to 360-x before calc/distance (docs/aprs-stock-gaps.md B.6). Displaced `ld.w r2,(sp,0x18); st.w r2,(sp,0)` re-executed in the stub; r15 saved by the caller's push.",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_bearing"
+    "target": "@kraken:krk_hook_bearing"
    }
   },
   {
@@ -1316,7 +1032,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_lh_start"
+    "target": "@kraken:krk_hook_lh_start"
    }
   },
   {
@@ -1329,7 +1045,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_lh_end"
+    "target": "@kraken:krk_hook_lh_end"
    }
   },
   {
@@ -1342,7 +1058,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_lh_alias"
+    "target": "@kraken:krk_hook_lh_alias"
    }
   },
   {
@@ -1358,7 +1074,7 @@
    "why": "render case block of APRS (category 9) in menu_screen_render_entry_variant: `lrw r3,[settings]; ld.b r2,(r3,0x30)` -> bsr krk_aprs_render (installs count/ptr/subtype and the per-mode index list; r0-r3/r12 dead here, r4-r6/r15 saved by the prologue), then aprs_render_tail jumps over the rest of the block to the shared tail 0x0303dd78",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_aprs_render"
+    "target": "@kraken:krk_aprs_render"
    }
   },
   {
@@ -1414,7 +1130,7 @@
    "why": "channel_change_apply_dispatcher: `cmpnei r3,0x30` of the DMR-only test that sets [0x40078] bit 0 (APRS active on this channel) -> bsr stub that re-executes it and also accepts nibble 0 (analog FM), leaving the stock `bt clear` at 0x03057aac to act on C (krk_stubs.S krk_hook_aprs_mode)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_aprs_mode"
+    "target": "@kraken:krk_hook_aprs_mode"
    }
   },
   {
@@ -1424,7 +1140,7 @@
    "why": "ui_periodic_maintenance_task_loop: start of the GPS-fix-or-fixed-position gate (`lrw r2,[0x38c6c]; ld.b r2,(r2,0)`) before `bsr 0x030625bc` (APRS periodic tick) -> bsr krk_hook_aprs_tick, which applies that gate and calls the stock tick on digital channels and runs the AFSK beacon on analog ones; r0-r3 dead here, r15 saved by the prologue",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_aprs_tick"
+    "target": "@kraken:krk_hook_aprs_tick"
    }
   },
   {
@@ -1444,7 +1160,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_aprs_send_now"
+    "target": "@kraken:krk_hook_aprs_send_now"
    }
   },
   {
@@ -1454,7 +1170,7 @@
    "why": "commit_channel_record_dual_vfo @0x030303bc, the single writer of the live channel struct 0x3e1dc (it also stores a per-side copy at 0x3e358 / 0x3e21c, choosing the side by `get_current_mode_state2() == 0 ? selected : loaded`): all of its paths end at the shared epilogue `ld.w r15,(sp,0); addi sp,sp,0x14; rts`. The 4-byte `ld.w r15,(sp,0)` -> bsr krk_commit_end_stub, which runs krk_hook_chan_commit (snapshot of rx/tx/flags8 per side + the side the struct now describes, docs/dual-watch.md) and re-executes the load. r0-r3/r12/r13 are dead at the epilogue; r15 is restored by the stub",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_commit_end_stub"
+    "target": "@kraken:krk_commit_end_stub"
    }
   },
   {
@@ -1467,7 +1183,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_maint_tick"
+    "target": "@kraken:krk_hook_maint_tick"
    }
   },
   {
@@ -1480,7 +1196,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_bg_tick"
+    "target": "@kraken:krk_hook_bg_tick"
    }
   },
   {
@@ -1493,7 +1209,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_sq_write"
+    "target": "@kraken:krk_hook_sq_write"
    }
   },
   {
@@ -1531,7 +1247,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_gen"
+    "target": "@kraken:krk_hook_gen"
    }
   },
   {
@@ -1544,7 +1260,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_gen"
+    "target": "@kraken:krk_hook_gen"
    }
   },
   {
@@ -1557,7 +1273,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_gen"
+    "target": "@kraken:krk_hook_gen"
    }
   },
   {
@@ -1567,7 +1283,7 @@
    "why": "Call Log item-action compare chain (0x0303cf80): `bt32 0x0303d872` after `cmpnei r3,3` -> bsr krk_calllog_item_stub (C and r3 live: item 3 -> stock 0x0303cfb6, item 4 -> Last Heard, else the tail). The following `br 0x0303cfb6` becomes dead",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_calllog_item_stub"
+    "target": "@kraken:krk_calllog_item_stub"
    }
   },
   {
@@ -1577,7 +1293,7 @@
    "why": "IRAM 0x2e9ea: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. LIVE (variant [0x4988a]==0, [0x49888]==1). The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+    "target": "@kraken:krk_vf_tx_hook + 0x30afc20"
    }
   },
   {
@@ -1587,7 +1303,7 @@
    "why": "IRAM 0x2eaf0: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. LIVE (same variant, other phase). The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+    "target": "@kraken:krk_vf_tx_hook + 0x30afc20"
    }
   },
   {
@@ -1597,7 +1313,7 @@
    "why": "IRAM 0x2e6c0: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. Dead variant ([0x4988a] has no setter), hooked so a future stock path cannot bypass the layer. The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+    "target": "@kraken:krk_vf_tx_hook + 0x30afc20"
    }
   },
   {
@@ -1607,7 +1323,7 @@
    "why": "IRAM 0x2e820: stock `bsr 0x172f8` (copy 27 bytes 0x49b18 -> modem window 0x16000960; r0=0, r1=lrw 0x49b18, r2=27) in the vocoder TX task. Dead variant, second phase, hooked for the same reason. The bsr is encoded against the IRAM pc (flash + -0x030afc20), hence the +0x30afc20 on the target. Regs: after it only r5/r6/r11 (callee-saved) are used, r2/r3/r12 are reloaded (docs/parrot-tx.md 2.2, re-checked).",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vf_tx_hook + 0x30afc20"
+    "target": "@kraken:krk_vf_tx_hook + 0x30afc20"
    }
   },
   {
@@ -1617,7 +1333,7 @@
    "why": "IRAM 0x2ed64: stock `bsr 0x172cc` (copy 27 bytes modem window -> 0x46b38; r0=r11=0, r1=lrw 0x46b38, r2=27) in the vocoder RX task (prio 15), the only live read site. krk_vf_rx_hook calls it first, then the RX sink. After the site only r4/r8 (callee-saved) are used and r3/r1/r13 are reloaded. +0x30afc20: IRAM pc encoding.",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vf_rx_hook + 0x30afc20"
+    "target": "@kraken:krk_vf_rx_hook + 0x30afc20"
    }
   },
   {
@@ -1627,7 +1343,7 @@
    "why": "OK (second handler 0x0303a770) at a level-2 screen for a category the chain does not know (id >= 10: KRAKEN): stock sets mode 0x1c (`movi r0,28; movi r1,1; bsr 0x03035ec4`, 8 bytes). -> bsr krk_opt_ok, which commits an option row and shows the stock Setting-is-OK popup, else does the stock set-mode itself. The function is a case of a handler whose prologue saved r4/r15 and whose epilogue (0x0303ab4a) pops them (docs/stock-option-level.md 2.5)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_opt_ok"
+    "target": "@kraken:krk_opt_ok"
    },
    "fill": "03 6c"
   },
@@ -1638,7 +1354,7 @@
    "why": "title of the level-2 screen (menu_field_value_display_dispatch 0x03038528, case 0x030385c4: category id >= 10 -> `lrw r3,0x030b1458 (empty string); br 0x03038ece` which draws r3 centered in the header) -> bsr krk_title_stub, which loads r3 = krk_opt_title() and jumps to 0x03038ece (docs/stock-option-level.md 2.4)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_title_stub"
+    "target": "@kraken:krk_title_stub"
    },
    "fill": "03 6c"
   },
@@ -1649,7 +1365,7 @@
    "why": "stock APRS (category 9) OK handler 0x0304d6c0, last item test `cmpnei r3,7; bt 0x0304d846` (r3 = level-2 item; items 0..6 were matched above and end in the epilogue) -> bsr krk_aprs_ok_stub: item 7 falls through to the stock block at 0x0304d820, items >= 8 (rows we append, docs/aprs-submenu.md) are committed by krk_aprs_opt_ok when they are option rows (docs/stock-option-level.md 2.6)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_aprs_ok_stub"
+    "target": "@kraken:krk_aprs_ok_stub"
    }
   },
   {
@@ -1659,7 +1375,7 @@
    "why": "header of the stock text-entry screen (subtype 8, edit flag [0x3e31e] bit 6): `lrw r3,0x030ba280; ldr.w r3,(r3,r12<<2)` (the 'Input ID' string of the language) -> bsr krk_numtitle_stub, which returns r3 = krk_num_title() with r0-r2 kept (docs/stock-option-level.md 3.4)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_numtitle_stub"
+    "target": "@kraken:krk_numtitle_stub"
    },
    "fill": "03 6c"
   },
@@ -1698,7 +1414,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_gen"
+    "target": "@kraken:krk_hook_gen"
    }
   },
   {
@@ -1708,7 +1424,7 @@
    "why": "Radio Settings enter chain 0x030431cc: `bt16 0x030432ea; br16 0x030432ac` after `cmpnei r3,3` -> bsr krk_rs_item_stub (C and r3 live: item 3 -> stock 0x030432ac, item 4 -> our row, else the epilogue)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_rs_item_stub"
+    "target": "@kraken:krk_rs_item_stub"
    }
   },
   {
@@ -1718,7 +1434,7 @@
    "why": "OK *inside* the option level of a row appended to stock Radio Settings. MEASURED 2026-11-03: opening a row and committing a value are different key events in different functions - the open OK runs 0x0303a770 (category-5 edge 0x0303ab38), the committing OK runs 0x0303a57c -> bsr 0x0304e560 -> jump table 0x030b11c4 entry 0 (Radio Settings) = here. Stock here is a pure no-op (`movi r0,35; movi r1,1; bsr 0x03035ec4` = set_mode(0x23,1), 8 bytes) reached by nothing else: the literal 0x0304e5a0 occurs only in its own table slot, and stock Radio Settings rows commit via 0x0304fab4 instead, so no stock behaviour is lost. Breakpoint-confirmed to fire exactly once, only on the committing OK. The frame (0x0304e560) pushes r15 ONLY, so krk_settings_ok_stub saves r4 itself and jumps to the epilogue 0x0304e83a rather than returning",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_settings_ok_stub"
+    "target": "@kraken:krk_settings_ok_stub"
    },
    "fill": "03 6c"
   },
@@ -1759,7 +1475,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_hook_gen"
+    "target": "@kraken:krk_hook_gen"
    }
   },
   {
@@ -1822,7 +1538,7 @@
    "why": "GNSS item-action compare chain (case block 0x0303d2a0): `cmpnei r3,4; bt16 0x0303d872` -> bsr krk_gnss_item_stub, which redoes the compare (item 4 -> stock block 0x0303d4ac, item 5 -> GPS Grid, else the tail). r3 = item here (items 0..3 were diverted above). The GNSS list has NO generator: the render block builds it sequentially from the descriptor count",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui:krk_gnss_item_stub"
+    "target": "@kraken:krk_gnss_item_stub"
    }
   },
   {
@@ -1869,7 +1585,7 @@
    "name": "of_item11_enter",
    "addr": "0x030b09bc",
    "expect_u32": "0x03045082",
-   "u32": "@kraken_ui2:krk_of_cwid_kids_stub",
+   "u32": "@kraken:krk_of_cwid_kids_stub",
    "why": "Other Func level-5 init table 0x030b0990, slot 11 (stock: the no-op exit) -> installs the CW ID child list (CW ID SW, Interval, Callsign), as 0x030449ec does for VOX (slot 3). Runs on every render of the level, including the re-render after a child commits"
   },
   {
@@ -1889,7 +1605,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_of_gen"
+    "target": "@kraken:krk_hook_of_gen"
    }
   },
   {
@@ -1899,7 +1615,7 @@
    "why": "level-6 option init 0x03045fd8 (Settings > Radio Settings > Other Func > row > child): `cmpnei r3,3; bt16 0x03046336` on the level-4 item -> bsr krk_of_l6_enter_stub (r3 = item, lr = 0x03046240 = stock's VOX arm, which reloads r3). The stub returns there for VOX children 0 and 1 and ends at the epilogue 0x03046336 after installing our option level for VOX child 2 and the CW ID children",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_of_l6_enter_stub"
+    "target": "@kraken:krk_of_l6_enter_stub"
    }
   },
   {
@@ -1909,7 +1625,7 @@
    "why": "level-6 commit menu_confirm_apply_dispatcher 0x03050de8: `bt32 0x03051686` after `cmpnei r3,3` on the level-4 item -> bsr krk_of_l6_ok_stub (r3 = item, lr = 0x03051032 = stock's VOX arm). Stock treats every non-zero VOX child as Gain Level, so child 2 MUST be taken here or its cursor would be stored as the gain",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_of_l6_ok_stub"
+    "target": "@kraken:krk_of_l6_ok_stub"
    }
   },
   {
@@ -1919,7 +1635,7 @@
    "why": "level-6 header 0x03038b9e: `cmpnei r3,3; bt16 0x03038eb0` (blank) on the level-4 item -> bsr krk_of_l6_title_stub (r3 = item, lr = 0x03038c36 = stock's VOX lookup, which titles child 2 from the relocated array). The CW ID children get their label; everything else the blank string as before",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_of_l6_title_stub"
+    "target": "@kraken:krk_of_l6_title_stub"
    }
   },
   {
@@ -1932,7 +1648,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_vox_sq_read"
+    "target": "@kraken:krk_vox_sq_read"
    }
   },
   {
@@ -1945,7 +1661,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_band_load"
+    "target": "@kraken:krk_hook_band_load"
    }
   },
   {
@@ -1958,7 +1674,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_band_check"
+    "target": "@kraken:krk_hook_band_check"
    }
   },
   {
@@ -1971,7 +1687,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_band_check"
+    "target": "@kraken:krk_hook_band_check"
    }
   },
   {
@@ -1984,7 +1700,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_band_check"
+    "target": "@kraken:krk_hook_band_check"
    }
   },
   {
@@ -1997,7 +1713,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_band_check"
+    "target": "@kraken:krk_hook_band_check"
    }
   },
   {
@@ -2007,7 +1723,7 @@
    "why": "Channel Set level-5 init 0x03045084 (render 0x0303cb54 -> 0x0304547c, Settings item 1; docs/chanset-submenu.md 8): `cmphsi r2,13; bt16 0x03045478` on r2 = level-3 row - 3, the bound of its 13-entry table 0x030b09e4 (rows 3..15) -> bsr krk_cs_l5_enter_stub: stock rows return to the table jump at 0x03045098 (r2 kept), every other row runs krk_cs_l5_enter (the Burst Voice children: an option level, or the screen) and leaves through the epilogue 0x03045478. The only branch into the pair is the fall-through; r15 is saved by the prologue (push r4-r7, r15)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_cs_l5_enter_stub"
+    "target": "@kraken:krk_cs_l5_enter_stub"
    }
   },
   {
@@ -2017,7 +1733,7 @@
    "why": "Channel Set level-5 OK 0x030500b0 (0x03036420 -> 0x03050414, Settings item 1): the last test of its compare chain on r3 = level-3 row, `cmpnei r3,15; bt16 0x0305040e` (reached from `cmpnei r3,13; bt 0x0305031a`) -> bsr krk_cs_l5_ok_stub: row 15 returns into stock's arm at 0x0305031e (it reloads r3), every other row runs krk_cs_l5_ok (commit a Burst Voice child) and leaves through the epilogue 0x0305040e. r15 saved by the prologue (push r4, r15)",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_cs_l5_ok_stub"
+    "target": "@kraken:krk_cs_l5_ok_stub"
    }
   },
   {
@@ -2027,7 +1743,7 @@
    "why": "level-5 header 0x03038994, Channel Set arm 0x03038a7a: `cmpnei r3,15; bt16 0x03038e9c` (blank) on r3 = level-3 row, the only branch to 0x03038e9c (docs/nested-submenu.md 4) -> bsr krk_cs_l5_title_stub: row 15 returns into stock's lookup at 0x03038abc, every other row draws krk_cs_l5_title() through the draw tail 0x03038ece or stock's blank. r15 saved by 0x03038528's prologue (push r4, r15), popped by the tail",
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_cs_l5_title_stub"
+    "target": "@kraken:krk_cs_l5_title_stub"
    }
   },
   {
@@ -2040,7 +1756,7 @@
    },
    "branch": {
     "kind": "bsr",
-    "target": "@kraken_ui2:krk_hook_standby_bottom"
+    "target": "@kraken:krk_hook_standby_bottom"
    }
   }
  ],
@@ -2082,5 +1798,710 @@
    "end_exclusive": "0x030df000",
    "justification": "F9 parrot: five 4-byte bsr splices in the tail of the IRAM load image (flash 0x030bfc20..0x030decb8 is copied verbatim to IRAM 0x10000.. at every boot, docs/parrot-tx.md section 1) redirect the vocoder tasks' modem-window copies (IRAM 0x2e6c0/0x2e820/0x2e9ea/0x2eaf0 write, 0x2ed64 read) to krk_vf_tx_hook/krk_vf_rx_hook. Not the forbidden sector 0x030c6000. Branch targets carry +0x30afc20 because the CPU executes them at the IRAM address."
   }
- ]
+ ],
+ "pack": {
+  "entry": "krk_item_ok",
+  "sources": [
+   {
+    "file": "krk_core.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_about.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_rssi.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_grid.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_lastheard.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_rf.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_scope.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_optrow.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ]
+   },
+   {
+    "file": "krk_stubs.S",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_sat.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_sat_tles.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_satrf.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_satscr.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_callsign.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_tapedit.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_trec.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_ext.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_tx.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_text.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_menu.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprsrx.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_alert.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_afsk.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_ax25.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_periodic.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_scramble.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_squelch.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_vox.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_ofstubs.S",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_txtrim.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_vframe.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_parrot_sm.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_parrot.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_cwid.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_band.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bvcfg.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_tags.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_chan.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bvscr.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bvmsg.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bv_modem.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bv_frame.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_bv_sound.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_ambe.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_aprs_msg.c",
+    "cflags": [
+     "-Os",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   },
+   {
+    "file": "krk_dmrlink.c",
+    "cflags": [
+     "-O2",
+     "-Wall",
+     "-ffreestanding",
+     "-fno-tree-loop-distribute-patterns",
+     "-ffunction-sections",
+     "-fdata-sections",
+     "-fno-common"
+    ],
+    "keep": true
+   }
+  ],
+  "keep": [
+   ".text.krk_item_ok",
+   ".text.krk_category_entry",
+   ".text.krk_aprs_item",
+   ".text.krk_aprs_render",
+   ".text.krk_channel_analog",
+   ".text.krk_channel_on_selected",
+   ".text.krk_channel_side",
+   ".text.krk_channel_flags",
+   ".text.krk_channel_mode",
+   ".text.krk_channel_freq",
+   ".text.krk_opt_ok",
+   ".text.krk_opt_title",
+   ".text.krk_opt_enter",
+   ".text.krk_row_screen",
+   ".text.krk_aprs_opt_ok",
+   ".text.krk_opt_commit",
+   ".text.krk_num_title",
+   ".text.krk_open_opt",
+   ".text.krk_gnss_item",
+   ".text.krk_rs_item",
+   ".text.krk_settings_opt_ok",
+   ".text.krk_settings_ok_stub",
+   ".text.krk_cs_item",
+   ".text.krk_cs_opt_ok",
+   ".text.krk_cs_item_stub",
+   ".text.krk_cs_ok_stub",
+   ".text.krk_popup",
+   ".text.krk_popup_draw",
+   ".text.krk_key_scan",
+   ".text.krk_hook_*",
+   ".text.krk_line",
+   ".text.krk_text",
+   ".text.krk_cat",
+   ".text.krk_catn",
+   ".text.krk_itoa",
+   ".text.krk_gps_get",
+   ".text.krk_cati",
+   ".text.krk_catfix",
+   ".text.krk_pad",
+   ".text.krk_line_cached",
+   ".text.krk_fmt_age",
+   ".text.krk_uart_putc",
+   ".text.krk_uart_puts",
+   ".text.krk_hex",
+   ".rodata.krk_ext_screens",
+   ".rodata.krk_ext_hooks",
+   ".rodata.krk_sat_screen",
+   ".rodata.krk_callsign_screen",
+   ".rodata.krk_bv_screen",
+   ".rodata.krk_msg_screen",
+   ".rodata.krk_dmrlink_screen"
+  ],
+  "sram_groups": [
+   {
+    "name": "big",
+    "why": "F9 Parrot / F13 Burst Voice shared buffer, one owner at a time (krk_vframe.c big_buf); the claim is pinned because the mi_rng measurement build taps it",
+    "claim": "kraken_bigbuf",
+    "offset": "0x0",
+    "take": [
+     {
+      "file": "krk_vframe.c",
+      "sections": [
+       ".bss.big"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "bvt",
+    "why": "F13 framing, AMBE and screen state live in the last 0x200 bytes of the shared buffer (krk_bvscr.c checks the place and zeroes it at screen entry)",
+    "claim": "kraken_bigbuf",
+    "offset_from_end": "0x200",
+    "max": "0x200",
+    "symbols": [
+     "__bvt_start",
+     "__bvt_end"
+    ],
+    "take": [
+     {
+      "file": "krk_bv_frame.c"
+     },
+     {
+      "file": "krk_bv_sound.c"
+     },
+     {
+      "file": "krk_ambe.c"
+     },
+     {
+      "file": "krk_bvscr.c",
+      "sections": [
+       ".bss.bvs"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "bvm",
+    "why": "F13 modem state, zeroed as one range at screen entry (krk_bvscr.c)",
+    "symbols": [
+     "__bvm_start",
+     "__bvm_end"
+    ],
+    "take": [
+     {
+      "file": "krk_bv_modem.c"
+     }
+    ]
+   }
+  ]
+ }
 }

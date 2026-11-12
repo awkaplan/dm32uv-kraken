@@ -18,7 +18,7 @@ pin read, the stock prescaler) are intercepted and recorded.
 """
 import struct
 
-from build_artifacts import HOOK_TBL, REPO, stock_is      # first: puts the tool directories on sys.path
+from build_artifacts import HOOK_TBL, REPO, in_claims, stock_is      # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from claims import claim
 from gdb_rsp import read_mem
@@ -58,10 +58,9 @@ def check_mon(c, s, s2, img, stock, dwc):
     m.report(img[off + 4:off + 8] == stock[off + 4:off + 8], "bg_tick_hook: the br32 back to the OSFlagPend (0x03013f4c) is untouched")
     slot3 = struct.unpack("<I", img[HOOK_TBL - 0x03000000 + 12:HOOK_TBL - 0x03000000 + 16])[0]
     m.report(slot3 == s2["krk_mon_yield"], f"hook table slot 3 = krk_mon_yield ({slot3:#x} vs {s2['krk_mon_yield']:#x})")
-    (alo, ahi), (ulo, uhi) = claim("kraken_afsk_state"), claim("kraken_ui_state")
-    m.report(alo <= R and M + 20 <= ahi and s2["M"] == R + 20 and M >= alo,
-             f"monitor state M {M:#x}+20 B inside the decoder claim {alo:#x}-{ahi:#x} (R {R:#x}, no ui2 .bss used)")
-    m.report(owner >= ulo and owner + 4 <= uhi, f"krk_screen_owner {owner:#x} inside kraken_ui_state (main blob .bss)")
+    m.report(in_claims(R, "sram", 20) and in_claims(M, "sram", 20),
+             f"RX screen state R {R:#x} and monitor state M {M:#x}+20 B inside Kraken's SRAM claims")
+    m.report(in_claims(owner, "sram", 4), f"krk_screen_owner {owner:#x} inside a Kraken SRAM claim")
 
     # ---- harness ---------------------------------------------------------------------------------
     st_ = {"ptt": 0, "sw": 1, "half": SCRATCH, "now": 100000}

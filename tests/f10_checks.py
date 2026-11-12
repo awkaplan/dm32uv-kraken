@@ -16,7 +16,7 @@ import datetime
 import struct
 import sys
 
-from build_artifacts import EXT_TABLE      # first: puts the tool directories on sys.path
+from build_artifacts import EXT_TABLE, in_claims      # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from claims import claim
 from gdb_rsp import read_mem
@@ -132,14 +132,13 @@ def check_f10(c, img, s2, s3):
     rd32 = lambda a: struct.unpack("<I", img[a - 0x3000000:a - 0x3000000 + 4])[0]
     fx = Fx(c, s3)
 
-    print("== F10 satellite mode (blob kraken_ui3)")
-    (b3lo, b3hi), (rlo, rhi) = claim("kraken_ui3_code"), claim("kraken_ui3_state")
+    print("== F10 satellite mode")
     slot5 = rd32(EXT_TABLE + 4 * 8)
-    lbl = img[rd32(slot5) - 0x3000000:].split(b"\0")[0] if b3lo <= slot5 < b3hi else None
-    m.report(slot5 == s3["krk_sat_screen"] == b3lo and lbl == b"Satellites",
-             f"KRAKEN slot 8 (was 5 before the 2026-11-02 regrouping) -> {slot5:#x} (blob3 entry {s3['krk_sat_screen']:#x}), label {lbl}")
-    m.report(b3lo <= s3["krk_sat_tick"] < b3hi and s3["R"] >= rlo and s3["R"] + 456 <= rhi,
-             f"krk_sat_tick {s3['krk_sat_tick']:#x} in claim; state R {s3['R']:#x}+456 inside kraken_ui3_state")
+    lbl = img[rd32(slot5) - 0x3000000:].split(b"\0")[0] if in_claims(slot5, "flash") else None
+    m.report(slot5 == s3["krk_sat_screen"] and lbl == b"Satellites",
+             f"KRAKEN slot 8 (was 5 before the 2026-11-02 regrouping) -> {slot5:#x} (krk_sat_screen {s3['krk_sat_screen']:#x}), label {lbl}")
+    m.report(in_claims(s3["krk_sat_tick"], "flash") and in_claims(s3["R"], "sram", 456),
+             f"krk_sat_tick {s3['krk_sat_tick']:#x} in a Kraken flash claim; state R {s3['R']:#x}+456 inside a Kraken SRAM claim")
 
     print("-- tick: idle / noise")
     fx.mem()

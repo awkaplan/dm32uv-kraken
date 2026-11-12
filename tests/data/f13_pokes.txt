@@ -1,12 +1,12 @@
-# F13 QEMU frame: a received burst shown by the Burst Voice screen (poke format: tools/qemu_poke.py). S = the screen state at 0x18006f80
-# (nm kraken_ui4.elf; krk_bvscr.c struct S): n +38 u16, origin +46, layout +47, src +8, air_ms +28, rs +44 u16, rx_ok +56, rx_tot +57, evm_db +58, good +60
-14 150 2 18006fa6 3c00
-14 150 2 18006fae 02
-14 150 2 18006faf 01
-14 150 2 18006f88 09af2f00
-14 150 2 18006f9c 34080000
-14 150 2 18006fac 0300
-14 150 2 18006fb8 05
-14 150 2 18006fb9 05
-14 150 2 18006fba 15
-14 150 2 18006fbc 01
+# F13 QEMU frame: a received burst shown by the Burst Voice screen (poke format: tools/qemu_poke.py). S = the screen state (krk_bvscr:S, looked up in the
+# build's ELF; krk_bvscr.c struct S): n +38 u16, origin +46, layout +47, src +8, air_ms +28, rs +44 u16, rx_ok +56, rx_tot +57, evm_db +58, good +60
+14 150 2 krk_bvscr:S+0x26 3c00
+14 150 2 krk_bvscr:S+0x2e 02
+14 150 2 krk_bvscr:S+0x2f 01
+14 150 2 krk_bvscr:S+0x08 09af2f00
+14 150 2 krk_bvscr:S+0x1c 34080000
+14 150 2 krk_bvscr:S+0x2c 0300
+14 150 2 krk_bvscr:S+0x38 05
+14 150 2 krk_bvscr:S+0x39 05
+14 150 2 krk_bvscr:S+0x3a 15
+14 150 2 krk_bvscr:S+0x3c 01

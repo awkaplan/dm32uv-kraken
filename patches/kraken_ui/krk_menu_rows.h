@@ -19,7 +19,7 @@
 #define KRK_APRS_ITEM_TEXT 13
 #define KRK_APRS_ITEM_CHAN 14
 #define KRK_APRS_ITEM_MSG 15
-#define KRK_APRS_ROWS &krk_aprs_path_screen, &krk_aprs_upload_screen, &krk_callsign_screen, &krk_aprsrx_screen, &krk_monitor_row, &krk_aprs_text_screen, &krk_aprs_chan_screen, (const struct krk_screen *)(KRK_EXT4_LO + 0x28)
+#define KRK_APRS_ROWS &krk_aprs_path_screen, &krk_aprs_upload_screen, &krk_callsign_screen, &krk_aprsrx_screen, &krk_monitor_row, &krk_aprs_text_screen, &krk_aprs_chan_screen, &krk_aprs_msg_screen
 
 /* Call Log (category 4): stock items 0..3, ours item 4 (Last Heard) */
 #define KRK_CALLLOG_FIRST 4
@@ -56,6 +56,6 @@
 #define KRK_CS_ITEM_PARCHK 28
 #define KRK_CS_ITEM_PARCLR 29
 #define KRK_CS_ITEM_PARSTAT 30
-#define KRK_CS_ROWS (const struct krk_screen *)KRK_EXT5_LO, (const struct krk_screen *)KRK_EXT4_LO, &krk_scramble_on_screen, &krk_scrkey_row, &krk_parrot_arm_screen, &krk_parrot_play_screen, &krk_parrot_check_screen, &krk_parrot_clear_screen, &krk_parrot_status_screen
+#define KRK_CS_ROWS &krk_dmrlink_screen, &krk_bv_screen, &krk_scramble_on_screen, &krk_scrkey_row, &krk_parrot_arm_screen, &krk_parrot_play_screen, &krk_parrot_check_screen, &krk_parrot_clear_screen, &krk_parrot_status_screen
 
 #endif

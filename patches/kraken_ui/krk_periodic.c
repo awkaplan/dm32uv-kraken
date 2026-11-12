@@ -18,26 +18,18 @@ void krk_parrot_tick(void);
 extern void krk_scramble_tick(void);            /* krk_scramble.c (F12) */
 extern void krk_sat_tick(void);                 /* F10 Doppler tracking, blob kraken_ui3 (manifest defsym) */
 
-/* F13 burst voice (blob kraken_ui4, built after this one): its TX watchdog is reached through a one-entry table at the fixed
- * address 0x030e8020 (kraken_ui4.ld); erased flash (blob not present) reads 0xffffffff and is skipped. */
-#define BV_HOOK_TABLE ((void (*const *)(void))KRK_UI4_HOOK_TABLE)
+/* F13 burst voice TX watchdog (krk_bvscr.c) */
+void krk_bv_wd_tick(void);
 static void bv_watchdog(void)
 {
-    void (*f)(void) = BV_HOOK_TABLE[0];
-
-    if ((u32)f >= KRK_EXT4_LO && (u32)f < KRK_EXT4_HI)
-        f();
+    krk_bv_wd_tick();
 }
 
-/* F18 APRS Messages (blob ui4, krk_aprs_msg.c krk_msg_rx): every decoded frame goes through entry 1 of the same table
- * (0x030e8024, kraken_ui4.ld), range-checked as above. Strong definition of krk_afsk.c's weak hand-off. */
-typedef void (*msg_rx_fn)(const char *line, const unsigned char *f, int len);
+/* F18 APRS Messages (krk_aprs_msg.c krk_msg_rx): every decoded frame. Strong definition of krk_afsk.c's weak hand-off. */
+void krk_msg_rx(const char *line, const unsigned char *f, int len);
 void krk_aprs_msg_frame(const char *line, const unsigned char *f, int len)
 {
-    msg_rx_fn fn = ((const msg_rx_fn *)KRK_UI4_HOOK_TABLE)[1];
-
-    if ((u32)fn >= KRK_EXT4_LO && (u32)fn < KRK_EXT4_HI)
-        fn(line, f, len);
+    krk_msg_rx(line, f, len);
 }
 
 #define stock_maint_led_tick ((void (*)(void))0x03068224)

@@ -44,8 +44,7 @@ static int krk_nlist;
 
 static int ext_ok(const void *p)
 {
-    return ((u32)p >= KRK_EXT_LO && (u32)p < KRK_EXT_HI) || ((u32)p >= KRK_EXT3_LO && (u32)p < KRK_EXT3_HI)
-        || ((u32)p >= KRK_EXT4_LO && (u32)p < KRK_EXT4_HI) || ((u32)p >= KRK_EXT5_LO && (u32)p < KRK_EXT5_HI);
+    return (u32)p >= KRK_PFLASH_LO && (u32)p < KRK_PFLASH_HI;
 }
 
 static void build_list(void)

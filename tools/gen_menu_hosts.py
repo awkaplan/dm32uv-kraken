@@ -45,7 +45,7 @@ LABEL_STRIDE = 16           # labels are packed on 16-byte boundaries (the layou
 CMPHSI16_MAX = 32           # a 16-bit cmphsi encodes value - 1 in 5 bits: a bounded dispatcher takes at most 32 rows
 LIST_ITEMS_MAX = 33         # stock level lists are 35 bytes: u16 count + 33 items
 GEN_STOCK = "@stock:menu_option_list_dispatch"      # what every gen_site calls in stock ...
-GEN_HOOK = "@kraken_ui:krk_hook_gen"             # ... and what it calls now (stock generator first, then our rows)
+GEN_HOOK = "@kraken:krk_hook_gen"             # ... and what it calls now (stock generator first, then our rows)
 
 
 class SpecError(Exception):
@@ -97,7 +97,7 @@ def host_fmt(h, rows):
 
 
 def table_target(t):
-    """A jump-table entry: "blob:symbol" (a stub of ours) or a raw stock address "0x..." (a row that reuses a stock case block,
+    """A jump-table entry: "kraken:symbol" (a stub of ours) or a raw stock address "0x..." (a row that reuses a stock case block,
     e.g. the Burst Voice parent's commit entry = stock's set_mode(0x23, 1) arm, docs/chanset-submenu.md 8)."""
     return t if t.startswith("0x") else "@" + t
 

@@ -60,25 +60,24 @@ def receive(pcm, cap_units=92):
 
 
 # ---------------------------------------------------------------------------------------------------------------------------
-print("== layout constants (krk_bvscr.c, krk_bvmsg.h, kraken_ui4.ld, allocations.json)")
+print("== layout constants (krk_bvscr.c, krk_bvmsg.h, link.json, allocations.json)")
 scr = (UI / "krk_bvscr.c").read_text()
 msg_h = (UI / "krk_bvmsg.h").read_text()
-ld = (UI / "kraken_ui4.ld").read_text()
+bvt_group = next(g for g in json.load(open(UI / "link.json"))["sram_groups"] if g["name"] == "bvt")
 nu = int(re.search(r"#define BVM_NU_MAX\s+(\d+)", msg_h)[1])
 bcap = int(re.search(r"#define BVM_B_CAP\s+(\d+)", msg_h)[1])
 maxch = int(re.search(r"#define BVM_MAX_CHUNKS\s+(\d+)", msg_h)[1])
 bvt_c = int(re.search(r"#define BVT_SIZE\s+(0x[0-9a-f]+)", scr)[1], 16)
-bvt_ld = int(re.search(r"BVT_SIZE = (0x[0-9a-f]+);", ld)[1], 16)
+bvt_ld = int(bvt_group["max"], 16)
 big_end = nu * 27 + bcap + 512
-check(bvt_c == bvt_ld, "BVT_SIZE in krk_bvscr.c equals kraken_ui4.ld", extra=f"{bvt_c:#x}")
+check(bvt_c == bvt_ld == int(bvt_group["offset_from_end"], 16) and bvt_group["claim"] == "kraken_bigbuf",
+      "BVT_SIZE in krk_bvscr.c equals link.json's bvt group (the last BVT_SIZE bytes of kraken_bigbuf)", extra=f"{bvt_c:#x}")
 check(big_end <= 5632 - bvt_c, "message + payload + scratch fit below the tail of the 5632-byte bigbuf", extra=f"{big_end} <= {5632 - bvt_c}")
 check(maxch * 27 <= bcap and (maxch + 5) // 6 <= 40 and maxch % 6 == 0, "78 chunks = 13 whole blocks, <= BV_MAX_BLOCKS, fit the payload buffer")
 check(nu * 27 + bcap + 512 + bvt_c <= 5632, "owner layout sums to <= 5632 B")
 alloc = {a["name"]: a for a in json.load(open(ROOT / "allocations.json"))["allocations"]}
-check(int(alloc["kraken_bigbuf"]["start"], 16) + 0x1600 == int(alloc["kraken_ui4_state"]["start"], 16),
-      "bigbuf ends where the ui4 state claim starts (tail stays inside the claim)")
-check("ALIGN(0x20)" in ld and "KEEP(*(.rodata.krk_bv_screen))" in ld and ld.index("krk_bv_screen") < ld.index("krk_bv_hooks"),
-      "screen descriptor first at the origin, hook table aligned to 0x20 (0x030e8020)")
+check(int(alloc["kraken_bigbuf"]["end_exclusive"], 16) - int(alloc["kraken_bigbuf"]["start"], 16) == 5632,
+      "the kraken_bigbuf claim is 5632 bytes (the owner layout above)")
 
 print("== header flags")
 check(all(L.f13t_hdr_flags_roundtrip(f) == 1 for f in (0, 1, 2, 4, 0x3F, 0x7F, 0xFF)), "header flags byte round-trips (0x3F = layout 7 + trimmed + stripped)")

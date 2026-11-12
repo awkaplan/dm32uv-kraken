@@ -22,10 +22,10 @@ or leave it unusable until reflashed. Read the safety rules below before changin
 | `patches/kraken_ui/` | Almost all of Kraken: `krk_*.c` features, `krk.h` (screen API), `krk_stock.h` (stock calls), `krk_stubs.S` |
 | `patches/kraken_ui/menu_hosts.json` | Where each feature's menu row appears (single source; generated into the manifest and `krk_menu_rows.h`) |
 | `patches/kraken_ui/hooks.json` | Every splice into stock code: address, expected stock bytes, target, and `why` |
-| `patches/kraken_ui/blobs.json` | Which sources go in which blob, and the symbols blobs share |
+| `patches/kraken_ui/link.json` | Kraken is ONE link: its sources (link order, per-file flags), gc roots, and SRAM placement rules |
 | `patches/kraken_ui/kraken_ui.patch.json` | The patch manifest. Partly generated: never hand-edit generated entries |
 | `patches/mi_rng/` | A small separate patch: a good example of a self-contained one |
-| `allocations.json` | Flash and SRAM claims. Every byte Kraken uses is claimed here |
+| `allocations.json` | Fixed-address claims and `keep_free` ranges. The rest is placed and claimed per build by `tools/pack_kraken.py` |
 | `image.json` | Which patches make up the image, in order, plus their claims and tests |
 | `tools/` | Build driver, generators, update-file and web-patch tools ([tools/README.md](tools/README.md)) |
 | `tests/` | Host tests (`test_*.py`), QEMU tests, web installer tests ([tests/README.md](tests/README.md)) |
@@ -48,7 +48,7 @@ tools/build.sh --no-test       # build only
 tools/build.sh --fw l01        # one firmware build (048, l01, 049; repeatable)
 tools/build.sh --run 'CMD'     # run CMD in the build container, from the repo root
 python3 tools/gen_menu_hosts.py && python3 tools/gen_manifest.py && python3 tools/gen_claims.py
-                               # regenerate after editing menu_hosts.json, hooks.json, blobs.json or allocations.json
+                               # regenerate after editing menu_hosts.json, hooks.json, link.json or allocations.json
                                # (each takes --check; the build fails while any output is stale)
 python3 tools/fetch_stock.py && python3 tools/gen_fw_maps.py
                                # the L01/049 stock images (once), then the address maps: after any change that adds
@@ -64,6 +64,11 @@ Setup (first time): [docs/building.md](docs/building.md). The Docker image is bu
 
 ## Adding or changing a feature
 
+**Every feature goes through the pack** (`tools/pack_kraken.py`, [docs/flash-allocation.md](docs/flash-allocation.md)):
+its sources are listed in `link.json` and placed at build time. Never add a blob, a linker script or a hand-sized claim for
+Kraken code or `.bss`, and never pick an address for it; a fixed claim is only for something reached by address, with a
+`pinned` reason. `pack_kraken.py lint` (build step 0, `tests/test_pack_lint.py`) refuses anything else.
+
 The full recipe is [docs/building.md section 6](docs/building.md#6-adding-a-feature). Read
 [docs/menu-hosts.md](docs/menu-hosts.md) first; it explains screens, rows and hosts. In short:
 
@@ -73,16 +78,17 @@ The full recipe is [docs/building.md section 6](docs/building.md#6-adding-a-feat
    - a **setting** (`.opt` -> `struct krk_opt`): you write only `get`/`set`. The stock option list or
      numeric editor does the rest ([docs/stock-option-level.md](docs/stock-option-level.md), cookbook in
      section 6).
-2. **Blob.** Add the source to a blob in `blobs.json` (exports and imports if other blobs call it). Blobs
-   link in manifest order; `@blob:symbol` binds only to earlier blobs. `out/kraken/steps/*/build/*.map`
-   shows how full each blob is.
+2. **Link.** Add the source to `sources` in `link.json`. Any source can call any other; the pack places
+   it. `out/kraken/pack/kraken_ui/report.txt` shows the flash and SRAM left. Manifest entries write Kraken
+   symbols as `@kraken:symbol`.
 3. **Menu row.** Add it to `menu_hosts.json`, either in the KRAKEN category or appended to a stock sub-list
    (APRS, Call Log, GNSS, Radio Settings, Channel Set). Host-specific notes: `docs/*-submenu.md`.
 4. **Hooks** (only if the feature must change stock behaviour): one entry per site in `hooks.json`, with
    the expected stock bytes and a `why` that says what the stock code does there and why replacing it is
    safe. A hook must fall through to stock unchanged when the feature is off.
-5. **Memory.** Any new flash or SRAM goes in a claim in `allocations.json`. Free space:
-   [docs/flash-allocation.md](docs/flash-allocation.md).
+5. **Memory.** Ordinary code and `.bss` need nothing: the pack claims exactly what it uses. Only state that
+   must sit at a fixed address gets a pinned claim in `allocations.json` (and an `sram_groups` rule in
+   `link.json` if it must line up with other state). [docs/flash-allocation.md](docs/flash-allocation.md).
 6. **Regenerate and build** (commands above), including `tools/gen_fw_maps.py`: every stock address must translate
    into L01 and 049. One it cannot prove needs a hand proof in `firmware/<id>/overrides.json`, or a hook placed so
    it fits every build ([docs/firmware-builds.md](docs/firmware-builds.md) section 4).
@@ -113,7 +119,9 @@ These are enforced by the build where possible. Never weaken a check to make a b
   (Menu > Device Info); the updater does not check. Installers check the version string at the build's own address.
   Never weaken a translation check, or take a target's bytes as "expected" without `fwmap.site_equiv`.
 - **Stay under the updater's size limit** (`0xF4002` bytes including the header). The build checks it.
-- **Claim every byte** you use in `allocations.json`; the build checks claims and hook sites for overlaps.
+- **Claim every byte.** `tools/pack_kraken.py` claims exactly what Kraken's link uses, inside the pool that
+  `allocations.json` leaves free (`keep_free` ranges are off limits); a fixed address gets a pinned claim there.
+  The build checks claims and hook sites for overlaps, and that the built bytes equal the master link.
 - **Never store to `0x03xxxxxx` from patch code.** Program flash is execute-in-place SPI flash; a store
   there becomes an SPI flash command.
 - **Don't commit firmware or radio data:** no stock images, `.bin` dumps, backups, calibration or
@@ -149,6 +157,9 @@ These are enforced by the build where possible. Never weaken a check to make a b
 
 ## Things that are easy to get wrong
 
+- Kraken's own addresses move from build to build (the pack places them). Tests and tools look Kraken
+  symbols up in `out/kraken/steps/*_kraken_ui/build/kraken_ui.elf` (`tests/build_artifacts.py`, `tools/qemu_poke.py`
+  names); never hard-code one. Stock addresses are fixed.
 - Stock voice prompts can say digits only, no letters.
 - The DM-32UV has no Bluetooth, although stock contains Bluetooth strings and menus (unwired data).
 - Stock VOX is dead code: the setting exists but nothing reads a sensor. Kraken's VOX is its own engine

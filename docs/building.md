@@ -66,9 +66,12 @@ What it does (`tools/build_image.py`, run inside the container):
 1. Checks that the generated files are up to date (`gen_menu_hosts.py`, `gen_manifest.py`,
    `gen_claims.py` with `--check`; see section 6).
 2. Builds each patch in `image.json` in order with dm32uv-re's `build_manifest_patch.py`, each on top of
-   the previous one's output: first `patches/mi_rng`, then `patches/kraken_ui`. The builder refuses the
-   build if a hook site does not hold the expected stock bytes, if code would land on non-erased flash,
-   if two claims overlap, or if any changed byte is not declared.
+   the previous one's output: first `patches/mi_rng`, then `patches/kraken_ui`. Before Kraken's step,
+   `tools/pack_kraken.py` links Kraken as one program and places it in the free flash and SRAM of that
+   build ([flash-allocation.md](flash-allocation.md), "How Kraken is placed"); after it, the same tool checks
+   the built image against that link byte for byte. The builder refuses the build if a hook site does not
+   hold the expected stock bytes, if code would land on non-erased flash, if two claims overlap, or if any
+   changed byte is not declared.
 3. Checks that the sectors changed versus stock are exactly the ones the patches account for.
 4. Writes the outputs below.
 5. Unless `--no-test`, runs each patch's QEMU test against the combined image.
@@ -141,29 +144,34 @@ renders the frames to `out/qemu/<tag>/frames.png`.
 
 ## 6. Adding a feature
 
-Kraken's code is `patches/kraken_ui/`. It is one patch manifest (`kraken_ui.patch.json`) with several
-blobs of C in erased program flash, plus hooks: stock instructions replaced by a `bsr` into our code.
+Kraken's code is `patches/kraken_ui/`. It is one patch manifest (`kraken_ui.patch.json`): C linked as one
+program into erased program flash, plus hooks: stock instructions replaced by a `bsr` into our code.
 Read [menu-hosts.md](menu-hosts.md) first; it explains screens, rows and hosts.
 
 1. **The code.** Write the feature as a `struct krk_screen` (a live screen, a one-shot action, or a
    setting with `.opt`) in a new `krk_<name>.c`. `krk.h` has the screen API. Stock functions are called by
    their names from dm32uv-re's `tools/link/dm32_stock_symbols.ld`.
-2. **The blob.** Add the source to a blob in `blobs.json` (and its exports and imports if other blobs call
-   it). Each blob has a linker script `kraken_ui*.ld` and a flash claim; `out/kraken/steps/*/build/*.map`
-   shows how full each one is. Blobs link in manifest order and `@blob:symbol` binds only to earlier blobs.
+2. **The link.** Add the source to `sources` in `link.json` (with `"opt": "-Os"` if it is not timing-critical,
+   and `"keep": true` if something reaches its functions only by name, such as a QEMU test). That is all:
+   any source can call any other, and `tools/pack_kraken.py` places it at build time. The build prints how
+   much flash and SRAM is left (`out/kraken/pack/kraken_ui/report.txt`) and fails, with the number of bytes
+   missing, only when the whole pool is full. Manifest entries name Kraken symbols as `@kraken:symbol`.
+   `tools/pack_kraken.py lint` (run by the build and by `tests/test_pack_lint.py`) fails on a source that is in
+   neither `sources` nor `not_linked`, on a hand-written linker script, and on a claim without a `pinned` reason.
 3. **The menu row.** Append the row to its host in `menu_hosts.json` (the KRAKEN list itself is
    `krk_screens[]` in `krk_core.c` and `krk_ext_screens[]` in `krk_ext.c`).
 4. **Hooks** into stock code, if any: one line per site in `hooks.json` with the address, the expected
    stock bytes or `bsr` target, and our target. Each hook is a reverse-engineering finding; put why it is
    safe in its `why` text.
-5. **Memory.** New flash or SRAM goes in a claim in `allocations.json` (dm32uv-re's format). The builder
-   checks claims against each other and against dm32uv-re's. [flash-allocation.md](flash-allocation.md)
-   shows what is used.
+5. **Memory.** Nothing to do for ordinary code and `.bss`: the pack claims what it uses. State that must sit
+   at a fixed address (because another patch, or a tool, reaches it by address) gets a pinned claim in
+   `allocations.json` and, if it has to share or line up with other state, an `sram_groups` entry in
+   `link.json`. [flash-allocation.md](flash-allocation.md) explains both.
 6. **Regenerate** the manifest and headers, then build:
    ```sh
    python3 tools/gen_menu_hosts.py   # menu_hosts.json -> manifest rows, krk_menu_rows.h
-   python3 tools/gen_manifest.py     # hooks.json, blobs.json -> manifest splices and blobs
-   python3 tools/gen_claims.py       # allocations.json -> krk_claims.h
+   python3 tools/gen_manifest.py     # hooks.json, link.json -> manifest splices and pack
+   python3 tools/gen_claims.py       # allocations.json (pinned claims) -> krk_claims.h
    tools/build.sh
    ```
    The build fails while any generated file is stale.

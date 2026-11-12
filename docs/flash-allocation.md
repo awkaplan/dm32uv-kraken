@@ -1,9 +1,12 @@
 # Flash and SRAM allocation
 
-Where Kraken's code and state live, and why those places are safe. The claims themselves are in
-`allocations.json` (this repo's blobs) and `patches/mi_rng/allocations.json` (F0a), in dm32uv-re's
-`data/allocations.json` format. Those files are the source of truth; this page explains them. The builder
-refuses overlapping claims and any changed byte outside a declared one.
+Status: QEMU-verified on all three firmware builds (each build packs, and the builder's output equals the master link byte for
+byte); the packed layout is not yet tested on a radio.
+
+Where Kraken's code and state live, how they get there, and why those places are safe. Kraken is linked as **one
+program** and placed per build by `tools/pack_kraken.py`. Only what must sit at a fixed address is written down by
+hand: the pinned claims and the `keep_free` ranges in `allocations.json` (dm32uv-re's `data/allocations.json`
+format). The builder refuses overlapping claims and any changed byte outside a declared one.
 
 ## Base image
 
@@ -30,73 +33,106 @@ erases `0x0300C000`-`0x03100000` before writing a new image (`flash_erase_firmwa
 @0x03004040, called only from the YMODEM receive loop). See "Flagged sectors re-checked" below for the
 literal scan.
 
-## Flash claims
+## How Kraken is placed
 
-| Claim | Range | Size | Blob | What |
-|---|---|---|---|---|
-| `kraken_ui5_code` | `0x030E1000`-`0x030E2000` | 4 KiB | `kraken_ui5` (F3) | DMR link quality screen (`krk_dmrlink.c`). Reclaimed from dm32uv-re's `ramdump_probe_code` (excluded, see below). Built last; reached through the constant descriptor address `KRK_EXT5_LO` in `krk_ext.c` |
-| `mi_rng_code` | `0x030E2000`-`0x030E3000` | 4 KiB | `mi_rng` (F0a) | CTR_DRBG for the DMR privacy MI (`patches/mi_rng/`) |
-| (free) | `0x030E3000`-`0x030E4000` | 4 KiB | | Unclaimed, erased. Held an earlier experiment that is no longer in the image |
-| `kraken_ui_code` | `0x030E4000`-`0x030E7000` | 12 KiB | `kraken_ui` (P3) | KRAKEN menu, screen runner and the main screens: Last Heard (F1), RSSI (F2), grid (F4), band scope (F5), TX power trim (F6), RF Lab (P5), About |
-| `kraken_ui_data` | `0x030E7000`-`0x030E8000` | 4 KiB | `kraken_ui` (P3) | Relocated menu label arrays and jump tables, the KRAKEN label |
-| `kraken_ui4_code` | `0x030E8000`-`0x030EE000` | 24 KiB | `kraken_ui4` (F13) | Burst voice: modem, framing, AMBE packing, screens. Starts on dm32uv-re's `snake_code` sectors (excluded) |
-| `kraken_ui_code2` | `0x030EE000`-`0x030F7000` | 36 KiB | `kraken_ui2` | Extension screens: APRS (F8) and the AFSK/AX.25 encoder and decoder, audio probe, F9/F11/F12/F13 hooks and controls, libgcc. The extension screen table is first, at `0x030EE000` |
-| (free) | `0x030F7000`-`0x030F8000` | 4 KiB | | Unclaimed, erased |
-| `kraken_ui3_code` | `0x030F8000`-`0x03100000` | 32 KiB | `kraken_ui3` (F10) | Satellite mode (SGP4, TLE table, screens) and the APRS callsign editor `krk_callsign.c`. Ends at the top of flash |
+Until 2026-11-11 Kraken was five blobs, each linked on its own into a claim sized by hand, and a blob reached a later
+one through fixed addresses (the screen table at `0x030EE000`, a hook table at `0x030E8020`, descriptors at blob
+origins). Free space ended up stranded at the ends of claims while the next feature did not fit. Now one tool does
+the placement at build time, for each firmware build, between the mi_rng step and the builder's `kraken_ui` step
+(`tools/build_image.py`):
 
-Free space at the end of each claim in the current build (trailing 0xFF bytes, so an upper bound):
+1. **Measure.** Compile every source of `patches/kraken_ui/link.json` (copied into the manifest's `pack` by
+   `tools/gen_manifest.py`) and link them once with `--gc-sections`, one output section per file. That gives each
+   file's flash piece (`.text`, `.rodata`, what is kept) and its SRAM piece (`.bss`). The gc roots are every
+   `@kraken:symbol` the manifest names (hook targets, data words), the `keep` patterns and the files marked
+   `"keep": true`.
+2. **Pool.** The flash and SRAM windows, minus every claim of every allocation file the build loads (dm32uv-re's
+   registry, `patches/mi_rng/allocations.json`, the pinned claims here), minus the `keep_free` ranges, minus any
+   flash sector that is not erased in the image the step builds on.
+3. **Pack.** Largest piece first, first fit, into the free runs in address order. A file is placed whole (its
+   code, constants and `.bss` together), because the builder binds what one blob uses from another with `--defsym`,
+   which can bind a global but never a `static`. libgcc members are pieces of their own.
+4. **Master link.** Link the whole program at those addresses: `out/kraken/pack/kraken_ui/kraken.elf`. This is the
+   program; everything after only reproduces it.
+5. **Builder input.** One blob per contiguous flash run and compiler-flag set, each linked by the unchanged dm32uv-re
+   builder at exactly the master addresses, with every symbol defined in another blob bound by `--defsym` to its
+   master address (so blob order does not matter). `@kraken:symbol` in the manifest becomes `@<blob>:symbol` of the
+   blob that defines it. The claims are generated for exactly what is used: per flash run, the sectors from its
+   start to its last byte; per SRAM run, the bytes (`claims.json`, passed to the builder with `--extra-allocations`).
+6. **Verify.** After the builder ran, every byte of every master section must equal the built image, and every
+   symbol a blob defines must sit at its master address. `kraken_ui.elf` / `.map` (the master) are copied into
+   `out/kraken/steps/*_kraken_ui/build/`, where the tests read symbols.
 
-| Claim | Free |
-|---|---|
-| `kraken_ui5_code` | 2060 |
-| `mi_rng_code` | 3272 |
-| `kraken_ui_code` | 44 |
-| `kraken_ui_data` | 1940 |
-| `kraken_ui4_code` | 3738 |
-| `kraken_ui_code2` | 3653 |
-| `kraken_ui3_code` | 536 |
+Outputs, per build, in `out/kraken/pack/kraken_ui/` (`out/kraken-<id>/pack/...` for L01 and 049): `report.txt` (used
+and free per run, and the claims), `claims.json`, `plan.json` (every piece with its address), `kraken.elf`/`.map`, and
+the manifest the builder built (`kraken_ui.patch.json`, with its `kraken_<n>.ld` scripts).
 
-`out/kraken/steps/*/build/*.map` has the exact section sizes after a build.
+What it means when working on Kraken:
 
-Cross-blob rule: blobs build in manifest order (`kraken_ui`, `kraken_ui3`, `kraken_ui2`, `kraken_ui4`,
-`kraken_ui5`); `@blob:sym` binds only to earlier blobs. A later blob's screen is reached through a constant
-descriptor address in the `krk_ext.c` table (`kraken_ui4` at `0x030E8000`, `kraken_ui5` at `0x030E1000`).
+- A new source goes into `link.json`'s `sources`; nothing else about memory is needed for code and `.bss`.
+- Kraken addresses move between builds. Never hard-code one: tests use `tests/build_artifacts.py` (`syms()`,
+  `in_claims()`, `piece()`), poke files use symbol names (`tools/qemu_poke.py`).
+- When the pool is full the build stops with `flash is full: <piece> (<n> B) fits in no free run (<m> B free in
+  all ...)` (or the SRAM equivalent). The levers are the ones they always were: `"opt": "-Os"` on cold files in
+  `link.json` (the VOX, Parrot, AFSK decoder, CW ID and voice-frame code stay `-O2`), removing dead code, or new space.
+- An overlap between pieces is an error of the tool, except between `sram_groups` pinned in the same claim, which
+  share it on purpose (below).
 
-## SRAM claims
+## Pinned claims (allocations.json)
 
-| Claim | Range | Size | Blob | What |
-|---|---|---|---|---|
-| `kraken_afsk_state` | `0x18004C00`-`0x18005000` | 1 KiB | `kraken_ui2` (F8) | AFSK/AX.25 decoder state (`.bss.afsk`) |
-| `kraken_ui_state2` | `0x18005000`-`0x18005100` | 256 B | `kraken_ui` (P3) | KRAKEN visible list and label array (`.bss.krk_list`) |
-| `kraken_feat_state` | `0x18005100`-`0x180053A0` | 672 B | `kraken_ui2`, `kraken_ui5` | State of F3, F9, F11, F12, F13 controls (`.bss.feat`). `kraken_ui5`'s `.bss.feat` is appended right behind blob 2's |
-| `kraken_ui3_state` | `0x18005600`-`0x18005A00` | 1 KiB | `kraken_ui3` (F10) | Satellite mode `.bss`, and the callsign editor's |
-| `kraken_bigbuf` | `0x18005A00`-`0x18007000` | 5.5 KiB | `kraken_ui2` | One buffer shared by F9 parrot and F13 burst voice, one owner at a time (`.bss.big`) |
-| `kraken_ui4_state` | `0x18007000`-`0x18007400` | 1 KiB | `kraken_ui4` (F13) | Burst voice modem and framing state |
-| `mi_rng_state` | `0x18007400`-`0x18007600` | 512 B | `mi_rng` (F0a) | DRBG state |
-| `kraken_ui_state` | `0x18007640`-`0x18007A80` | 1088 B | `kraken_ui` (P3) | UI `.bss`: screens and the last-heard ring (uses 0x3FC) |
-| `kraken_aprs_state` | `0x18007A80`-`0x18007B00` | 128 B | `kraken_ui2` | `.bss.aprs` (`KRK_APRS_BSS`): small state of the APRS features of 2026-11-11 (issues #3-#7). Taken from the unused tail of `kraken_ui_state`, because `kraken_ui2_state` is full |
-| `kraken_aprs_inbox` | `0x18007B00`-`0x18007C00` | 256 B | `kraken_ui2`/`kraken_ui4` | APRS messages inbox (F18, issue #6), RAM only, used through `KRK_APRS_INBOX_LO` |
-| `kraken_ui2_state` | `0x18007C40`-`0x18007EB0` | 624 B | `kraken_ui2` | `.bss` of the extension blob |
+Kept at fixed addresses because something reaches them by address, not by symbol (each claim's `pinned` field says what):
 
-Unclaimed in the window: `0x180053A0`-`0x18005600`, `0x18007600`-`0x18007640`, `0x18007C00`-`0x18007C40`, `0x18007EB0`-`0x18007FE0`.
-`0x18007FE0`-`0x18008000` belongs to dm32uv-re (`overlay_guard`, `ramdump_cursor`).
+| Claim | Range | Size | Why it is pinned |
+|---|---|---|---|
+| `kraken_ui_data` | `0x030E7000`-`0x030E8000` | 4 KiB | Relocated menu label arrays and jump tables, the KRAKEN label: manifest `data` items at fixed addresses (`gen_menu_hosts.py`) |
+| `kraken_bigbuf` | `0x18005A00`-`0x18007000` | 5.5 KiB | One buffer shared by F9 Parrot and F13 Burst Voice, one owner at a time (`.bss.big`); the mi_rng measurement build taps it |
+| `kraken_aprs_inbox` | `0x18007B00`-`0x18007C00` | 256 B | APRS messages inbox (issue #6), RAM only, used through `KRK_APRS_INBOX_LO` |
+
+`tools/gen_claims.py` turns these into `krk_claims.h` (`KRK_<NAME>_LO` / `_HI_EXCL`).
+
+## keep_free
+
+Ranges no Kraken build may take, though they are not claimed in a release image:
+
+| Space | Range | Why |
+|---|---|---|
+| flash | `0x030E3000`-`0x030E4000` | kept free for the Burst Voice bench build (a release image leaves it erased) |
+| flash | `0x030F7000`-`0x030F8000` | kept free for private debug builds layered on a Kraken image |
+| SRAM | `0x180053A0`-`0x18005600` | kept free for the bench build's state and private debug builds |
+| SRAM | `0x18007EB0`-`0x18007FE0` | kept free for private debug builds; the QEMU checks also use it as scratch (`SCRATCH_SRAM`) |
+
+## SRAM placement rules (link.json sram_groups)
+
+| Group | Placed | What |
+|---|---|---|
+| `big` | start of `kraken_bigbuf` | `krk_vframe.c` `.bss.big`: the shared F9/F13 buffer |
+| `bvt` | last `0x200` bytes of `kraken_bigbuf` (`__bvt_start`/`__bvt_end`) | F13 framing, AMBE and screen state (`krk_bv_frame.c`, `krk_bv_sound.c`, `krk_ambe.c`, `krk_bvscr.c` `.bss.bvs`). Overlaps the tail of `big` on purpose; `krk_bvscr.c` checks the place and zeroes it at screen entry |
+| `bvm` | anywhere, as one range (`__bvm_start`/`__bvm_end`) | F13 modem state (`krk_bv_modem.c`), zeroed as one range at screen entry |
+
+Patch SRAM is never zeroed at power-up, wherever it is placed; all Kraken state is guarded by a magic or set up at
+screen entry, so placement does not change behaviour.
+
+## Current use (DM32.00.01.048, 2026-11-11)
+
+From `report.txt`: 103,820 B of code and constants in 7 blobs over four flash runs (`0x030E1000`, `0x030E4000`-`0x030E7000`,
+`0x030E8000`-`0x030F7000`, `0x030F8000`-`0x03100000`), 6,744 B free, most of it at the top of the last run. SRAM: 11,609 B of
+state, 431 B free. Before the single link the same code left its free space stranded at the ends of five claims, and two
+blobs carried libgcc's `__muldi3`. The report of every build has the current numbers.
 
 ## Excluded claims
 
 `image.json` `exclude_claims` lists claims of other files that this image provably never uses, with the
-reason for each. The build passes the builder filtered copies without them.
+reason for each. The build passes the builder (and the pack) filtered copies without them, so their ranges join the pool.
 
 - `ramdump_probe_code` (flash `0x030E1000`-`0x030E2000`, dm32uv-re): the live-RAM-capture probe is not in
-  this image; stock has 0xFF there and nothing calls it. `kraken_ui5_code` takes the sector. Its SRAM claim
-  `ramdump_cursor` stays reserved.
+  this image; stock has 0xFF there and nothing calls it. Its SRAM claim `ramdump_cursor` stays reserved.
 - `snake_code` (flash `0x030E8000`-`0x030EA000`, dm32uv-re): the Snake example edits the same menu sites as
-  `kraken_ui`, so it cannot be in this image. `kraken_ui4_code` starts there.
-- `snake_state` (SRAM, dm32uv-re): Snake's state, unused here. `kraken_ui4_state` takes its range.
+  `kraken_ui`, so it cannot be in this image.
+- `snake_state` (SRAM, dm32uv-re): Snake's state, unused here.
 - `mi_rng_tap_buf` (SRAM `0x18005000`-`0x18007000`, `patches/mi_rng/allocations.json`): the mi_rng
-  measurement build only (`mi_rng_tap.patch.json`). The production `mi_rng` never touches it, so Kraken's
-  SRAM claims reuse the range.
+  measurement build only (`mi_rng_tap.patch.json`). The production `mi_rng` never touches it.
 
-## Checking a new claim
+## Checking a new pinned claim
 
 dm32uv-re's `placement_scan.py` checks a range for literal references and claim overlaps:
 
@@ -106,8 +142,8 @@ tools/build.sh --run 'python3 -I /w/dm32/dm32uv-re/tools/src/dm32_patch_tools/pl
     --lo 0x030f7000 --hi 0x030f8000'
 ```
 
-Before writing code to a sector, check it is 0xFF in the image it lands on; the builder refuses a blob that
-lands on non-erased flash.
+A pinned flash claim must be on erased flash in the image it lands on; the builder refuses a blob that lands on
+non-erased flash, and the pack never uses a sector that is not erased.
 
 ## Flagged sectors re-checked (2026-10-29)
 

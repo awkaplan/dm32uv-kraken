@@ -1,40 +1,28 @@
 {
   "_comment": [
-    "Flash and SRAM claims made by this repository's patches, in dm32uv-re's data/allocations.json format.",
+    "Flash and SRAM claims of this repository's patches that sit at FIXED addresses, in dm32uv-re's data/allocations.json format, plus",
+    "keep_free: ranges no Kraken build may take. Everything else Kraken uses is placed per build by tools/pack_kraken.py, which packs the",
+    "code and state into the windows minus every claim and keep_free range, and claims exactly what it used (out/.../pack/claims.json).",
     "Plan and survey: docs/flash-allocation.md. Passed to build_manifest_patch.py with --extra-allocations by tools/build_image.py."
   ],
   "allocations": [
-    {
-      "name": "kraken_ui_code",
-      "space": "flash",
-      "start": "0x030e4000",
-      "end_exclusive": "0x030e7000",
-      "owner": "kraken_ui patch: KRAKEN menu category, screen runner, screens",
-      "source": "patches/kraken_ui/"
-    },
     {
       "name": "kraken_ui_data",
       "space": "flash",
       "start": "0x030e7000",
       "end_exclusive": "0x030e8000",
-      "owner": "kraken_ui patch: relocated menu jump tables and label arrays",
-      "source": "patches/kraken_ui/kraken_ui.patch.json"
+      "owner": "kraken_ui patch: relocated menu jump tables and label arrays (manifest data items at fixed addresses)",
+      "source": "patches/kraken_ui/kraken_ui.patch.json",
+      "pinned": "manifest data items (menu label arrays, jump tables) are written at fixed addresses and stock pointers are spliced to them"
     },
     {
-      "name": "kraken_ui_code2",
-      "space": "flash",
-      "start": "0x030ee000",
-      "end_exclusive": "0x030f7000",
-      "owner": "kraken_ui2 blob: extension screens (APRS beacon/callsign, audio probe, APRS RX, AFSK decoder) + libgcc; screen table first at 0x030ee000 (widened 2026-10-16 for the FM Send RAM beacon method); widened again 2026-10-29 to 0x030f8000 for F3/F9/F11/F12/F13; shrunk 2026-10-30 to the space the v46 link maps measured.",
-      "source": "patches/kraken_ui/kraken_ui.ld"
-    },
-    {
-      "name": "kraken_ui_state",
+      "name": "kraken_bigbuf",
       "space": "sram",
-      "start": "0x18007640",
-      "end_exclusive": "0x18007a80",
-      "owner": "kraken_ui patch .bss (screens + last-heard ring). Shortened 2026-11-11 to 0x18007a80 for kraken_aprs_state (.bss uses 0x3fc of 0x440).",
-      "source": "patches/kraken_ui/"
+      "start": "0x18005a00",
+      "end_exclusive": "0x18007000",
+      "owner": "kraken_ui .bss.big (krk_vframe.c): one 5.5 KiB buffer shared by F9 parrot and F13 burst voice (one owner at a time); F13's framing state sits in its last 0x200 bytes (link.json sram_groups)",
+      "source": "patches/kraken_ui/link.json",
+      "pinned": "the F9/F13 shared buffer: link.json pins F13's framing state at its tail, and the mi_rng measurement build taps it by address"
     },
     {
       "name": "kraken_aprs_inbox",
@@ -42,95 +30,34 @@
       "start": "0x18007b00",
       "end_exclusive": "0x18007c00",
       "owner": "kraken_ui2/kraken_ui4 (APRS messages inbox, issue #6, F18): received APRS messages, RAM only (lost at power-off). Reached through KRK_APRS_INBOX_LO (krk_claims.h), not a linker section. Taken 2026-11-11 from the unused tail of kraken_ui_state.",
-      "source": "patches/kraken_ui/krk_aprs_msg.c"
-    },
+      "source": "patches/kraken_ui/krk_aprs_msg.c",
+      "pinned": "reached through KRK_APRS_INBOX_LO (krk_aprs_msg.c), not by symbol"
+    }
+  ],
+  "keep_free": [
     {
-      "name": "kraken_aprs_state",
-      "space": "sram",
-      "start": "0x18007a80",
-      "end_exclusive": "0x18007b00",
-      "owner": "kraken_ui2 .bss.aprs: small state of the APRS features of 2026-11-11 (issues #3-#7), declared with KRK_APRS_BSS (krk.h). Taken from the unused tail of kraken_ui_state: kraken_ui2_state is full and the gap behind it is kept for private debug builds.",
-      "source": "patches/kraken_ui/kraken_ui2.ld"
-    },
-    {
-      "name": "kraken_ui2_state",
-      "space": "sram",
-      "start": "0x18007c40",
-      "end_exclusive": "0x18007eb0",
-      "owner": "kraken_ui2 blob .bss; shrunk 2026-10-30 to the space the v46 link maps measured.",
-      "source": "patches/kraken_ui/kraken_ui2.ld"
-    },
-    {
-      "name": "kraken_afsk_state",
-      "space": "sram",
-      "start": "0x18004c00",
-      "end_exclusive": "0x18005000",
-      "owner": "kraken_ui2 blob: AFSK/AX.25 decoder state (.bss.afsk); since 2026-11-05 also the 20-byte CW ID state at its tail (krk_cwid.c) and the 4-byte Freq Unlock word (krk_band.c)",
-      "source": "patches/kraken_ui/krk_afsk.c"
-    },
-    {
-      "name": "kraken_ui3_code",
       "space": "flash",
-      "start": "0x030f8000",
-      "end_exclusive": "0x03100000",
-      "owner": "kraken_ui3 blob: F10 satellite mode (SGP4, TLE table, screens). The flagged literals into 0x030f8000/0x030fd000/0x030fe000 are coincidences (docs/flash-allocation.md, re-checked 2026-10-29)",
-      "source": "patches/kraken_ui/kraken_ui3.ld"
+      "start": "0x030e3000",
+      "end_exclusive": "0x030e4000",
+      "why": "kept free for the Burst Voice bench build (docs/burst-bench.md)"
     },
     {
-      "name": "kraken_ui4_code",
       "space": "flash",
-      "start": "0x030e8000",
-      "end_exclusive": "0x030ee000",
-      "owner": "kraken_ui4 blob: F13 burst voice (modem, framing, AMBE packing, screens). 0x030e8000-0x030ea000 was dm32uv-re's Snake claim (excluded in image.json: Snake and this image are mutually exclusive); 0x030ed000's flagged literal is a coincidence (docs/flash-allocation.md, re-checked 2026-10-29)",
-      "source": "patches/kraken_ui/kraken_ui4.ld"
+      "start": "0x030f7000",
+      "end_exclusive": "0x030f8000",
+      "why": "kept free for private debug builds layered on a Kraken image"
     },
     {
-      "name": "kraken_ui5_code",
-      "space": "flash",
-      "start": "0x030e1000",
-      "end_exclusive": "0x030e2000",
-      "owner": "kraken_ui5 blob: F3 DMR link screen (moved out of kraken_ui2 on 2026-10-30 to free ui2). This sector was dm32uv-re's ramdump_probe_code claim (a debug probe that is not in this image; excluded in image.json)",
-      "source": "patches/kraken_ui/kraken_ui5.ld"
-    },
-    {
-      "name": "kraken_ui_state2",
       "space": "sram",
-      "start": "0x18005000",
-      "end_exclusive": "0x18005100",
-      "owner": "kraken_ui main blob .bss.krk_list (KRAKEN visible list + label array); the main claim was full",
-      "source": "patches/kraken_ui/kraken_ui.ld"
+      "start": "0x180053a0",
+      "end_exclusive": "0x18005600",
+      "why": "kept free for the bench build's state and private debug builds"
     },
     {
-      "name": "kraken_feat_state",
       "space": "sram",
-      "start": "0x18005100",
-      "end_exclusive": "0x180053a0",
-      "owner": "kraken_ui2 blob .bss.feat: state of the 2026-10-29 features (F3 BER, F9 parrot control, F11 squelch, F12 scrambler, F13 burst control); shrunk 2026-10-30 to the space the v46 link maps measured.",
-      "source": "patches/kraken_ui/kraken_ui2.ld"
-    },
-    {
-      "name": "kraken_ui3_state",
-      "space": "sram",
-      "start": "0x18005600",
-      "end_exclusive": "0x18005a00",
-      "owner": "kraken_ui3 blob .bss (F10 satellite mode)",
-      "source": "patches/kraken_ui/kraken_ui3.ld"
-    },
-    {
-      "name": "kraken_bigbuf",
-      "space": "sram",
-      "start": "0x18005a00",
-      "end_exclusive": "0x18007000",
-      "owner": "kraken_ui2 blob .bss.big: one 5.5 KiB buffer shared by F9 parrot and F13 burst voice (one owner at a time)",
-      "source": "patches/kraken_ui/kraken_ui2.ld"
-    },
-    {
-      "name": "kraken_ui4_state",
-      "space": "sram",
-      "start": "0x18007000",
-      "end_exclusive": "0x18007400",
-      "owner": "kraken_ui4 blob .bss (F13 burst voice modem/framing state). Was dm32uv-re's snake_state plus the unclaimed gap to mi_rng_state (excluded in image.json)",
-      "source": "patches/kraken_ui/kraken_ui4.ld"
+      "start": "0x18007eb0",
+      "end_exclusive": "0x18007fe0",
+      "why": "kept free for private debug builds layered on a Kraken image"
     }
   ],
   "datachip_records": {

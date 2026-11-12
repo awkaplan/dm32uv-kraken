@@ -1,0 +1,64 @@
+{
+ "_comment": [
+  "Kraken is linked as ONE program. tools/pack_kraken.py compiles these sources, links them once to see what each file keeps,",
+  "packs every file into the free flash and SRAM of the build (docs/flash-allocation.md) and writes the builder's blobs and claims.",
+  "tools/gen_manifest.py copies this file, with each source's full cflags, into kraken_ui.patch.json's \"pack\".",
+  "sources: link order. {\"file\", \"opt\" (replaces defaults.opt), \"cflags\" (added), \"keep\": true (every .text section is kept)}.",
+  "keep: input-section patterns kept in every file (gc roots beyond the manifest's @kraken: references and the entry).",
+  "not_linked: {file: why} for a source of this folder that the release link leaves out (tools/pack_kraken.py lint wants one or the other).",
+  "sram_groups: state that must sit together or at a fixed place. Each takes input sections of files ({file, sections}; default the",
+  "  file's whole .bss), placed contiguously in the order given; claim + offset (or offset_from_end) pins the group inside a claim;",
+  "  max bounds its size; symbols = [start, end] defined around it. Every other file's .bss is packed on its own."
+ ],
+ "defaults": {
+  "opt": "-O2",
+  "cflags": ["-Wall", "-ffreestanding", "-fno-tree-loop-distribute-patterns", "-ffunction-sections", "-fdata-sections", "-fno-common"]
+ },
+ "entry": "krk_item_ok",
+ "sources": [
+  "krk_core.c", "krk_about.c", "krk_rssi.c", "krk_grid.c", "krk_lastheard.c", "krk_rf.c", "krk_scope.c", "krk_optrow.c",
+  {"file": "krk_stubs.S", "keep": true},
+  {"file": "krk_sat.c", "keep": true}, {"file": "krk_sat_tles.c", "keep": true}, {"file": "krk_satrf.c", "keep": true},
+  {"file": "krk_satscr.c", "keep": true}, {"file": "krk_callsign.c", "keep": true}, {"file": "krk_tapedit.c", "keep": true},
+  {"file": "krk_aprs_trec.c", "keep": true},
+  {"file": "krk_ext.c", "keep": true}, {"file": "krk_aprs_tx.c", "keep": true}, {"file": "krk_aprs_text.c", "keep": true},
+  {"file": "krk_aprs_menu.c", "keep": true}, {"file": "krk_aprsrx.c", "keep": true}, {"file": "krk_aprs_alert.c", "keep": true},
+  {"file": "krk_afsk.c", "keep": true}, {"file": "krk_ax25.c", "keep": true}, {"file": "krk_periodic.c", "keep": true},
+  {"file": "krk_scramble.c", "keep": true}, {"file": "krk_squelch.c", "keep": true}, {"file": "krk_vox.c", "keep": true},
+  {"file": "krk_ofstubs.S", "keep": true}, {"file": "krk_txtrim.c", "keep": true}, {"file": "krk_vframe.c", "keep": true},
+  {"file": "krk_parrot_sm.c", "keep": true}, {"file": "krk_parrot.c", "keep": true}, {"file": "krk_cwid.c", "keep": true},
+  {"file": "krk_band.c", "keep": true}, {"file": "krk_bvcfg.c", "keep": true}, {"file": "krk_tags.c", "keep": true},
+  {"file": "krk_aprs_chan.c", "keep": true},
+  {"file": "krk_bvscr.c", "opt": "-Os", "keep": true}, {"file": "krk_bvmsg.c", "opt": "-Os", "keep": true},
+  {"file": "krk_bv_modem.c", "opt": "-Os", "keep": true}, {"file": "krk_bv_frame.c", "opt": "-Os", "keep": true},
+  {"file": "krk_bv_sound.c", "opt": "-Os", "keep": true}, {"file": "krk_ambe.c", "opt": "-Os", "keep": true},
+  {"file": "krk_aprs_msg.c", "opt": "-Os", "keep": true},
+  {"file": "krk_dmrlink.c", "keep": true}
+ ],
+ "keep": [
+  ".text.krk_item_ok", ".text.krk_category_entry", ".text.krk_aprs_item",
+  ".text.krk_aprs_render", ".text.krk_channel_analog", ".text.krk_channel_on_selected", ".text.krk_channel_side",
+  ".text.krk_channel_flags", ".text.krk_channel_mode", ".text.krk_channel_freq",
+  ".text.krk_opt_ok", ".text.krk_opt_title", ".text.krk_opt_enter", ".text.krk_row_screen", ".text.krk_aprs_opt_ok",
+  ".text.krk_opt_commit", ".text.krk_num_title", ".text.krk_open_opt",
+  ".text.krk_gnss_item", ".text.krk_rs_item", ".text.krk_settings_opt_ok", ".text.krk_settings_ok_stub",
+  ".text.krk_cs_item", ".text.krk_cs_opt_ok", ".text.krk_cs_item_stub", ".text.krk_cs_ok_stub",
+  ".text.krk_popup", ".text.krk_popup_draw", ".text.krk_key_scan", ".text.krk_hook_*",
+  ".text.krk_line", ".text.krk_text", ".text.krk_cat", ".text.krk_catn", ".text.krk_itoa", ".text.krk_gps_get", ".text.krk_cati",
+  ".text.krk_catfix", ".text.krk_pad", ".text.krk_line_cached", ".text.krk_fmt_age", ".text.krk_uart_putc", ".text.krk_uart_puts",
+  ".text.krk_hex",
+  ".rodata.krk_ext_screens", ".rodata.krk_ext_hooks", ".rodata.krk_sat_screen", ".rodata.krk_callsign_screen",
+  ".rodata.krk_bv_screen", ".rodata.krk_msg_screen", ".rodata.krk_dmrlink_screen"
+ ],
+ "sram_groups": [
+  {"name": "big", "why": "F9 Parrot / F13 Burst Voice shared buffer, one owner at a time (krk_vframe.c big_buf); the claim is pinned because the mi_rng measurement build taps it",
+   "claim": "kraken_bigbuf", "offset": "0x0",
+   "take": [{"file": "krk_vframe.c", "sections": [".bss.big"]}]},
+  {"name": "bvt", "why": "F13 framing, AMBE and screen state live in the last 0x200 bytes of the shared buffer (krk_bvscr.c checks the place and zeroes it at screen entry)",
+   "claim": "kraken_bigbuf", "offset_from_end": "0x200", "max": "0x200", "symbols": ["__bvt_start", "__bvt_end"],
+   "take": [{"file": "krk_bv_frame.c"}, {"file": "krk_bv_sound.c"}, {"file": "krk_ambe.c"}, {"file": "krk_bvscr.c", "sections": [".bss.bvs"]}]},
+  {"name": "bvm", "why": "F13 modem state, zeroed as one range at screen entry (krk_bvscr.c)",
+   "symbols": ["__bvm_start", "__bvm_end"],
+   "take": [{"file": "krk_bv_modem.c"}]}
+ ]
+}

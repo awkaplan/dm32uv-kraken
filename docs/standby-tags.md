@@ -64,8 +64,8 @@ channel rule above uses `krk_channel_analog()` (the selected side).
   rules, the hook order, every tick gate, redraw only on change.
 - QEMU frames: `SPINOR=1 POKE=/w/dm32uv-unleashed/tests/data/tags_pokes.txt tools/qemu_ui_run.sh tags 2
   '-1:0:1:31:0:20' --settle-after 80`. RX Monitor, Squelch and VOX are switched on behind the UI, then the
-  Monitor off; the frames show MN, MN SQ, red VX MN SQ, VX SQ. The poke addresses come from the build's
-  `kraken_ui2.elf`; re-read them if `.bss.afsk` or `.bss.feat` change.
+  Monitor off; the frames show MN, MN SQ, red VX MN SQ, VX SQ. The pokes name Kraken state by symbol
+  (`krk_aprsrx:M`, `krk_squelch:sqst`); `tools/qemu_poke.py` looks them up in the build's `kraken_ui.elf`.
 
 ## 5. Open (hardware)
 

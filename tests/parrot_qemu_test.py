@@ -20,7 +20,7 @@ import argparse
 import struct
 import sys
 
-from build_artifacts import EXT_MAX, EXT_TABLE, HOOK_TBL, PATCHED, STOCK_IMG as STOCK, elf, syms as _syms, krk_define      # first: puts the tool directories on sys.path
+from build_artifacts import EXT_MAX, EXT_TABLE, HOOK_TBL, PATCHED, STOCK_IMG as STOCK, elf, in_claims, piece, syms as _syms, krk_define      # first: puts the tool directories on sys.path
 import mi_rng_test as m
 from build_patch import decode_branch
 import dw_checks as dwc
@@ -60,9 +60,12 @@ def syms(elf_):
     return _syms(elf_, sizes=True)
 
 
+FEAT_FILE = {"P": "krk_parrot", "scr_st": "krk_scramble"}
+
+
 def feat(sy, name):
-    """the instance of a (possibly duplicated static) symbol that lives in the shared .bss.feat claim"""
-    lo, hi = claim("kraken_feat_state")
+    """the instance of a (possibly duplicated static) symbol that its file defines in .bss.feat (krk.h KRK_FEAT)"""
+    lo, hi = piece(FEAT_FILE[name])
     c = [a for a, _ in sy[name] if lo <= a < hi]
     assert len(c) == 1, (name, sy[name])
     return c[0]
@@ -126,7 +129,7 @@ def static_checks(img, s2, stock, s1):
     got = []
     for k in range(5):
         p_ = rd32(cs0 + 4 * (4 + k))          # Channel Set items 26..30 = our slots 4..8
-        got.append((p_, img[rd32(p_) - FLASH:].split(b"\0")[0] if EXT_TABLE <= p_ < claim("kraken_ui3_code")[0] else None))
+        got.append((p_, img[rd32(p_) - FLASH:].split(b"\0")[0] if in_claims(p_, "flash") else None))
     m.report(got == [(top[sym], lb) for sym, lb in want],
              f"the five Parrot rows are stock Channel Set items 26..30, not KRAKEN rows: "
              f"{[g[1] for g in got]}")
@@ -135,10 +138,9 @@ def static_checks(img, s2, stock, s1):
     sz = {k: v[0][1] for k, v in s2.items()}
     m.report(top.get("big_buf") == BIG and sz["big_buf"] == 5616 <= BIG_END - BIG, f"big_buf at {top.get('big_buf'):#x}, {sz['big_buf']} B in the {BIG_END - BIG}-byte kraken_bigbuf claim")
     vf, pp = top["krk_vf"], feat(s2, "P")
-    fslo, fshi = claim("kraken_feat_state")
-    m.report(fslo <= vf and vf + sz["krk_vf"] <= fshi and sz["krk_vf"] == VF["tap"] + 108, f"krk_vf {vf:#x} + {sz['krk_vf']} B inside kraken_feat_state (layout assumed by the tests)")
+    m.report(in_claims(vf, "sram", sz["krk_vf"]) and sz["krk_vf"] == VF["tap"] + 108, f"krk_vf {vf:#x} + {sz['krk_vf']} B inside a Kraken SRAM claim (layout assumed by the tests)")
     m.report(sz["krk_vf"] == 180 and [x for x in s2["P"] if x[0] == pp][0][1] == 116, f"P is {[x for x in s2['P'] if x[0] == pp][0][1]} B (test layout assumes 116)")
-    print(f"     .bss.feat used by F9: {sz['krk_vf'] + 116 + 1} B of {fshi - fslo}")
+    print(f"     .bss.feat used by F9: {sz['krk_vf'] + 116 + 1} B")
     cl = [x for x in s1.get("krk_hook_lh_start", [])]
     m.report(bool(cl), "main blob krk_hook_lh_start present (calls krk_ext_hook(0))")
 

@@ -44,7 +44,7 @@ def manifests():
 
 
 def source_files():
-    """The patch source files that go into the production image: blob sources, linker scripts, headers beside them."""
+    """The patch source files that go into the production image: blob and pack sources, linker scripts, headers beside them."""
     files = set()
     for path, m in manifests():
         d = path.parent
@@ -52,6 +52,8 @@ def source_files():
             files.update((d / s).resolve() for s in b["sources"])
             if "linker_script" in b:
                 files.add((d / b["linker_script"]).resolve())
+        for s in m.get("pack", {}).get("sources", []):      # kraken_ui: one link, placed by tools/pack_kraken.py
+            files.add((d / s["file"]).resolve())
         files.update(p.resolve() for p in d.glob("*.h"))
     return sorted(files)
 

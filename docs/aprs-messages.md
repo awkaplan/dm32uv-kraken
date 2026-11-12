@@ -16,14 +16,13 @@ received.
 
 | Step | Where | What |
 |---|---|---|
-| 1 | `krk_afsk.c` `emit()` (blob `kraken_ui2`) | after an FCS-valid frame is turned into its text line: `krk_aprs_msg_frame(S.line[0], frame, len)` (the frame without its FCS). The 60-character line is too short for a message, so the whole frame is passed. `krk_afsk.c` has a weak empty default, so the host tests and tools that build the decoder alone are unchanged |
-| 2 | `krk_periodic.c` `krk_aprs_msg_frame` (blob 2) | reads entry 1 of blob 4's hook table, `0x030e8024`, checks it lies in `KRK_EXT4_LO..KRK_EXT4_HI` (as `bv_watchdog` does with entry 0) and calls it |
-| 3 | `krk_aprs_msg.c` `krk_msg_rx` (blob `kraken_ui4`) | walks the AX.25 address field to the extension bit, skips control and PID, parses the info field, stores the message |
+| 1 | `krk_afsk.c` `emit()` | after an FCS-valid frame is turned into its text line: `krk_aprs_msg_frame(S.line[0], frame, len)` (the frame without its FCS). The 60-character line is too short for a message, so the whole frame is passed. `krk_afsk.c` has a weak empty default, so the host tests and tools that build the decoder alone are unchanged |
+| 2 | `krk_periodic.c` `krk_aprs_msg_frame` | the strong definition of the hand-off: calls `krk_msg_rx` |
+| 3 | `krk_aprs_msg.c` `krk_msg_rx` | walks the AX.25 address field to the extension bit, skips control and PID, parses the info field, stores the message |
 
-Blob 4 is linked after blob 2, so blob 2 cannot name its symbols. `kraken_ui4.ld` places the hook entry
-(`.rodata.krk_bv_hooks1`) at origin + 0x24 and the screen descriptor `krk_aprs_msg_screen` (`.rodata.krk_msg_screen`) at
-origin + 0x28, and asserts both. The APRS row in `menu_hosts.json` is the constant `(const struct krk_screen *)(KRK_EXT4_LO +
-0x28)`, the cross-blob rule of [flash-allocation.md](flash-allocation.md).
+Kraken is one link (since 2026-11-11, [flash-allocation.md](flash-allocation.md)), so the call and the APRS row
+(`&krk_aprs_msg_screen` in `menu_hosts.json`) name the symbols. Before that, the decoder's blob could not name the
+messages blob's symbols and reached them through a hook entry and a descriptor at fixed offsets of that blob.
 
 Contexts: the decoder runs in task `menu` (APRS RX screen, priority 31) or task `init` (RX Monitor, priority 30). They never
 run together, and the monitor yields while any Kraken screen is open, including the Messages screen, so the inbox has one

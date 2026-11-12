@@ -25,7 +25,10 @@ extern const struct krk_screen krk_vox_screen;          /* VOX Monitor: the soft
                                                          * docs/otherfunc-submenu.md. */
 extern const struct krk_screen krk_txtrim_screen;       /* F6 TX Power Trim: a stock option level (moved here from the main blob) */
 extern const struct krk_screen krk_band_screen;         /* Freq Unlock: a stock option level with a hold-OK warning (krk_band.c) */
-extern const struct krk_screen krk_sat_screen;     /* F10, blob kraken_ui3 (manifest defsym) */
+extern const struct krk_screen krk_sat_screen;     /* F10 (krk_satscr.c) */
+extern const struct krk_screen krk_bv_screen;      /* F13 Burst Voice (krk_bvscr.c) */
+extern const struct krk_screen krk_dmrlink_screen; /* F3 DMR Link (krk_dmrlink.c) */
+extern const struct krk_screen krk_aprs_msg_screen; /* F18 APRS Messages (krk_aprs_msg.c) */
 extern const struct krk_screen krk_parrot_arm_screen;   /* F9 Parrot Off/On: a stock option level */
 extern const struct krk_screen krk_parrot_play_screen;  /* one-shots with popups */
 extern const struct krk_screen krk_parrot_check_screen;

@@ -1034,5 +1034,3 @@ const struct krk_screen krk_bv_screen __attribute__((section(".rodata.krk_bv_scr
     .tick_ms = 1,
 };
 
-/* the hook table blob2's maintenance tick reads (fixed address 0x030e8020, kraken_ui4.ld) */
-void (*const krk_bv_hooks[1])(void) __attribute__((section(".rodata.krk_bv_hooks"), used)) = { krk_bv_wd_tick };

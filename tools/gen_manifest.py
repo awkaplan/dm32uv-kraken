@@ -6,11 +6,11 @@
                                    frequency-band checks, the five vocoder-window copies). Expanded into "splices" entries,
                                    replaced in place by name, new ones appended. stock-call targets are written as dm32uv-re
                                    symbol names and become "@stock:<name>".
-  patches/kraken_ui/blobs.json  the blob list: shared cflags/ldflags (defaults, -O2 replaced per blob), each blob's exported
-                                   symbols and its imports from the other blobs, expanded into "blobs" with cflags, ldflags and
-                                   defsym ("@blob:symbol").
+  patches/kraken_ui/link.json   the one link: sources in link order (per-file opt and cflags), gc roots and SRAM placement rules,
+                                   expanded into "pack" with each source's full cflags. tools/pack_kraken.py reads "pack" at build
+                                   time, places every file and writes the builder's "blobs" and claims (out/, never committed).
 
-The dm32uv-re builder takes neither defaults nor lists, so this writes the expanded form it reads. Every other manifest entry is left
+References to Kraken symbols are written "@kraken:symbol" (pack_kraken.py turns them into the blob that defines the symbol). Every other manifest entry is left
 exactly as it is; the Call Log / Radio Settings / Channel Set generator-call sites come from menu_hosts.json (gen_menu_hosts.py).
 
 Usage:
@@ -26,7 +26,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from gen_menu_hosts import MANIFEST, PATCH, SpecError, dump, merge, num   # noqa: E402
 
 HOOKS = PATCH / "hooks.json"
-BLOBS = PATCH / "blobs.json"
+LINK = PATCH / "link.json"
 
 
 def hx(v):
@@ -60,33 +60,22 @@ def gen_hook(h, templates):
         raise SpecError(f"hook {name}: {ex!r}")
 
 
-def gen_blobs(spec):
+def gen_pack(spec):
     d = spec["defaults"]
-    exports = {b["name"]: b.get("exports", []) for b in spec["blobs"]}
-    out = []
-    for b in spec["blobs"]:
-        o = {"name": b["name"], "sources": b["sources"],
-             "cflags": [b.get("opt", d["opt"]), *d["cflags"]], "ldflags": list(d["ldflags"]),
-             "linker_script": b["linker_script"], "entry": b["entry"], "expect_entry": b["expect_entry"]}
-        defsym = {}
-        for imp in b.get("imports", []):
-            src = imp["from"]
-            if src not in exports:
-                raise SpecError(f"blob {b['name']}: imports from unknown blob {src}")
-            if "syms" in imp:
-                syms = imp["syms"]
-            else:
-                syms = [s for s in exports[src] if s not in imp.get("except", [])]
-                bad = set(imp.get("except", [])) - set(exports[src])
-                if bad:
-                    raise SpecError(f"blob {b['name']}: except {sorted(bad)} is not exported by {src}")
-            for s in syms:
-                defsym[s] = f"@{src}:{s}"
-        if defsym:
-            o["defsym"] = defsym
-        if b.get("libgcc"):
-            o["libgcc"] = True
-        out.append(o)
+    srcs = []
+    for e in spec["sources"]:
+        e = {"file": e} if isinstance(e, str) else dict(e)
+        bad = set(e) - {"file", "opt", "cflags", "keep", "claim", "sram_claim"}
+        if bad:
+            raise SpecError(f"link.json source {e.get('file')}: unknown keys {sorted(bad)}")
+        o = {"file": e["file"], "cflags": [e.get("opt", d["opt"]), *d["cflags"], *e.get("cflags", [])]}
+        for k in ("keep", "claim", "sram_claim"):
+            if e.get(k):
+                o[k] = e[k]
+        srcs.append(o)
+    out = {"entry": spec["entry"], "sources": srcs, "keep": list(spec.get("keep", []))}
+    if spec.get("sram_groups"):
+        out["sram_groups"] = spec["sram_groups"]
     return out
 
 
@@ -99,7 +88,8 @@ def build(manifest):
         raise SpecError(f"hooks.json: duplicate names {sorted(dup)}")
     m = dict(manifest)
     m["splices"] = merge(manifest["splices"], entries, ())
-    m["blobs"] = gen_blobs(json.loads(BLOBS.read_text()))
+    m.pop("blobs", None)
+    m["pack"] = gen_pack(json.loads(LINK.read_text()))
     return m
 
 
@@ -115,7 +105,7 @@ def main():
         return 2
     if args.check:
         if raw != new:
-            print(f"gen_manifest: {MANIFEST.name} is out of date with {HOOKS.name} / {BLOBS.name}; run tools/gen_manifest.py",
+            print(f"gen_manifest: {MANIFEST.name} is out of date with {HOOKS.name} / {LINK.name}; run tools/gen_manifest.py",
                   file=sys.stderr)
             return 1
         return 0
