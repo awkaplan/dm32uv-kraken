@@ -78,6 +78,12 @@ from build to build: read them from the ELF (`syms()`), never write one into a t
 
 Useful environment variables: `DM32_TIMEOUT_SCALE` multiplies the booted-run timeouts on a slow host.
 
+Booted runs cannot reuse a booted machine. Checked 2026-11-11 (QEMU 11.1.50 `qemu-system-cskyv2`, machine `dm32`): `savevm`,
+`loadvm` and `migrate` all fail with "State blocked by non-migratable device 'cpu'", and no device model in `-M dm32`
+(timers, PIC, UART, LCD, SPI, GPIO and its key sequencer) has any `vmstate`. A snapshot would need `vmstate` added to the
+vendored QEMU fork (dm32uv-re) first. Restoring only RAM and registers through the gdb stub would leave the devices in
+reset state, so the guest's timers would stop.
+
 ## Data (`data/`)
 
 - `capture16_f1.pcm`, `capture16_f2.pcm`: two APRS frames one DM-32UV received from another over the air
