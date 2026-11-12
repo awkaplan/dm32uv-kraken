@@ -23,7 +23,7 @@ static struct {
     u32 seen;                   /* sentences decoded since entry */
     u32 hash;                   /* last sentence drawn */
     u8 shown_nofix;
-} g;
+} g KRK_SCREEN_BSS;   /* screen-only (grid_enter sets all three fields) */
 
 static int hexval(char c)
 {

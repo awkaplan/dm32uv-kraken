@@ -169,7 +169,7 @@ static struct {
     u8 cal_ticks;
     u32 cal_t0, per_sec;            /* counter units per second */
     u32 last_age_draw;
-} s;
+} s KRK_SCREEN_BSS;   /* screen-only view state (lh_enter sets every field; the ring `lh` is NOT here: it outlives the screen) */
 
 static void fmt_age(char *out, u32 t)    /* out: 12 bytes (the caller's num[]) */
 {

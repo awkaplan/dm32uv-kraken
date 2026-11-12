@@ -2502,6 +2502,50 @@
      }
     ]
    }
+  ],
+  "sram_unions": [
+   {
+    "name": "scr",
+    "why": "Working state of live screens (RSSI, Band Scope, Grid, Last Heard view, DMR Link, Satellites): only one screen runs at a time (krk_run_screen) and each enter() initialises its own, so they share one SRAM region",
+    "take": [
+     {
+      "file": "krk_satscr.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     },
+     {
+      "file": "krk_dmrlink.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     },
+     {
+      "file": "krk_scope.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     },
+     {
+      "file": "krk_rssi.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     },
+     {
+      "file": "krk_lastheard.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     },
+     {
+      "file": "krk_grid.c",
+      "sections": [
+       ".bss.scr"
+      ]
+     }
+    ]
+   }
   ]
  }
 }

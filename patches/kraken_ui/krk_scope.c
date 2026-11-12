@@ -38,7 +38,7 @@ static struct {
     u8 cur[SCOPE_N], peak[SCOPE_N];   /* RSSI raw/2 (1 dB/unit), 0 = not measured */
     u8 peak_age;
     u32 sweeps, timeouts, norf;
-} S;
+} S KRK_SCREEN_BSS;   /* screen-only: scope_enter sets running/center/steps, reset_trace the trace; all uses are in this screen */
 
 static u32 point_f10(int i)
 {

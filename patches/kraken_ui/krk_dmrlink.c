@@ -178,7 +178,7 @@ static struct {
     u32 prev[2];
     u32 ticks;
     u8 head, count, raw, div, have_prev;
-} lqst KRK_FEAT;
+} lqst KRK_SCREEN_BSS;   /* screen-only: lq_enter resets q, hash, head, count, raw, have_prev, div, ticks; ring[] is read only below count */
 
 static void log_pair(u32 w, u32 c)
 {
