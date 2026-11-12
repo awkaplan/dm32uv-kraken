@@ -85,7 +85,7 @@ The full recipe is [docs/building.md section 6](docs/building.md#6-adding-a-feat
    (APRS, Call Log, GNSS, Radio Settings, Channel Set). Host-specific notes: `docs/*-submenu.md`.
 4. **Hooks** (only if the feature must change stock behaviour): one entry per site in `hooks.json`, with
    the expected stock bytes and a `why` that says what the stock code does there and why replacing it is
-   safe. A hook must fall through to stock unchanged when the feature is off.
+   safe. A hook must fall through to stock unchanged when the feature is off. To choose the site, run `tools/hook_probe.py ADDR` (read-only: the containing function, the disassembly, the expect bytes and each build's translation).
 5. **Memory.** Ordinary code and `.bss` need nothing: the pack claims exactly what it uses. Only state that
    must sit at a fixed address gets a pinned claim in `allocations.json` (and an `sram_groups` rule in
    `link.json` if it must line up with other state). [docs/flash-allocation.md](docs/flash-allocation.md).

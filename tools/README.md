@@ -15,6 +15,7 @@ Firmware builds ([docs/firmware-builds.md](../docs/firmware-builds.md)):
 - `fw_text.py` - finds the stock addresses in sources, manifests and tests (and rewrites them).
 - `gen_fw_maps.py` - generates `firmware/<id>/addrmap.json` for every stock address Kraken uses; `--check` in every build. Run after any change that adds or moves a stock address.
 - `fw_translate.py` - writes a build's translated tree in `out/fw/<id>/`. Called by `build_image.py`.
+- `hook_probe.py` - read-only helper for choosing a hook site: `python3 tools/hook_probe.py ADDR` prints the containing function, the disassembly, the `expect` bytes and the L01/049 translation of a 048 address, and a draft `hooks.json` entry (writes nothing; run it in the build container).
 - `check_bsr.py` - fails the build if assembly branches to an absolute address (C-SKY gas emits nothing for it).
 - `gen_menu_hosts.py` - generates the stock-menu row boilerplate from `patches/kraken_ui/menu_hosts.json`.
 - `gen_manifest.py` - generates the branch hooks and the `pack` of `kraken_ui.patch.json` from `hooks.json` and `link.json`.
