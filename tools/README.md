@@ -17,8 +17,9 @@ Firmware builds ([docs/firmware-builds.md](../docs/firmware-builds.md)):
 - `fw_translate.py` - writes a build's translated tree in `out/fw/<id>/`. Called by `build_image.py`.
 - `hook_probe.py` - read-only helper for choosing a hook site: `python3 tools/hook_probe.py ADDR` prints the containing function, the disassembly, the `expect` bytes and the L01/049 translation of a 048 address, and a draft `hooks.json` entry (writes nothing; run it in the build container).
 - `check_bsr.py` - fails the build if assembly branches to an absolute address (C-SKY gas emits nothing for it).
-- `gen_menu_hosts.py` - generates the stock-menu row boilerplate from `patches/kraken_ui/menu_hosts.json`.
-- `gen_manifest.py` - generates the branch hooks and the `pack` of `kraken_ui.patch.json` from `hooks.json` and `link.json`.
+- `gen_menu_hosts.py` - generates the stock-menu row boilerplate from `patches/kraken_ui/menu_hosts.json` and the rows of the per-feature specs `features/*.json`, and the `extern` of every row's screen in `krk_menu_rows.h`.
+- `gen_manifest.py` - generates the branch hooks and the `pack` of `kraken_ui.patch.json` from `hooks.json`, `link.json` and the specs' hooks and sources.
+- `new_feature.py` - scaffolds a feature (`NAME --id F20 --kind setting|screen|oneshot --host kraken|aprs|rs|cs`): a compiling stub, its spec, a host test, a user-guide page, the status row; runs the generators. `--remove` undoes it ([docs/building.md](../docs/building.md) section 6).
 - `gen_claims.py` - generates `krk_claims.h` (the pinned claims) from `allocations.json`.
   The build runs all three generators with `--check`. Run them without it after you edit their inputs.
 - `sat_tle_gen.py` - turns `data/tles.txt` into `patches/kraken_ui/krk_sat_tles.c`. Run by hand when the TLEs change.

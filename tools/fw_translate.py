@@ -189,6 +189,9 @@ class Translator:
             od = self.out / d.relative_to(REPO)
             od.mkdir(parents=True, exist_ok=True)
             for f in d.iterdir():
+                if f.is_dir() and f.name == "features":     # the per-feature specs (read by the tests; the generators do not run here)
+                    shutil.copytree(f, od / f.name)
+                    continue
                 if f.is_dir() or f.name.startswith("."):
                     continue
                 if f.resolve() in code_files:

@@ -6,6 +6,8 @@
                                    frequency-band checks, the five vocoder-window copies). Expanded into "splices" entries,
                                    replaced in place by name, new ones appended. stock-call targets are written as dm32uv-re
                                    symbol names and become "@stock:<name>".
+  patches/kraken_ui/features/<name>.json   per-feature specs (sources, menu rows, hooks, doc pointers; docs/menu-hosts.md section 3):
+                                   their hooks are added to hooks.json's and their sources to link.json's, in the same entries.
   patches/kraken_ui/link.json   the one link: sources in link order (per-file opt and cflags), gc roots and SRAM placement rules,
                                    expanded into "pack" with each source's full cflags. tools/pack_kraken.py reads "pack" at build
                                    time, places every file and writes the builder's "blobs" and claims (out/, never committed).
@@ -23,7 +25,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from gen_menu_hosts import MANIFEST, PATCH, SpecError, dump, merge, num   # noqa: E402
+from gen_menu_hosts import MANIFEST, PATCH, SpecError, dump, load_features, merge, num   # noqa: E402
 
 HOOKS = PATCH / "hooks.json"
 LINK = PATCH / "link.json"
@@ -60,6 +62,31 @@ def gen_hook(h, templates):
         raise SpecError(f"hook {name}: {ex!r}")
 
 
+def merged_link(link, feats):
+    """link.json with the sources and gc-root patterns of the feature specs added. A spec source goes at the end of the link
+    order, or right after the source named by its "after" (so a migrated feature keeps its place and the image does not move)."""
+    link = dict(link)
+    srcs = list(link["sources"])
+    keep = list(link.get("keep", []))
+    name = lambda e: e if isinstance(e, str) else e["file"]       # noqa: E731
+    for f in feats:
+        for e in f.get("sources", []):
+            e = {"file": e} if isinstance(e, str) else dict(e)
+            after = e.pop("after", None)
+            if any(name(x) == e["file"] for x in srcs):
+                raise SpecError(f"{f['_file']}: source {e['file']} is already in link.json or another spec")
+            at = len(srcs)
+            if after:
+                idx = [i for i, x in enumerate(srcs) if name(x) == after]
+                if not idx:
+                    raise SpecError(f"{f['_file']}: source {e['file']}: \"after\" {after} is not a linked source")
+                at = idx[0] + 1
+            srcs.insert(at, e if len(e) > 1 else e["file"])
+        keep += [k for k in f.get("keep", []) if k not in keep]
+    link["sources"], link["keep"] = srcs, keep
+    return link
+
+
 def gen_pack(spec):
     d = spec["defaults"]
     srcs = []
@@ -80,8 +107,9 @@ def gen_pack(spec):
 
 
 def build(manifest):
+    feats = load_features()
     hs = json.loads(HOOKS.read_text())
-    entries = [gen_hook(h, hs["templates"]) for h in hs["hooks"]]
+    entries = [gen_hook(h, hs["templates"]) for h in hs["hooks"] + [h for f in feats for h in f.get("hooks", [])]]
     names = [e["name"] for e in entries]
     dup = {n for n in names if names.count(n) > 1}
     if dup:
@@ -89,7 +117,7 @@ def build(manifest):
     m = dict(manifest)
     m["splices"] = merge(manifest["splices"], entries, ())
     m.pop("blobs", None)
-    m["pack"] = gen_pack(json.loads(LINK.read_text()))
+    m["pack"] = gen_pack(merged_link(json.loads(LINK.read_text()), feats))
     return m
 
 

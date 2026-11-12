@@ -5,35 +5,17 @@
  * every pointer, so an image without this blob shows no extension rows.
  */
 #include "krk.h"
+/* The screens of the host rows (menu_hosts.json, features/*.json) are declared extern by krk_menu_rows.h (generated); only the KRAKEN
+ * list's own slots below are declared here. */
 
-extern const struct krk_screen krk_aprsrx_screen;
-extern const struct krk_screen krk_monitor_row;     /* RX Monitor on/off, a stock option level (krk_aprsrx.c) */
-extern const struct krk_screen krk_aprs_chan_screen;  /* F8b Beacon Chan: a stock numeric entry (krk_aprs_chan.c) */
-extern const struct krk_screen krk_callsign_screen;   /* F-APRS callsign editor, blob kraken_ui3 (manifest defsym) */
-extern const struct krk_screen krk_aprs_path_screen;
-extern const struct krk_screen krk_aprs_upload_screen;
-extern const struct krk_screen krk_aprs_text_screen;    /* F8a Beacon Text editor (krk_aprs_text.c) */
-extern const struct krk_screen krk_scramble_on_screen;  /* F12 Scrambler Off/On: a stock option level */
-extern const struct krk_screen krk_scrkey_row;          /* Scrambler Key: a NUMERIC entry row */
 extern const struct krk_screen krk_scrfmt_row;          /* Scrambler Fmt: stays a flat KRAKEN row */
-extern const struct krk_screen krk_squelch_screen;      /* F11 Squelch Mode: a stock option level */
 extern const struct krk_screen krk_sqsurvey_screen;     /* F11 Squelch Survey: the live screen */
 extern const struct krk_screen krk_vox_screen;          /* VOX Monitor: the software VOX engine's live screen (krk_vox.c).
                                                          * Its bench predecessor, a VOX Probe screen (slot 0 on
                                                          * 2026-11-04/05) is retired from the build: SRAM budget
                                                          * (.bss.feat shares its claim with blob ui5), findings in
                                                          * docs/otherfunc-submenu.md. */
-extern const struct krk_screen krk_txtrim_screen;       /* F6 TX Power Trim: a stock option level (moved here from the main blob) */
-extern const struct krk_screen krk_band_screen;         /* Freq Unlock: a stock option level with a hold-OK warning (krk_band.c) */
 extern const struct krk_screen krk_sat_screen;     /* F10 (krk_satscr.c) */
-extern const struct krk_screen krk_bv_screen;      /* F13 Burst Voice (krk_bvscr.c) */
-extern const struct krk_screen krk_dmrlink_screen; /* F3 DMR Link (krk_dmrlink.c) */
-extern const struct krk_screen krk_aprs_msg_screen; /* F18 APRS Messages (krk_aprs_msg.c) */
-extern const struct krk_screen krk_parrot_arm_screen;   /* F9 Parrot Off/On: a stock option level */
-extern const struct krk_screen krk_parrot_play_screen;  /* one-shots with popups */
-extern const struct krk_screen krk_parrot_check_screen;
-extern const struct krk_screen krk_parrot_clear_screen;
-extern const struct krk_screen krk_parrot_status_screen;
 void krk_parrot_rx_start(void);
 void krk_parrot_rx_end(void);
 void krk_scramble_chan_change(void);
@@ -75,6 +57,9 @@ const struct krk_screen *const krk_ext_screens[KRK_EXT_MAX + KRK_APRS_MAX + KRK_
      * digital features and this is the stock per-channel menu. They are FLAT rows: making them NESTED
      * parents with child lists was investigated in full and does not work on this firmware
      * (docs/nested-submenu.md). */
+#ifdef KRK_KRAKEN_ROWS
+    KRK_KRAKEN_ROWS                     /* rows of feature specs with host "kraken": [slot] = &screen, */
+#endif
     [KRK_EXT_MAX] = KRK_APRS_ROWS,
     [KRK_EXT_MAX + KRK_APRS_MAX] = KRK_RS_ROWS,
     [KRK_EXT_MAX + KRK_APRS_MAX + KRK_RS_MAX] = KRK_CS_ROWS,

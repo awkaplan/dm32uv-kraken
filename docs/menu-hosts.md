@@ -114,17 +114,68 @@ three more things, so the manifest is hand-written only where a site or a screen
   a zero slot is skipped. Until 2026-11-11 they were checked against each blob's range, because a blob could be missing.
 - A new hook: add a line to `hooks.json`, run `tools/gen_manifest.py` (new entries are appended to `splices`).
 
+### Per-feature specs: `patches/kraken_ui/features/<name>.json`
+
+A feature may carry its own wiring in one spec file instead of lines in the central files. The generators merge the specs with
+`link.json`, `menu_hosts.json` and `hooks.json`; the central files keep working unchanged for features that have no spec. The
+sources stay flat in `patches/kraken_ui/` (host tests, `fw_translate.py` and `gen_fw_maps.py` rely on those paths). Example
+(`features/aprs_chan.json`, F8b):
+
+```json
+{
+ "feature": "F8b",
+ "name": "Beacon Chan",
+ "sources": [{"file": "krk_aprs_chan.c", "keep": true, "after": "krk_tags.c"}],
+ "rows": [
+  {"host": "aprs", "order": 6, "key": "chan", "label": "Beacon Chan", "screen": "&krk_aprs_chan_screen", "label_at": "0x030e77c0"}
+ ],
+ "guide": "user-guide/aprs.md#beacon-channel",
+ "note": "aprs-submenu.md"
+}
+```
+
+| key | meaning |
+|---|---|
+| `feature` | the F-number; it must have a row in [feature-status.md](feature-status.md) |
+| `sources` | files for the link, with the keys of `link.json` sources (`opt`, `cflags`, `keep`); `after` names a linked file the source goes behind (default: the end of the link order) |
+| `keep` | gc-root patterns, appended to `link.json`'s `keep` |
+| `rows` | menu rows: `host` (`aprs`, `calllog`, `gnss`, `rs`, `cs`, or `kraken`), `order`, then the host-row keys (`key`, `label`, `screen`, and `label_at`, `stubs`, ... when needed) |
+| `hooks` | hook entries in the format of `hooks.json` (the `t` templates stay in `hooks.json`) |
+| `guide` | the user-guide page (path under `docs/`, optional `#anchor`); it needs a **Status** and a **Where** line |
+| `note` | the developer note under `docs/`, optional |
+
+`order` is the row's position among its host's rows (item number = the host's stock count + `order`). The host's own rows
+fill the other positions in their order, so a spec never moves an existing item number (the tests look rows up by number). A
+new row takes `order` = the host's current row count. For host `kraken`, `order` is the slot of `krk_ext_screens[]`; the slot
+must be free (`ext_slots` in `menu_hosts.json` lists the ones `krk_ext.c` fills by hand). The generator declares every row's
+screen `extern` in `krk_menu_rows.h`, so a row needs no edit in `krk_ext.c`, and a `kraken` row is written there as
+`KRK_KRAKEN_ROWS`.
+
+`tools/pack_kraken.py lint` (the build, `tests/test_pack_lint.py`) refuses a spec whose guide page is missing or lacks the
+Status and Where lines, whose id has no status row, or whose source is also in `link.json`. `tools/new_feature.py` writes a
+spec with all its companions ([building.md](building.md) section 6). F8b (Beacon Chan) and F3 (DMR Link) are migrated; the
+other features are still in the central files and can move one at a time.
+
 ### Adding a row to an existing host
 
-1. Write the screen (section 1) and add its source to `link.json`. Rows of the APRS, Radio Settings and Channel Set
-   hosts are entries of `krk_ext.c`'s table: declare the screen `extern` there.
-2. Append `{"key", "label", "screen"}` to the host's `rows` in `menu_hosts.json`.
-3. APRS only: the analog list is an explicit order, so also add `KRK_APRS_ITEM_<KEY>` to
-   `aprs_analog_items[]` in `krk_core.c`. The digital list shows the stock rows only.
-4. Run `tools/gen_menu_hosts.py`, then `tools/build.sh`.
+Preferred: `tools/new_feature.py NAME --id FNN --kind setting|screen|oneshot --host aprs|rs|cs|kraken`, which writes the
+source, the spec and the rest. By hand:
 
+1. Write the screen (section 1) and its spec `features/<name>.json` (above). No edit of `link.json`, `menu_hosts.json` or
+   `krk_ext.c` is needed.
+2. APRS only: the analog list is an explicit order, so also add `KRK_APRS_ITEM_<KEY>` to
+   `aprs_analog_items[]` in `krk_core.c`. The digital list shows the stock rows only.
+3. Run the generators, then `tools/build.sh`.
+
+A row can still be appended to the host's `rows` in `menu_hosts.json` and its source to `link.json` instead (no spec).
 Rows already in the spec keep their item numbers, and the tests look rows up by item number, so new
 rows go at the end. Removing a row renumbers every row after it.
+
+**A full host.** Each host's two string arrays and dispatch tables sit at fixed addresses in the `kraken_ui_data` claim, a fixed
+distance apart. APRS is full (16 items) and Radio Settings has no room after one more row. A generator error about overlapping
+data entries means this. To grow a host, move its `arrays_at` (and `jump_tables[].at`) to free space of the claim (the largest
+free span is at its end, after `0x030e787c`); that moves data that already ships, so do it on purpose and check
+`tools/gen_menu_hosts.py` and a full build. `tools/new_feature.py` stops with a message when the arrays are full.
 
 ### Adding a host
 

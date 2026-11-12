@@ -5,6 +5,8 @@
   "tools/gen_manifest.py copies this file, with each source's full cflags, into kraken_ui.patch.json's \"pack\".",
   "sources: link order. {\"file\", \"opt\" (replaces defaults.opt), \"cflags\" (added), \"keep\": true (every .text section is kept)}.",
   "keep: input-section patterns kept in every file (gc roots beyond the manifest's @kraken: references and the entry).",
+  "features/<name>.json: a feature may list its own sources (same keys as here, plus \"after\": a linked file it goes behind) and gc-root",
+  "  patterns (\"keep\"); tools/gen_manifest.py merges them into \"pack\" (docs/menu-hosts.md section 3). A source is listed in one place only.",
   "not_linked: {file: why} for a source of this folder that the release link leaves out (tools/pack_kraken.py lint wants one or the other).",
   "sram_groups: state that must sit together or at a fixed place. Each takes input sections of files ({file, sections}; default the",
   "  file's whole .bss), placed contiguously in the order given; claim + offset (or offset_from_end) pins the group inside a claim;",
@@ -28,12 +30,10 @@
   {"file": "krk_ofstubs.S", "keep": true}, {"file": "krk_txtrim.c", "keep": true}, {"file": "krk_vframe.c", "keep": true},
   {"file": "krk_parrot_sm.c", "keep": true}, {"file": "krk_parrot.c", "keep": true}, {"file": "krk_cwid.c", "keep": true},
   {"file": "krk_band.c", "keep": true}, {"file": "krk_bvcfg.c", "keep": true}, {"file": "krk_tags.c", "keep": true},
-  {"file": "krk_aprs_chan.c", "keep": true},
   {"file": "krk_bvscr.c", "opt": "-Os", "keep": true}, {"file": "krk_bvmsg.c", "opt": "-Os", "keep": true},
   {"file": "krk_bv_modem.c", "opt": "-Os", "keep": true}, {"file": "krk_bv_frame.c", "opt": "-Os", "keep": true},
   {"file": "krk_bv_sound.c", "opt": "-Os", "keep": true}, {"file": "krk_ambe.c", "opt": "-Os", "keep": true},
-  {"file": "krk_aprs_msg.c", "opt": "-Os", "keep": true},
-  {"file": "krk_dmrlink.c", "keep": true}
+  {"file": "krk_aprs_msg.c", "opt": "-Os", "keep": true}
  ],
  "keep": [
   ".text.krk_item_ok", ".text.krk_category_entry", ".text.krk_aprs_item",
@@ -48,7 +48,7 @@
   ".text.krk_catfix", ".text.krk_pad", ".text.krk_line_cached", ".text.krk_fmt_age", ".text.krk_uart_putc", ".text.krk_uart_puts",
   ".text.krk_hex",
   ".rodata.krk_ext_screens", ".rodata.krk_ext_hooks", ".rodata.krk_sat_screen", ".rodata.krk_callsign_screen",
-  ".rodata.krk_bv_screen", ".rodata.krk_msg_screen", ".rodata.krk_dmrlink_screen"
+  ".rodata.krk_bv_screen", ".rodata.krk_msg_screen"
  ],
  "sram_groups": [
   {"name": "big", "why": "F9 Parrot / F13 Burst Voice shared buffer, one owner at a time (krk_vframe.c big_buf); the claim is pinned because the mi_rng measurement build taps it",

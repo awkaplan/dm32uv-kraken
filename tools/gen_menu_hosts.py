@@ -40,6 +40,8 @@ PATCH = REPO / "patches/kraken_ui"
 SPEC = PATCH / "menu_hosts.json"
 MANIFEST = PATCH / "kraken_ui.patch.json"
 HEADER = PATCH / "krk_menu_rows.h"
+FEATURES = PATCH / "features"
+FEATURE_KEYS = {"feature", "name", "sources", "keep", "rows", "hooks", "guide", "note"}
 
 LABEL_STRIDE = 16           # labels are packed on 16-byte boundaries (the layout the hand-written entries used)
 CMPHSI16_MAX = 32           # a 16-bit cmphsi encodes value - 1 in 5 bits: a bounded dispatcher takes at most 32 rows
@@ -83,6 +85,74 @@ def data_size(e):
     for p in e["parts"]:
         off += part_size(p, off)
     return off
+
+
+def load_features():
+    """The per-feature specs patches/kraken_ui/features/<name>.json, sorted by file name (the order is part of the output)."""
+    out = []
+    for p in sorted(FEATURES.glob("*.json")):
+        try:
+            f = json.loads(p.read_text())
+        except ValueError as ex:
+            raise SpecError(f"{p.name}: not JSON ({ex})")
+        bad = set(f) - FEATURE_KEYS
+        if bad:
+            raise SpecError(f"{p.name}: unknown keys {sorted(bad)} (allowed: {sorted(FEATURE_KEYS)})")
+        if not f.get("feature"):
+            raise SpecError(f"{p.name}: no \"feature\" (the F-number of docs/feature-status.md)")
+        f["_file"] = p.name
+        out.append(f)
+    return out
+
+
+def merged_spec(spec=None, feats=None):
+    """menu_hosts.json with the rows of every feature spec merged in. A feature row is {"host", "order", "key", "label",
+    "screen", ...host-row keys}: "order" is its position among the host's rows (item number = stock count + order), so adding
+    a spec never moves an existing item. The host's own rows fill the other positions in their order. Host "kraken" rows go to
+    the KRAKEN list instead: "order" is the slot of krk_ext_screens[], which must be free ("ext_slots")."""
+    spec = json.loads(SPEC.read_text()) if spec is None else spec
+    feats = load_features() if feats is None else feats
+    hosts = {h["id"]: h for h in spec["hosts"]}
+    extra, slots = {}, {}
+    for f in feats:
+        for r in f.get("rows", []):
+            r = dict(r)
+            where = f"{f['_file']} row {r.get('key') or r.get('screen')}"
+            for k in ("host", "order", "screen"):
+                if k not in r:
+                    raise SpecError(f"{where}: no \"{k}\"")
+            hid, order = r.pop("host"), r.pop("order")
+            if not isinstance(order, int) or order < 0:
+                raise SpecError(f"{where}: order must be a non-negative integer")
+            if hid == "kraken":
+                es = spec["ext_slots"]
+                if order >= es["count"] or order in es["hand_written"] or order in slots:
+                    raise SpecError(f"{where}: KRAKEN slot {order} is out of range ({es['count']} slots), taken by krk_ext.c "
+                                    f"({es['hand_written']}) or by another spec")
+                slots[order] = r["screen"]
+                continue
+            if hid not in hosts:
+                raise SpecError(f"{where}: unknown host {hid!r} (hosts: {sorted(hosts)} and kraken)")
+            if "key" not in r or "label" not in r:
+                raise SpecError(f"{where}: a host row needs \"key\" and \"label\"")
+            extra.setdefault(hid, []).append((order, r, where))
+    m = dict(spec)
+    m["hosts"] = []
+    for h in spec["hosts"]:
+        add = extra.pop(h["id"], [])
+        if add:
+            h = dict(h)
+            n = len(h["rows"]) + len(add)
+            at = {}
+            for order, r, where in add:
+                if order >= n or order in at:
+                    raise SpecError(f"{where}: order {order} out of range or used twice (host {h['id']} has {n} rows)")
+                at[order] = r
+            own = iter(h["rows"])
+            h["rows"] = [at[k] if k in at else next(own) for k in range(n)]
+        m["hosts"].append(h)
+    m["ext_rows"] = sorted(slots.items())
+    return m
 
 
 def host_fmt(h, rows):
@@ -336,6 +406,25 @@ def build(spec, manifest):
     outside = [x for x in check_layout(m, claim) if x[2] in gen_names]
     if outside:
         raise SpecError("generated data outside the data claim " + ", ".join(f"{n} {a:#x}..{e:#x}" for a, e, n in outside))
+    externs = []
+    for h in spec["hosts"]:
+        for r in h["rows"]:
+            sym = r.get("screen", "").lstrip("&")
+            if sym.isidentifier() and sym not in externs and not h.get("no_header"):
+                externs.append(sym)
+    for _, scr in spec.get("ext_rows", []):
+        sym = scr.lstrip("&")
+        if sym.isidentifier() and sym not in externs:
+            externs.append(sym)
+    tail = ["#ifndef __ASSEMBLER__",
+            "/* Every row's screen, declared here so a row needs no edit in krk_ext.c. */",
+            "struct krk_screen;",
+            *[f"extern const struct krk_screen {x};" for x in externs],
+            "#endif",
+            ""]
+    if spec.get("ext_rows"):
+        hdr += ["/* KRAKEN-list rows from feature specs (host \"kraken\": order = slot of krk_ext_screens[]); krk_ext.c expands it after its own slots */",
+                "#define KRK_KRAKEN_ROWS " + " ".join(f"[{k}] = {scr}," for k, scr in spec["ext_rows"]), ""]
     header = "\n".join([
         "/* krk_menu_rows.h - GENERATED by tools/gen_menu_hosts.py from menu_hosts.json. Do not edit:",
         " * change the spec and rerun the script (the build fails while this file is out of date).",
@@ -348,6 +437,7 @@ def build(spec, manifest):
         "#define KRK_MENU_ROWS_H",
         "",
         *hdr,
+        *tail,
         "#endif",
         ""])
     return m, header
@@ -361,10 +451,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check", action="store_true", help="fail if the manifest or the header is out of date")
     args = ap.parse_args()
-    spec = json.loads(SPEC.read_text())
     raw = MANIFEST.read_text()
     try:
-        m, header = build(spec, json.loads(raw))
+        m, header = build(merged_spec(), json.loads(raw))
     except SpecError as e:
         print(f"gen_menu_hosts: {e}", file=sys.stderr)
         return 2

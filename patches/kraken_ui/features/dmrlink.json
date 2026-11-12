@@ -1,0 +1,11 @@
+{
+ "feature": "F3",
+ "name": "DMR Link",
+ "sources": [{"file": "krk_dmrlink.c", "keep": true}],
+ "keep": [".rodata.krk_dmrlink_screen"],
+ "rows": [
+  {"host": "cs", "order": 0, "key": "dmrlink", "label": "DMR Link", "screen": "&krk_dmrlink_screen"}
+ ],
+ "guide": "user-guide/receive-tools.md#dmr-link",
+ "note": "dmr-ber.md"
+}

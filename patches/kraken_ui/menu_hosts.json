@@ -7,7 +7,11 @@
   "",
   "Adding a row to an existing host: append it to that host's rows (key, label, screen = a C initializer for its struct krk_screen",
   "pointer), run tools/gen_menu_hosts.py, rebuild. Rows of an extension-blob host (APRS, Radio Settings, Channel Set) live in",
-  "krk_ext.c's table: declare the screen there (extern). Kraken is one link, so any source's screen can be named.",
+  "krk_ext.c's table; the generator declares the screen extern in krk_menu_rows.h. Kraken is one link, so any source's screen can be named.",
+  "A feature may instead carry its rows in its own spec, features/<name>.json (host, order = position among the host's rows, so item",
+  "numbers never move; docs/menu-hosts.md section 3). Rows of a migrated feature are NOT repeated here: they are merged in by the generator.",
+  "ext_slots: the KRAKEN list's krk_ext_screens[] (count slots; hand_written = slots krk_ext.c fills itself): a spec row with host \"kraken\"",
+  "takes a free slot (its order).",
   "An option row (.opt) needs a commit path: APRS, Radio Settings and Channel Set have one; Call Log and GNSS take screens only.",
   "",
   "Adding a host: its splice SITES (the generator call, the item-action compare chain or jump table, the commit) are reverse-engineering",
@@ -21,6 +25,7 @@
   "Beyond plain hosts: the 'cat' host is the 11th top-level category (naming overrides, no_header, three jump_tables) and 'nests' holds the",
   "Other Func parents (a per-slot 4-splice template) and the VOX child-list descriptor. See docs/menu-hosts.md section 3."
  ],
+ "ext_slots": {"count": 20, "hand_written": [0, 5, 7, 8]},
  "data_claim": {
   "start": "0x030e7000",
   "end_exclusive": "0x030e8000"
@@ -202,12 +207,6 @@
      "label": "Beacon Text",
      "screen": "&krk_aprs_text_screen",
      "label_at": "0x030e77a0"
-    },
-    {
-     "key": "chan",
-     "label": "Beacon Chan",
-     "screen": "&krk_aprs_chan_screen",
-     "label_at": "0x030e77c0"
     },
     {
      "key": "msg",
@@ -483,11 +482,6 @@
    },
    "labels_at": "0x030e7300",
    "rows": [
-    {
-     "key": "dmrlink",
-     "label": "DMR Link",
-     "screen": "&krk_dmrlink_screen"
-    },
     {
      "key": "bv",
      "label": "Burst Voice",

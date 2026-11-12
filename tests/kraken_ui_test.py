@@ -653,6 +653,16 @@ def check_exit_and_rssi(c, s):
     tick(0x10, [0xC0] * 4, enter=False)
     m.report(rd_i(24) == 0xC0 - 320, f"digital 1 s window closes after the 6th tick ({1000 // (100 + 60)} per second; avg {rd_i(24)} half-dB, want {0xC0 - 320})")
 
+def aprs_rows():
+    """The APRS host's rows in item order: menu_hosts.json's own, with the rows of features/*.json inserted at their "order"."""
+    ui = REPO / "patches/kraken_ui"
+    rows = next(h["rows"] for h in json.loads((ui / "menu_hosts.json").read_text())["hosts"] if h["id"] == "aprs")
+    add = [r for p in sorted((ui / "features").glob("*.json")) for r in json.loads(p.read_text()).get("rows", []) if r["host"] == "aprs"]
+    for r in sorted(add, key=lambda r: r["order"]):
+        rows.insert(r["order"], r)
+    return rows
+
+
 def aprs_analog_items():
     """The analog APRS list (item numbers) from krk_core.c's aprs_analog_items[], names resolved through krk_menu_rows.h."""
     core = (REPO / "patches/kraken_ui/krk_core.c").read_text()
@@ -923,7 +933,7 @@ def main():
         ours = [rd32(arr + 4 * k) for k in range(8, 8 + na)]
         lab = [img[a - 0x3000000:].split(b"\0")[0] for a in ours]
         call, rxl, monl = lab[2], lab[3], lab[4]
-        want_lab = [r["label"].encode() for h in json.loads((REPO / "patches/kraken_ui/menu_hosts.json").read_text())["hosts"] if h["id"] == "aprs" for r in h["rows"]][2:]
+        want_lab = [r["label"].encode() for r in aprs_rows()][2:]
         m.report(cnt == 8 + na and lab[2:] == want_lab and sub == 2 and [rd32(arr + 4 * k) for k in range(8)] == stock and ours[0] == stock[1] and ours[1] == stock[6],
                  f"APRS descriptor lang {lang}: count {cnt}, subtype {sub}, 8 stock strings kept, items 8/9 = stock Upload ID/Upload Beacon strings, items 10.. {lab[2:]} (menu_hosts.json {want_lab})")
     tbl = rd32(0x0303D56C)
