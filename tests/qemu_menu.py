@@ -17,7 +17,10 @@
 Trap every scenario is written around: wait_step() reports a key as SENT, not DISPATCHED, so every read is taken after
 b.until(<a predicate identifying the level we want>), never straight after the walk.
 """
+import contextlib
 import glob
+import hashlib
+import json
 import os
 import pathlib
 import re
@@ -62,10 +65,197 @@ PATHS = {
 }
 
 
+# ------------------------------------------------------------------------------------------------------------------
+# Saved machine states (tests/README.md, "Saved machine states"). A booted scenario starts with the same boot and menu walk as many
+# others. The first one to need a walk saves the machine at its end (QEMU migration to a file), the rest restore that file and send
+# only their own remaining keys. DM32_SNAPSHOT=0 turns it off; a QEMU without migration, or any failure, falls back to the full boot.
+SNAP_FORMAT = 1
+SNAP_KEEP_DAYS = 3
+# harness knobs that do not change the machine; any OTHER DM32_* variable is part of the key (an unknown one only costs a cache miss)
+SNAP_ENV_IGNORE = {"DM32_SNAPSHOT", "DM32_TIMEOUT_SCALE", "DM32_TICK_GAP", "DM32_TIMINGS", "DM32_FW", "DM32_WS", "DM32_SNAP_DIR", "DM32_TEST_PORT"}
+SNAP_EVENT_ENV = ("DM32_PINSEQ", "DM32_KNOB", "DM32_PTT", "DM32_KEY", "DM32_KEYSEQ")   # timers armed at start: not migrated
+_snap_state = {"off": None, "bin": {}, "notes": set()}
+_snap_lock = threading.Lock()
+
+
+class QmpError(Exception):
+    pass
+
+
+class SnapWalkError(Exception):
+    """The walk to a state to save did not end where it should (a key lost, a screen that never settled)."""
+
+
+class Qmp:
+    """A minimal QMP client over a Unix socket (the socket lives in a container-local directory: not every bind mount takes one)."""
+
+    def __init__(self, path, timeout=60):
+        self.sock = socket.socket(socket.AF_UNIX)
+        deadline = time.time() + timeout
+        while True:
+            try:
+                self.sock.connect(str(path))
+                break
+            except OSError:
+                if time.time() > deadline:
+                    raise
+                time.sleep(0.05)
+        self.sock.settimeout(180)
+        self.f = self.sock.makefile("rw", encoding="utf-8", newline="\n")
+        self.f.readline()                               # greeting
+        self.execute("qmp_capabilities")
+
+    def execute(self, cmd, **args):
+        self.f.write(json.dumps({"execute": cmd, "arguments": args}) + "\n")
+        self.f.flush()
+        while True:
+            msg = json.loads(self.f.readline())
+            if "return" in msg:
+                return msg["return"]
+            if "error" in msg:
+                raise QmpError(f"{cmd}: {msg['error']['desc']}")
+
+    def hmp(self, line):
+        return self.execute("human-monitor-command", **{"command-line": line})
+
+    def close(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+
+
+def snap_dir():
+    """Where the saved states live: <repo>/out/snapcache (or the out/ of a translated build's tests/), DM32_SNAP_DIR overrides."""
+    if os.environ.get("DM32_SNAP_DIR"):
+        d = pathlib.Path(os.environ["DM32_SNAP_DIR"])
+    else:
+        here = pathlib.Path(__file__).resolve()
+        outs = [p for p in here.parents if p.name == "out"]
+        d = (outs[-1] if outs else here.parent.parent / "out") / "snapcache"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _qemu_binary():
+    exe = shutil.which("qemu-system-cskyv2")
+    return os.path.realpath(exe) if exe else None
+
+
+def snap_support():
+    """(ok, why): saving is on (DM32_SNAPSHOT), nothing arms a timer that is not migrated, and the QEMU binary has the machine's
+    migration (probed once: the run-time key sequencer properties arrived with it, dm32uv-qemu docs/key-injection.md)."""
+    with _snap_lock:
+        if os.environ.get("DM32_SNAPSHOT", "1") == "0":
+            return False, "DM32_SNAPSHOT=0"
+        if _snap_state["off"]:
+            return False, _snap_state["off"]
+        bad = [v for v in SNAP_EVENT_ENV if os.environ.get(v)]
+        if bad:
+            return False, f"{bad[0]} is set (pending events are not saved)"
+        exe = _qemu_binary()
+        if not exe:
+            return False, "no qemu-system-cskyv2 on PATH"
+        if exe not in _snap_state["bin"]:
+            st = os.stat(exe)
+            h = hashlib.sha256()
+            data = open(exe, "rb")
+            has = False
+            tail = b""
+            while True:
+                chunk = data.read(1 << 22)
+                if not chunk:
+                    break
+                has = has or b"keyseq-remaining" in tail + chunk
+                tail = chunk[-32:]
+                h.update(chunk)
+            data.close()
+            _snap_state["bin"][exe] = (has, h.hexdigest(), st.st_size)
+        has, _, _ = _snap_state["bin"][exe]
+        if not has:
+            return False, "this QEMU binary has no machine migration (no keyseq-remaining property)"
+        return True, ""
+
+
+def snap_off(why):
+    with _snap_lock:
+        if not _snap_state["off"]:
+            _snap_state["off"] = why
+            print(f"     snapshots off for this run: {why}", flush=True)
+
+
+def snap_note(msg):
+    with _snap_lock:
+        if msg in _snap_state["notes"]:
+            return
+        _snap_state["notes"].add(msg)
+    print(f"     {msg}", flush=True)
+
+
+# the stock menu depth (HIST byte 0) each walk of PATHS ends at: a saved state is kept only if the walk got there (a key lost on a
+# loaded host would otherwise be saved, and every scenario restored from it would start one menu level off)
+PATH_DEPTH = {"cs": 3, "rs": 3, "of": 4, "krk": 2, "aprs": 2}
+
+
+def snap_candidates():
+    """{key-name prefix: expected menu depth} a state is saved at: standby (`lead`, depth 0) and every walk of PATHS that has a depth."""
+    c = {("lead",): 0}
+    c.update({tuple(PATHS[n].split()): d for n, d in PATH_DEPTH.items() if n in PATHS})
+    return c
+
+
+@contextlib.contextmanager
+def snap_lock(path, stale=1200):
+    """A lock between threads, processes and containers: mkdir is atomic on every file system (flock is not honoured on every bind mount).
+    A lock older than `stale` seconds belongs to a creator that died and is taken over."""
+    path = pathlib.Path(path)
+    while True:
+        try:
+            os.mkdir(path)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - path.stat().st_mtime > stale:
+                    os.rmdir(path)
+                    continue
+            except OSError:
+                pass
+            time.sleep(0.2)
+    try:
+        yield
+    finally:
+        try:
+            os.rmdir(path)
+        except OSError:
+            pass
+
+
+def snap_prune(d):
+    cut = time.time() - SNAP_KEEP_DAYS * 86400
+    for f in d.iterdir():
+        try:
+            if f.stat().st_mtime < cut and not f.is_dir():
+                f.unlink()
+        except OSError:
+            pass
+
+
+def _sha_file(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        while True:
+            c = f.read(1 << 22)
+            if not c:
+                break
+            h.update(c)
+    return h.hexdigest()
+
+
 class KeySeq(str):
     """The qemu_run.py key string, plus `.guards`: {step index: (ticks, predicate, text)} for the gaps that wait on the guest, not
     on key scans (Boot.wait_step releases them; see keys())."""
     guards = {}
+    tokens = None
 
 
 GUARD_READS = 10 ** 12      # the gap of a guarded step: it never ends by itself, Boot.release_step() ends it
@@ -106,6 +296,7 @@ def keys(seq, gap=400, fast_gap=None, conds=None):
         out.append(KEY[name].format(g=g or gap))
     ks = KeySeq(";".join(out))
     ks.guards = guards
+    ks.tokens = names                                   # the key names as written: Boot looks for a saved-machine prefix in them
     return ks
 
 
@@ -215,9 +406,13 @@ def _qemu_seq_reads(port):
 class Boot:
     """One booted run of the combined image: qemu_run.py drives the keys, the gdb stub (own port) reads memory."""
 
-    def __init__(self, patched, tag, seq, port=None, bp=None, settle=100, on_hit=None):
+    def __init__(self, patched, tag, seq, port=None, bp=None, settle=100, on_hit=None, cold=False, qmp=False, snap_max_k=None, snap_force=None, paused=False):
+        """cold=True: always boot from power-on (a scenario about the first boot, power-on state or boot timing). Otherwise the run starts
+        from a saved machine state when the key sequence begins with `lead` or one of the PATHS walks (see "Saved machine states"
+        in tests/README.md). qmp, snap_max_k, snap_force and paused are the saving machinery's own (the state creator and its check)."""
         self.dir = pathlib.Path(tempfile.mkdtemp(prefix=f"qemu_{tag}_"))
         d = self.dir
+        self.patched, self.tag, self.settle, self.cold, self.seq = patched, tag, settle, cold, seq
         subprocess.run([*COMPOSE, "--patched", str(patched), "--out", str(d / "boot.bin"), "--iram-out"],
                        check=True, stdout=subprocess.DEVNULL)
         idle_wait(d)
@@ -227,34 +422,264 @@ class Boot:
         init = pd[0x72000:0x763FC]
         sram[0x800:0x800 + len(init)] = init
         (d / "sram.bin").write_bytes(bytes(sram))
-        self.nsteps = len(seq.split(";"))
+        self.steps = seq.split(";")
+        self.nsteps = len(self.steps)
         self.guards = dict(getattr(seq, "guards", {}))      # {step: (ticks, predicate, text)}, released by wait_step
         self._seen = {}                                     # guarded step -> OS_TICKS when it was first seen
         self.port = port or free_port()
-        cmd = [sys.executable, "-u", str(RE_TOOLS / "qemu_run.py"), "--image", str(d / "boot.bin"), "--iram", str(d / "iram.bin"), "--sram", str(d / "sram.bin"),
-               "--rundir", str(d / "run"), "--until-step", str(self.nsteps - 1), "--settle-after", str(settle), "--timeout", "420", f"--keyseq={seq}",
-               "--spinor", str(d / "datachip.bin"), "--extra", f"-gdb tcp::{self.port}"]
+        self.k = 0                                          # key steps already done by the restored state (0: a cold boot)
+        self.path = "cold"                                  # "cold" or "snapshot <steps>" (what this run started from)
+        self.q = None                                       # QMP, when the run has it
+        self.paused = paused
+        self.proc = self.c = None
         self.log = open(d / "qr.log", "w")
+        self.hits = 0
+        self.bp = bp
+        self.on_hit = on_hit
+        self.running = False
+        t_start = time.time()
+        plan, why = (snap_force, "") if snap_force else self._snap_plan(seq, cold, snap_max_k)   # plan: (stream file, steps done)
+        if plan:
+            try:
+                self._launch(plan[1], port_settle=settle, restore=plan[0], qmp=True)
+                self.k = plan[1]
+                self.path = f"restored at key step {plan[1]}"
+            except Exception as e:                          # restoring failed: the full boot is always there
+                self._kill()
+                if snap_force:
+                    raise
+                snap_note(f"snapshot restore failed ({type(e).__name__}: {e}); {tag} boots cold")
+                why = "restore failed"
+        if self.proc is None:
+            self._launch(0, port_settle=settle, restore=None, qmp=qmp)
+        self.boot_s = time.time() - t_start
+        if os.environ.get("DM32_SNAP_LOG", "1") != "0" and not snap_force and not tag.startswith("snap"):
+            print(f"     boot {tag}: {self.path if self.path != 'cold' else 'cold' + (' (' + why + ')' if why else '')} in {self.boot_s:.1f} s", flush=True)
+        if bp:
+            self.c.command("Z1,%x,2" % bp)
+        if not paused:
+            self._go()
+
+    # ---- saved states
+    def _snap_plan(self, seq, cold, max_k):
+        """((stream file, k), "") when a saved state of a prefix of `seq` can be used (made now if need be), else (None, why)."""
+        if cold:
+            return None, "cold scenario"
+        toks = getattr(seq, "tokens", None)
+        if not toks:
+            return None, "key sequence has no key names"
+        ok, why = snap_support()
+        if not ok:
+            return None, why
+        best = None
+        for c in sorted(snap_candidates(), key=len):
+            if len(c) <= len(toks) and tuple(toks[:len(c)]) == c and (max_k is None or len(c) <= max_k):
+                best = len(c)
+        if not best:
+            return None, "no shared prefix"
+        try:
+            path = self._snap_ensure(best)
+        except Exception as e:
+            snap_off(f"saving a state failed ({type(e).__name__}: {e})")
+            return None, "saving failed"
+        return ((path, best), "") if path else (None, "state marked bad")
+
+    def _snap_key(self, k):
+        h = hashlib.sha256()
+        h.update(f"kraken-snap {SNAP_FORMAT}\n".encode())
+        for f in ("boot.bin", "iram.bin", "sram.bin", "datachip.bin"):
+            h.update(_sha_file(self.dir / f).encode())
+        exe = _qemu_binary()
+        h.update(_snap_state["bin"][exe][1].encode())
+        h.update(_sha_file(RE_TOOLS / "qemu_run.py").encode())       # the command line it builds
+        for v in sorted(os.environ):
+            if v.startswith("DM32_") and v not in SNAP_ENV_IGNORE:
+                h.update(f"{v}={os.environ[v]}\n".encode())
+        h.update(";".join(self.steps[:k]).encode())
+        h.update(repr(sorted((i, g[0], g[2]) for i, g in self.guards.items() if i < k)).encode())
+        return h.hexdigest()[:32]
+
+    def _snap_ensure(self, k):
+        """The stream file of the state after the first k key steps; saves it first if nobody has (a lock makes the others wait)."""
+        if any("?" in str(g[2]) for i, g in self.guards.items() if i < k):
+            return None
+        d = snap_dir()
+        key = self._snap_key(k)
+        mig, ok, bad = d / f"{key}.mig", d / f"{key}.ok", d / f"{key}.bad"
+        if bad.exists():
+            return None
+        if mig.exists() and ok.exists():
+            os.utime(mig)
+            os.utime(ok)
+            return mig
+        with snap_lock(d / f"{key}.lock"):
+            if bad.exists():
+                return None
+            if mig.exists() and ok.exists():
+                return mig
+            snap_prune(d)
+            t0 = time.time()
+            pre = KeySeq(";".join(self.steps[:k]))
+            pre.guards = {i: g for i, g in self.guards.items() if i < k}
+            pre.tokens = self.seq.tokens[:k]
+            tmp = d / f"{key}.{os.getpid()}.{threading.get_ident()}.tmp"
+            depth = snap_candidates()[tuple(self.seq.tokens[:k])]
+            state = None
+            try:
+                for attempt in (1, 2):
+                    creator = Boot(self.patched, f"snap{k}_{self.tag}", pre, cold=False, qmp=True, snap_max_k=k - 1, settle=300)
+                    try:
+                        creator.wait_step(creator.nsteps - 1)
+                        state = creator.snapshot_save(tmp, standby=(k == 1), depth=depth)
+                        break
+                    except SnapWalkError as e:          # a key lost on a loaded host: walk again rather than keep the wrong state
+                        snap_note(f"saving the state at key step {k}: {e} (attempt {attempt})")
+                    finally:
+                        creator.close()
+                if state is None:
+                    return None
+                # the walk is the oracle: a machine restored from the file must equal the one that was saved
+                ver = Boot(self.patched, f"snapver{k}", pre, snap_force=(tmp, k), paused=True, settle=60)
+                try:
+                    got = ver.state_probe()
+                finally:
+                    ver.close()
+                if got != state:
+                    diff = [n for n in state if state[n] != got[n]]
+                    bad.write_text(f"restored state differs from the saved one: {diff}\n")
+                    snap_note(f"snapshot at key step {k}: restored {diff} differ from the saved machine; scenarios boot cold")
+                    return None
+                os.replace(tmp, mig)
+                ok.write_text(json.dumps({"k": k, "steps": self.steps[:k], "seconds": round(time.time() - t0, 1), "bytes": mig.stat().st_size}))
+                snap_note(f"saved state at key step {k} ({' '.join(self.seq.tokens[:k])}): {time.time() - t0:.0f} s, restore checked equal "
+                          f"(RAM, registers, screen); {mig.stat().st_size >> 20} MB")
+                return mig
+            finally:
+                tmp.unlink(missing_ok=True)
+
+    def snapshot_save(self, path, standby=False, depth=None):
+        """Run the guest to the end of its key steps and until the screen is steady, stop it, write the machine to `path`
+        (QMP migrate). Returns state_probe() of the stopped machine."""
+        q = self.q
+        local = self.nsteps - self.k
+        self.until(lambda b: int(q.execute("qom-get", path="/machine", property="keyseq-step")) >= local, timeout=120)   # the last key's gap is over
+        t0 = self.u32(OS_TICKS)
+        prev = None
+        deadline = time.time() + 45 * timeout_scale()
+        while time.time() < deadline:                       # a steady, non-black screen, and (at standby) the OS up for 3 s
+            self.pump(0.6)
+            cur = self._screen("steady")
+            ticks = self.u32(OS_TICKS)
+            if ticks - t0 >= 40 and cur == prev and cur.count(b"\0") < len(cur) * 0.95 and (not standby or ticks > 300) \
+                    and (depth is None or self.u8(HIST) == depth):
+                break
+            prev = cur
+        else:
+            raise SnapWalkError(f"the walk did not end at menu depth {depth} (HIST {self.u8(HIST)}, list icon {self.u8(CELL_ICON)}) with a steady screen")
+        q.execute("stop")
+        state = self.state_probe()
+        q.execute("migrate", uri=f"file:{path}")
+        while True:
+            info = q.execute("query-migrate")
+            if info.get("status") in ("completed", "failed", "cancelled"):
+                break
+            time.sleep(0.01)
+        if info["status"] != "completed":
+            raise RuntimeError(f"migrate {info}")
+        return state
+
+    def _screen(self, tag):
+        f = self.dir / f"{tag}.ppm"
+        self.q.execute("screendump", filename=str(f), format="ppm")
+        return f.read_bytes()
+
+    def state_probe(self):
+        """What a restored machine must equal: IRAM, SRAM, CPU registers and the LCD frame of the stopped machine (QMP)."""
+        out = {}
+        for name, base, size in (("iram", 0x10000, 0x48000), ("sram", 0x18000000, 0x8000)):
+            f = self.dir / f"probe_{name}.bin"
+            self.q.execute("pmemsave", val=base, size=size, filename=str(f))
+            out[name] = hashlib.sha256(f.read_bytes()).hexdigest()
+        out["regs"] = self.q.hmp("info registers")
+        out["screen"] = hashlib.sha256(self._screen("probe")).hexdigest()
+        return out
+
+    def _launch(self, k, port_settle, restore, qmp):
+        """Start the QEMU (qemu_run.py) for the key steps from `k` on. restore: a stream file to start from (-incoming)."""
+        d = self.dir
+        local = self.steps[k:]
+        extra = f"-gdb tcp::{self.port}"
+        sockdir = None
+        if qmp or restore:
+            sockdir = pathlib.Path(tempfile.mkdtemp(prefix="dm32qmp_"))
+            extra += f" -qmp unix:{sockdir / 'q.sock'},server,nowait"
+        if restore:
+            extra += f" -incoming file:{restore}"
+        if self.paused or restore:
+            extra += " -S"                                  # a restored machine starts when the gdb stub is attached and the breakpoint set (_go)
+        cmd = [sys.executable, "-u", str(RE_TOOLS / "qemu_run.py"), "--image", str(d / "boot.bin"), "--iram", str(d / "iram.bin"), "--sram", str(d / "sram.bin"),
+               "--rundir", str(d / "run"), "--settle-after", str(port_settle), "--timeout", "420" if not restore else str(port_settle + 300),
+               "--spinor", str(d / "datachip.bin"), "--extra", extra]
+        if restore:
+            cmd += ["--stall-seconds", "100000"]            # the restored machine may sit with no key step to come
+            if local:
+                cmd += ["--until-step", str(len(local) - 1)]
+        else:
+            cmd += ["--until-step", str(self.nsteps - 1), f"--keyseq={self.seq}"]
         self.proc = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT, cwd=str(RE_TOOLS))
         self._qom_release = None                          # unknown until the first release: see release_step
-        self.c = None
+        if sockdir:
+            self._sockdir = sockdir
+            self.q = Qmp(sockdir / "q.sock")
+            if restore:
+                deadline = time.time() + 120 * timeout_scale()
+                while self.q.execute("query-status")["status"] == "inmigrate":
+                    if time.time() > deadline or self.proc.poll() is not None:
+                        raise RuntimeError("the machine never finished loading the saved state")
+                    time.sleep(0.02)
+                self.q.execute("qom-set", path="/machine", property="keyseq", value=";".join(local))
+        if self.paused:
+            return
         for _ in range(600):
             try:
                 self.c = RspClient("127.0.0.1", self.port, timeout=60)
                 break
             except OSError:
+                if self.proc.poll() is not None and restore:
+                    raise RuntimeError("QEMU exited")
                 time.sleep(0.2)
         if self.c is None:
-            raise RuntimeError(f"boot {tag}: gdb stub never came up")
+            raise RuntimeError(f"boot {self.tag}: gdb stub never came up")
         # TCP_NODELAY (as target.nodelay): every read halts the guest, and Nagle + delayed ACK kept it halted ~50 ms per packet
         self.c.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.hits = 0
-        self.bp = bp
-        self.on_hit = on_hit
-        if bp:
-            self.c.command("Z1,%x,2" % bp)
-        self.running = False
-        self._go()
+
+    def _kill(self):
+        if self.q:
+            self.q.close()
+            self.q = None
+        if self.c:
+            try:
+                self.c.sock.close()
+            except OSError:
+                pass
+            self.c = None
+        if self.proc:
+            self.proc.kill()
+            self._reap()
+        self.proc = None
+
+    def _reap(self):
+        for pid in os.listdir("/proc"):                  # qemu_run.py does not reap its QEMU when it is killed: find it by its gdb port
+            if pid.isdigit():
+                try:
+                    cl = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="ignore")
+                except OSError:
+                    continue
+                if f"tcp::{self.port}" in cl and int(pid) != os.getpid():
+                    try:
+                        os.kill(int(pid), 9)
+                    except OSError:
+                        pass
 
     def _go(self):
         try:
@@ -273,11 +698,16 @@ class Boot:
         self.c.sock.settimeout(60)
 
     def step(self):
+        if self.k and self.q:                           # restored: the sequencer's own step (the log never shows step 0 of a new sequence)
+            try:
+                return self.k + int(self.q.execute("qom-get", path="/machine", property="keyseq-step"))
+            except (QmpError, OSError, ValueError):
+                pass
         qlog = self.dir / "run" / "qemu.log"
         try:
-            return max([int(x) for x in re.findall(r"KEYSEQ -> step (\d+)", qlog.read_text(errors="ignore"))] or [-1])
+            return self.k + max([int(x) for x in re.findall(r"KEYSEQ -> step (\d+)", qlog.read_text(errors="ignore"))] or [-1])
         except OSError:
-            return -1
+            return self.k - 1
 
     def pump(self, seconds):
         """Let the guest run for `seconds`, counting stops at the breakpoint (each one is resumed). While a guarded key gap is
@@ -436,36 +866,41 @@ class Boot:
 
     def last_frame(self):
         fr = sorted(glob.glob(str(self.dir / "run" / "gram.raw.[0-9]*")))
+        if not fr and self.q:
+            return self.screen_frame()
         d = open(fr[-1], "rb").read()
         return [[struct.unpack_from("<H", d, 2 * (y * 256 + x))[0] for x in range(240)] for y in range(320)]
+
+    def screen_frame(self):
+        """The LCD as last_frame() gives it (RGB565 words), read through QMP screendump. A machine restored from a saved state has
+        dumped no frame until the LCD is drawn again, so last_frame() asks here; the words are the same ones the model dumps."""
+        ppm = self._screen("frame")
+        head = ppm.split(b"\n", 3)
+        w, h = (int(x) for x in head[1].split())
+        px = head[3]
+        return [[((px[3 * (y * w + x)] >> 3) << 11) | ((px[3 * (y * w + x) + 1] >> 2) << 5) | (px[3 * (y * w + x) + 2] >> 3) for x in range(min(w, 240))] for y in range(min(h, 320))]
 
     def close(self):
         try:
             self.proc.kill()
         except Exception:
             pass
-        for pid in os.listdir("/proc"):                  # qemu_run.py does not reap its QEMU when it is killed: find it by its gdb port
-            if pid.isdigit():
-                try:
-                    cl = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="ignore")
-                except OSError:
-                    continue
-                if f"tcp::{self.port}" in cl and int(pid) != os.getpid():
-                    try:
-                        os.kill(int(pid), 9)
-                    except OSError:
-                        pass
+        if self.q:
+            self.q.close()
+        self._reap()
         self.log.close()
         shutil.rmtree(self.dir, ignore_errors=True)
+        if getattr(self, "_sockdir", None):
+            shutil.rmtree(self._sockdir, ignore_errors=True)
 
 
-def run_scenarios(patched, scen, report, batch=6, only=None, conds=None):
+def run_scenarios(patched, scen, report, batch=6, only=None, conds=None, cold=()):
     """Run booted scenarios in parallel batches and report their results in scen order.
 
     scen: {name: (key sequence string, breakpoint or None, check(boot, rep))}. Every scenario gets its own Boot and its own
     thread: the key delivery is waited for, then check(b, rep) reads the guest and calls rep(ok, msg). A scenario that raises is a
     failure, not a hang. More parallel QEMUs than the host can run in real time starve the guest (the stock menu exit timer),
-    hence the batches. only: an iterable of scenario names to run (default all). conds: {name: predicate(boot)} for the `ok:?name` gaps of keys(). Returns {name: [(ok, msg)]}."""
+    hence the batches. only: an iterable of scenario names to run (default all). conds: {name: predicate(boot)} for the `ok:?name` gaps of keys(). cold: names of scenarios that must boot from power-on (Boot cold=True). Returns {name: [(ok, msg)]}."""
     names = [n for n in scen if not only or n in only]
     results, times = {}, {}
     slots = threading.Semaphore(batch)                  # a pool, not batches: a scenario waiting out a timeout no longer idles the others' slots
@@ -478,7 +913,7 @@ def run_scenarios(patched, scen, report, batch=6, only=None, conds=None):
             b = None
             try:
                 seq, bp, check = scen[name]
-                b = Boot(patched, name.replace(":", "_").replace(" ", ""), keys(seq, conds=conds), bp=bp)
+                b = Boot(patched, name.replace(":", "_").replace(" ", ""), keys(seq, conds=conds), bp=bp, cold=name in cold)
                 rep(b.wait_step(b.nsteps - 1), f"[{name}] all {b.nsteps} key steps delivered")
                 t1 = time.time()
                 check(b, rep)

@@ -78,6 +78,35 @@ from build to build: read them from the ELF (`syms()`), never write one into a t
 
 Useful environment variables: `DM32_TIMEOUT_SCALE` multiplies the booted-run timeouts on a slow host.
 
+### Saved machine states
+
+Booted scenarios (`qemu_menu.Boot`) do not all boot the radio and walk the menus themselves. Most start with the same keys: `lead`
+(wait for standby) and then one of the `PATHS` walks (`cs`, `rs`, `of`, `krk`, `aprs`). The first scenario that needs one of those
+prefixes boots a radio, walks it, waits until the screen is steady and saves the machine (QMP `migrate` to a file). Every later
+scenario restores that file (about 0.5 s instead of 5 to 15 s) and sends only the keys after the prefix: through the QOM property
+`keyseq` of the machine (dm32uv-qemu `docs/key-injection.md`). `Boot.step()` and `Boot.nsteps` stay counted from the start of the
+whole sequence, so a scenario is written as before.
+
+- **Where:** `out/snapcache/<key>.mig` (about 18 MB each, `DM32_SNAP_DIR` moves it). The key is a hash of the four composed images, the
+  QEMU binary, `qemu_run.py`, every `DM32_*` variable except the harness knobs, and the prefix's key steps with their gaps. A new
+  build, binary or prefix makes a new file; files not used for 3 days are deleted. `rm -r out/snapcache` is always safe.
+- **Parallel:** one lock per state (a directory made with `mkdir`: `flock` is not honoured on every bind mount). The first scenario saves it, the others wait and then restore the same file read-only.
+  A deeper state (`of`) is made from a shallower one (`rs`), so no walk is done twice.
+- **The walk is the oracle:** when a state is saved, a second QEMU restores it and its IRAM, SRAM, CPU registers and LCD frame must equal
+  the saved machine's. If not, the state is marked `.bad` and every scenario boots cold.
+- **Off switch:** `DM32_SNAPSHOT=0` boots every scenario from power-on, as before.
+- **Fallback:** a QEMU binary without the machine's migration (the key-sequencer properties are the probe: no `keyseq-remaining` in
+  the binary), a pending `DM32_PINSEQ`/`KNOB`/`PTT`/`KEY`/`KEYSEQ` (not saved), or any failure to save or restore turns saving off for
+  the run (or boots that scenario cold) and the scenario passes the same way, slower. Each `Boot` prints which path it took
+  (`boot <tag>: restored at key step 6 in 0.5 s` or `cold (<why>)`).
+- **Cold scenarios:** `Boot(..., cold=True)`, or `run_scenarios(..., cold={names})`. Use it for anything about power-on state, first-boot
+  behaviour, boot timing or the RTC (a restored machine's host-time clock has moved on since the save). `aprs_beacon_e2e.py` is cold
+  (beacon timing at standby counts from power-on). Scenarios that pass a key sequence that does not begin with `lead` or a `PATHS`
+  walk, or write it by hand without `keys()`, are cold by themselves. If unsure, make it cold.
+- **Things that differ from a cold boot:** a breakpoint (`bp=`) is set after the restore, so hits during the prefix are not counted
+  (no scenario depends on them); the guest has been running at standby a little longer before the first key.
+- **Adding a scenario:** write `keys(PATHS["cs"] + " ok ...")` as before. To share a new walk, add it to `PATHS`.
+
 ### Key timing in booted scenarios
 
 A key sequence (`qemu_menu.keys()`) is handed to QEMU up front. A plain gap, `ok:2500`, counts keypad scans (reads of the GPIO row

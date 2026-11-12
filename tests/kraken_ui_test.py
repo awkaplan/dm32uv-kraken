@@ -21,6 +21,7 @@ import struct
 import subprocess
 import sys
 import threading
+import time
 import traceback
 
 from build_artifacts import EXT_TABLE, HOOK_TBL, PATCHED, REPO, SCRATCH_SRAM, STOCK_IMG, TBL_SLOTS, elf, in_claims, syms, krk_define, krk_ext_ranges, stock_is  # first: puts the tool directories on sys.path
@@ -753,8 +754,10 @@ class _ThreadOut:
 
 def booted_runs(s, s2):
     """Every check that boots its own QEMUs and walks the stock menu by key (no machine shared with the halted checks)."""
+    t_all = time.time()
     try:
         optrow_checks.boot_checks(PATCHED, s, s2)        # booted runs: RX Monitor option level, Upload Beacon popups (own QEMUs)
+        print(f"     booted runs so far: {time.time() - t_all:.0f} s (optrow_checks)", flush=True)
         aprs_chan_checks.boot_checks(PATCHED, s, s2)     # F8b Beacon Chan with the real stock 0x16 / 0x17 reloads (own QEMUs)
         # Booted end-to-end runs of the nine Scrambler / Parrot rows that moved to the stock Channel Set
         # menu on 2026-11-03 (docs/chanset-submenu.md): the list carries items 22..30 with the right
@@ -774,7 +777,9 @@ def booted_runs(s, s2):
         import aprs_beacon_e2e as bcn
         print("== APRS automatic beacon, end to end (own QEMUs)")
         bcn.run(PATCHED, m.report)
-        alert_checks.boot_checks(PATCHED, s, s2)    # F14b APRS RX alert: the setting, the popup at standby, stock's redraw (three QEMUs)
+        print(f"     booted runs so far: {time.time() - t_all:.0f} s (through the APRS beacon)", flush=True)
+        alert_checks.boot_checks(PATCHED, s, s2)
+        print(f"     booted runs total: {time.time() - t_all:.0f} s", flush=True)    # F14b APRS RX alert: the setting, the popup at standby, stock's redraw (three QEMUs)
     except Exception:
         print("FAIL  booted runs raised:\n" + traceback.format_exc())
 

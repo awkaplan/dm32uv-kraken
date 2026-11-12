@@ -160,6 +160,8 @@ These are enforced by the build where possible. Never weaken a check to make a b
 - The DM-32UV has no Bluetooth, although stock contains Bluetooth strings and menus (unwired data).
 - Stock VOX is dead code: the setting exists but nothing reads a sensor. Kraken's VOX is its own engine
   (`krk_vox.c`).
+- Booted QEMU scenarios restore a saved machine state for their shared key prefix (`out/snapcache`, `DM32_SNAPSHOT=0` turns it off,
+  `Boot(cold=True)` for power-on behaviour; [tests/README.md](tests/README.md)). A suspicious booted failure: re-run with `DM32_SNAPSHOT=0`.
 - Booted QEMU end-to-end tests are timing-sensitive. A failure on a loaded machine is worth one re-run
   before you debug it. Halted-machine checks (`kraken_ui_test.py`'s first part) are deterministic.
 - Key holds in the booted tests are counted in keypad scans, not milliseconds.

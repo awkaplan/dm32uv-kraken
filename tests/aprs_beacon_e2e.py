@@ -80,7 +80,7 @@ class Run:
 
     def __init__(self, patched, tag, seq, bp):
         self.rec, self.wall = [], []
-        self.b = Boot(patched, f"bcn_{tag}", keys(seq), bp=bp, settle=600, on_hit=self._hit)
+        self.b = Boot(patched, f"bcn_{tag}", keys(seq), bp=bp, settle=600, on_hit=self._hit, cold=True)   # cold: timed at standby from power-on (host-time RTC, tick counts)
 
     def _hit(self, b):
         t = struct.unpack("<I", b.mem_halted(OS_TICKS, 4))[0]
