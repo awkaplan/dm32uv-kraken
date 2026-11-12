@@ -62,18 +62,51 @@ PATHS = {
 }
 
 
-def keys(seq, gap=400, fast_gap=None):
-    """A key sequence string for qemu_run.py. `seq` is space separated names from KEY; `name:ms` overrides that key's gap.
+class KeySeq(str):
+    """The qemu_run.py key string, plus `.guards`: {step index: (ticks, predicate, text)} for the gaps that wait on the guest, not
+    on key scans (Boot.wait_step releases them; see keys())."""
+    guards = {}
+
+
+GUARD_READS = 10 ** 12      # the gap of a guarded step: it never ends by itself, Boot.release_step() ends it
+
+
+def keys(seq, gap=400, fast_gap=None, conds=None):
+    """A key sequence string for qemu_run.py. `seq` is space separated names from KEY; `name:g` overrides that key's gap.
     fast_gap: every Down directly followed by another Down uses it instead (a dozen Downs at 400 ms outlast the stock 5 s
-    Menu Exit Time and the radio drops to standby mid-walk; the OKs keep the long gap so each level has settled)."""
+    Menu Exit Time and the radio drops to standby mid-walk; the OKs keep the long gap so each level has settled).
+
+    The default gap (no `:g`, the `gap` argument is then unused) is DM32_TICK_GAP guest ticks (default 150 = 1.5 s, 0 = `gap` scans as
+    before): the same wait on a quiet and on a loaded host. An explicit numeric gap `g` counts keypad scans (row-bank reads), NOT time: how many scans the guest gets per second depends on how busy
+    the host is (one 2500 gap took 13 s of guest time on a quiet host and 28 s on a loaded one). A gap that has to mean guest
+    time or a guest state is written so instead, and the next key is then sent only when it holds:
+        `ok:t450`      450 guest ticks (uC/OS-III OS_TICKS, 100 Hz: 4.5 s) after the key went down
+        `ok:?name`     conds["name"](boot) is true (a predicate on the guest state, e.g. "back in the Channel Set list")
+        `ok:?name:t60` both (the state AND at least 60 ticks since the key went down)
+    Boot.pump releases the guarded gaps (wait_step, until and wait_list all pump); a Boot that never pumps stalls at the first one."""
+    tick_gap = int(os.environ.get("DM32_TICK_GAP", "150"))
     names = seq.split()
-    out = []
+    out, guards = [], {}
     for i, k in enumerate(names):
         name, _, g = k.partition(":")
-        if not g and fast_gap and name == "down" and names[i + 1:i + 2] == ["down"]:
+        if g.startswith(("?", "t")):
+            ticks, cond = 0, None
+            for part in g.split(":"):
+                if part.startswith("t"):
+                    ticks = int(part[1:])
+                else:
+                    cond = (conds or {})[part[1:]]
+            guards[i] = (ticks, cond, g)
+            g = GUARD_READS
+        elif not g and tick_gap and not (fast_gap and name == "down" and names[i + 1:i + 2] == ["down"]):
+            guards[i] = (tick_gap, None, f"t{tick_gap}")       # the default gap is in guest ticks (DM32_TICK_GAP, 0 = key scans as before)
+            g = GUARD_READS
+        elif not g and fast_gap and name == "down" and names[i + 1:i + 2] == ["down"]:
             g = fast_gap
         out.append(KEY[name].format(g=g or gap))
-    return ";".join(out)
+    ks = KeySeq(";".join(out))
+    ks.guards = guards
+    return ks
 
 
 _ports = set()
@@ -126,6 +159,34 @@ def idle_wait(d):
     return True
 
 
+_seq_reads_cache = {}
+
+
+def _qemu_seq_reads(port):
+    """(pid, address) of the dm32_seq_reads counter of the QEMU whose gdb stub listens on `port` (symbol from the binary, plus the load
+    address of a position independent one)."""
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or int(pid) == os.getpid():
+            continue
+        try:
+            cl = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
+        except OSError:
+            continue
+        if f"tcp::{port}".encode() in b" ".join(cl) and b"qemu-system" in cl[0]:
+            exe = os.path.realpath(f"/proc/{pid}/exe")
+            if exe not in _seq_reads_cache:
+                nm = subprocess.run(["nm", exe], capture_output=True, text=True, check=True).stdout
+                off = int(next(l.split()[0] for l in nm.splitlines() if l.endswith(" dm32_seq_reads")), 16)
+                pie = open(exe, "rb").read(18)[16:18] == b"\x03\x00"       # ELF e_type ET_DYN
+                _seq_reads_cache[exe] = (off, pie)
+            off, pie = _seq_reads_cache[exe]
+            base = 0
+            if pie:
+                base = next(int(l.split("-")[0], 16) for l in open(f"/proc/{pid}/maps") if l.rstrip().endswith(exe))
+            return int(pid), base + off
+    raise RuntimeError(f"no QEMU with gdb port {port}")
+
+
 class Boot:
     """One booted run of the combined image: qemu_run.py drives the keys, the gdb stub (own port) reads memory."""
 
@@ -142,6 +203,8 @@ class Boot:
         sram[0x800:0x800 + len(init)] = init
         (d / "sram.bin").write_bytes(bytes(sram))
         self.nsteps = len(seq.split(";"))
+        self.guards = dict(getattr(seq, "guards", {}))      # {step: (ticks, predicate, text)}, released by wait_step
+        self._seen = {}                                     # guarded step -> OS_TICKS when it was first seen
         self.port = port or free_port()
         cmd = [sys.executable, "-u", str(RE_TOOLS / "qemu_run.py"), "--image", str(d / "boot.bin"), "--iram", str(d / "iram.bin"), "--sram", str(d / "sram.bin"),
                "--rundir", str(d / "run"), "--until-step", str(self.nsteps - 1), "--settle-after", str(settle), "--timeout", "420", f"--keyseq={seq}",
@@ -191,7 +254,20 @@ class Boot:
             return -1
 
     def pump(self, seconds):
-        """Let the guest run for `seconds`, counting stops at the breakpoint (each one is resumed)."""
+        """Let the guest run for `seconds`, counting stops at the breakpoint (each one is resumed). While a guarded key gap is
+        pending (keys()) it runs in quarter-second slices and releases the gap as soon as its condition holds."""
+        end = time.time() + seconds
+        while True:
+            left = end - time.time()
+            if not self.guards:
+                self._pump(left)
+                return
+            if left <= 0:
+                return
+            self._pump(min(0.25, left))
+            self.service_guards()
+
+    def _pump(self, seconds):
         end = time.time() + seconds
         self.c.sock.settimeout(0.5)
         while time.time() < end:
@@ -218,6 +294,27 @@ class Boot:
         while self.step() < n and time.time() - t0 < timeout:
             self.pump(1.0)
         return self.step() >= n
+
+    def service_guards(self, left=60.0):  # left: seconds before a condition that never holds is given up on
+        """Release the guarded gap (keys(): `ok:t450`, `ok:?name`) the key sequence is sitting in, once the guest has got there.
+        A condition that never comes true is released after `left` seconds (the scenario's own check then reports the failure)."""
+        st = self.step()
+        if st not in self.guards:
+            return
+        ticks, cond, text = self.guards[st]
+        now = self.u32(OS_TICKS)
+        first, t_seen = self._seen.setdefault(st, (now, time.time()))
+        if now - first >= ticks and (cond is None or cond(self)) or time.time() - t_seen > max(left, 5):
+            del self.guards[st]
+            self.release_step()
+
+    def release_step(self):
+        """End the current key gap now: set QEMU's dm32_seq_reads (hw/gpio/dm32_gpio.c) past the step's span so the next keypad
+        scan moves on. QEMU runs in this container, so its static is written through /proc/<pid>/mem."""
+        pid, addr = _qemu_seq_reads(self.port)
+        with open(f"/proc/{pid}/mem", "r+b", buffering=0) as f:
+            f.seek(addr)
+            f.write(struct.pack("<Q", 2 * GUARD_READS))
 
     def mem(self, addr, n):
         """Stop the guest for the read (attach semantics), then let it run on."""
@@ -323,13 +420,13 @@ class Boot:
         shutil.rmtree(self.dir, ignore_errors=True)
 
 
-def run_scenarios(patched, scen, report, batch=6, only=None):
+def run_scenarios(patched, scen, report, batch=6, only=None, conds=None):
     """Run booted scenarios in parallel batches and report their results in scen order.
 
     scen: {name: (key sequence string, breakpoint or None, check(boot, rep))}. Every scenario gets its own Boot and its own
     thread: the key delivery is waited for, then check(b, rep) reads the guest and calls rep(ok, msg). A scenario that raises is a
     failure, not a hang. More parallel QEMUs than the host can run in real time starve the guest (the stock menu exit timer),
-    hence the batches. only: an iterable of scenario names to run (default all). Returns {name: [(ok, msg)]}."""
+    hence the batches. only: an iterable of scenario names to run (default all). conds: {name: predicate(boot)} for the `ok:?name` gaps of keys(). Returns {name: [(ok, msg)]}."""
     names = [n for n in scen if not only or n in only]
     results, times = {}, {}
     slots = threading.Semaphore(batch)                  # a pool, not batches: a scenario waiting out a timeout no longer idles the others' slots
@@ -342,7 +439,7 @@ def run_scenarios(patched, scen, report, batch=6, only=None):
             b = None
             try:
                 seq, bp, check = scen[name]
-                b = Boot(patched, name.replace(":", "_").replace(" ", ""), keys(seq), bp=bp)
+                b = Boot(patched, name.replace(":", "_").replace(" ", ""), keys(seq, conds=conds), bp=bp)
                 rep(b.wait_step(b.nsteps - 1), f"[{name}] all {b.nsteps} key steps delivered")
                 t1 = time.time()
                 check(b, rep)

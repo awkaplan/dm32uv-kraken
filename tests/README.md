@@ -78,6 +78,25 @@ from build to build: read them from the ELF (`syms()`), never write one into a t
 
 Useful environment variables: `DM32_TIMEOUT_SCALE` multiplies the booted-run timeouts on a slow host.
 
+### Key timing in booted scenarios
+
+A key sequence (`qemu_menu.keys()`) is handed to QEMU up front. A plain gap, `ok:2500`, counts keypad scans (reads of the GPIO row
+bank), not milliseconds and not guest time. The scans the guest gets per second depend on how busy the host is: the same 2500 gap
+took 13 s of guest time on a quiet host and 28 s on a loaded one, so a scenario that needs "after the popups, before the menu exit
+timer" fails under `OPTROW_PARALLEL=12`. Write a gap that means guest time or a guest state as a guarded gap. The next key is then
+sent when the guest has got there:
+
+- `ok:t450` waits 450 guest ticks (uC/OS-III `OS_TICKS`, 100 Hz) after the key went down.
+- `ok:?name` waits until `conds["name"](boot)` is true. Pass `conds={...}` to `run_scenarios()` (or `keys()`); the predicate reads
+  guest state, for example `lambda b: b.hits >= 3 and b.in_list(0x15)` (three popups drawn, back in the Channel Set list).
+- `ok:?name:t60` needs both.
+
+`Boot.wait_step()` releases a guarded gap by writing QEMU's key-sequence counter through `/proc/<pid>/mem` (the QEMU runs in the same
+container; `qemu_menu._qemu_seq_reads` finds the symbol with `nm`). A condition that never comes true is released after the wait
+timeout, so the scenario's own check reports the failure. Write the check as before: it still asserts what the scenario tests.
+The default gap (a key with no `:g`) is a guarded `t150` (`DM32_TICK_GAP=<ticks>`, 0 = old scan counting). Explicit short scan gaps
+(`ok:60`) stay as they are; they only separate two keys that go in back to back.
+
 ## Data (`data/`)
 
 - `capture16_f1.pcm`, `capture16_f2.pcm`: two APRS frames one DM-32UV received from another over the air
