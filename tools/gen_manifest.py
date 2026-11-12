@@ -103,6 +103,8 @@ def gen_pack(spec):
     out = {"entry": spec["entry"], "sources": srcs, "keep": list(spec.get("keep", []))}
     if spec.get("sram_groups"):
         out["sram_groups"] = spec["sram_groups"]
+    if spec.get("sram_unions"):
+        out["sram_unions"] = spec["sram_unions"]
     return out
 
 

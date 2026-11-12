@@ -10,7 +10,10 @@
   "not_linked: {file: why} for a source of this folder that the release link leaves out (tools/pack_kraken.py lint wants one or the other).",
   "sram_groups: state that must sit together or at a fixed place. Each takes input sections of files ({file, sections}; default the",
   "  file's whole .bss), placed contiguously in the order given; claim + offset (or offset_from_end) pins the group inside a claim;",
-  "  max bounds its size; symbols = [start, end] defined around it. Every other file's .bss is packed on its own."
+  "  max bounds its size; symbols = [start, end] defined around it. Every other file's .bss is packed on its own.",
+  "sram_unions: {name, why, take: [{file, sections}]}. Like a group, but every taken piece sits at ONE base and the union is as big",
+  "  as the largest piece: state used only while its own screen is open (krk.h KRK_SCREEN_BSS = section .bss.scr; rule in",
+  "  docs/flash-allocation.md). List every file that uses KRK_SCREEN_BSS; an unlisted file's .bss.scr is packed as ordinary .bss."
  ],
  "defaults": {
   "opt": "-O2",
@@ -60,5 +63,11 @@
   {"name": "bvm", "why": "F13 modem state, zeroed as one range at screen entry (krk_bvscr.c)",
    "symbols": ["__bvm_start", "__bvm_end"],
    "take": [{"file": "krk_bv_modem.c"}]}
+ ],
+ "sram_unions": [
+  {"name": "scr", "why": "Working state of live screens (RSSI, Band Scope, Grid, Last Heard view, DMR Link, Satellites): only one screen runs at a time (krk_run_screen) and each enter() initialises its own, so they share one SRAM region",
+   "take": [{"file": "krk_satscr.c", "sections": [".bss.scr"]}, {"file": "krk_dmrlink.c", "sections": [".bss.scr"]},
+            {"file": "krk_scope.c", "sections": [".bss.scr"]}, {"file": "krk_rssi.c", "sections": [".bss.scr"]},
+            {"file": "krk_lastheard.c", "sections": [".bss.scr"]}, {"file": "krk_grid.c", "sections": [".bss.scr"]}]}
  ]
 }

@@ -168,7 +168,7 @@ class Spec:
         self.by_stem = {s["stem"]: s for s in self.sources}
         self.groups = []
         taken = {}
-        for g in p.get("sram_groups", []):
+        for g, is_union in [(g, False) for g in p.get("sram_groups", [])] + [(g, True) for g in p.get("sram_unions", [])]:
             take = []
             for t in g["take"]:
                 stem = pathlib.Path(t["file"]).stem
@@ -182,7 +182,8 @@ class Spec:
             self.groups.append(dict(name=g["name"], take=take, claim=g.get("claim"),
                                     offset=num(g["offset"]) if "offset" in g else None,
                                     offset_from_end=num(g["offset_from_end"]) if "offset_from_end" in g else None,
-                                    max=num(g["max"]) if "max" in g else None, symbols=g.get("symbols")))
+                                    max=num(g["max"]) if "max" in g else None, symbols=g.get("symbols"),
+                                    union=is_union))     # sram_unions: every piece at one base, size = the largest
         self.pinned = list(self.m.get("allocations", []))
         self.cpu = self.m.get("cpu", "ck803s")
 
@@ -465,6 +466,11 @@ class Packer:
         group_syms = {}
 
         def lay(unit, at):
+            if unit["group"] and unit["group"]["union"]:
+                at = align_up(at, max([p["align"] for p in unit["pieces"]] + [4]))
+                for p in unit["pieces"]:
+                    p["addr"] = at
+                return at + max([p["size"] for p in unit["pieces"]] + [0])
             for p in unit["pieces"]:
                 at = align_up(at, p["align"])
                 p["addr"] = at
@@ -472,6 +478,8 @@ class Packer:
             return at
 
         def usize(unit):
+            if unit["group"] and unit["group"]["union"]:
+                return max([p["size"] for p in unit["pieces"]] + [0])
             at = 0
             for p in unit["pieces"]:
                 at = align_up(at, p["align"]) + p["size"]
@@ -592,6 +600,7 @@ def plan(args, bmp):
     # e.g. the F13 framing state in the tail of the F9/F13 buffer); every other overlap is an error of this tool.
     placed = [p for b in blobs for p in b["pieces"]] + [p for p in pieces if p["kind"] == "b"]
     union = {f"{g['name']}{i}": g["claim"] for g in spec.groups if g["claim"] for i in range(len(g["take"]))}
+    union.update({f"{g['name']}{i}": "union:" + g["name"] for g in spec.groups if g["union"] for i in range(len(g["take"]))})
     overlapping = check_overlaps(placed, union)
     elf, _mp = pk.ld(pk.script(out / "kraken.ld", placed, group_syms), out / "kraken.elf",
                      ["--no-check-sections"] if overlapping else [])

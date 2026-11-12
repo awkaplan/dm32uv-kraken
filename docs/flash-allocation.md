@@ -109,6 +109,28 @@ Ranges no Kraken build may take, though they are not claimed in a release image:
 | `bvt` | last `0x200` bytes of `kraken_bigbuf` (`__bvt_start`/`__bvt_end`) | F13 framing, AMBE and screen state (`krk_bv_frame.c`, `krk_bv_sound.c`, `krk_ambe.c`, `krk_bvscr.c` `.bss.bvs`). Overlaps the tail of `big` on purpose; `krk_bvscr.c` checks the place and zeroes it at screen entry |
 | `bvm` | anywhere, as one range (`__bvm_start`/`__bvm_end`) | F13 modem state (`krk_bv_modem.c`), zeroed as one range at screen entry |
 
+### Screen-only state (link.json `sram_unions`, `KRK_SCREEN_BSS`)
+
+Only one Kraken screen runs at a time (`krk_run_screen`; `krk_screen_owner` holds a magic while it does). State used only
+while its own screen is open can therefore share one SRAM region with every other screen's such state. Mark the object
+`KRK_SCREEN_BSS` (krk.h: section `.bss.scr`; plain `.bss` in the Mac host tests) and list its file in the `scr` union in
+`link.json`. The pack places every listed piece at one base; the region is as big as the largest piece, and `check_overlaps`
+allows overlaps inside a declared union only. An unlisted file's `.bss.scr` is just packed as ordinary `.bss`.
+
+An object may go in only if all of this holds (read the code, do not guess):
+
+1. Every read and write is inside its own screen's `enter`, `tick`, `exit` and the static helpers they call. No hook (`hooks.json`
+   target, `krk_hook_*`), maintenance or background tick, RX Monitor (`krk_aprsrx.c`), Parrot or Burst Voice path, VOX, beacon,
+   option-row `get`/`set` (they run from stock menus, outside any screen) or other screen touches it, and no non-static function
+   hands out a pointer to it.
+2. `enter()` initialises every field that is read before it is written. SRAM is never zeroed, and another screen used the
+   region last.
+3. Nothing depends on its value after the screen exits or on its value at the next entry.
+
+Anything that survives between runs stays out: settings mirrors, rings such as Last Heard's `lh`, magic-guarded engines
+(`R` in `krk_satrf.c` keeps tracking after Back), editor caches and anything a test reads at standby. When unsure, leave it out.
+Moved: `rssi_st`, Band Scope `S`, Grid `g`, Last Heard view `s`, DMR Link `lqst`, and the Satellites `sat`/`obs`/`pc`/`loaded_idx`.
+
 Patch SRAM is never zeroed at power-up, wherever it is placed; all Kraken state is guarded by a magic or set up at
 screen entry, so placement does not change behaviour.
 

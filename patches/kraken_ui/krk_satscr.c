@@ -24,9 +24,10 @@
 
 enum { V_LIST, V_INFO };
 
-static struct krk_sat sat;                      /* the satellite loaded for the info view / pass search */
-static struct krk_sat_obs obs;
-static struct { u32 aos; u16 dur; u8 el; u8 st; } pc[KRK_SAT_MAXN];     /* st: 0 todo, 1 pass, 2 none in 24 h, 3 bad */
+/* screen-only (sat, obs, pc, loaded_idx): sat_enter clears pc[].st and loaded_idx; obs is read only when ui.have_obs (set with obs) */
+static struct krk_sat sat KRK_SCREEN_BSS;                      /* the satellite loaded for the info view / pass search */
+static struct krk_sat_obs obs KRK_SCREEN_BSS;
+static struct { u32 aos; u16 dur; u8 el; u8 st; } pc[KRK_SAT_MAXN] KRK_SCREEN_BSS;     /* st: 0 todo, 1 pass, 2 none in 24 h, 3 bad */
 static struct {
     u8 view, sel, top, loc, have_obs, loaded, bi, pad;
     u32 last_s, retry;
@@ -34,7 +35,7 @@ static struct {
     const char *msg;
 } ui;
 static const char done_msg[] = "self-test done";
-static int loaded_idx;                          /* satellite index + 1 held in `sat`; 0 = none (no .data: SRAM is not initialised) */
+static int loaded_idx KRK_SCREEN_BSS;                          /* satellite index + 1 held in `sat`; 0 = none (no .data: SRAM is not initialised) */
 
 static double t70(void)
 {

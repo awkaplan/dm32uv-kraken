@@ -21,6 +21,19 @@
 #endif
 #endif
 
+/* Working state used ONLY while one Kraken screen is open: every file's .bss.scr is overlaid at one SRAM base (link.json
+ * "sram_unions", docs/flash-allocation.md "Screen-only state"). Only one screen runs at a time (krk_run_screen). The object
+ * must be read and written only by its own screen's enter/tick/exit and be fully initialised in enter(); nothing else
+ * (hooks, ticks, the RX Monitor, option rows, other screens) may touch it, and nothing may rely on its value after exit.
+ * Host test builds (Mach-O) have no such section: there it is plain .bss. */
+#ifndef KRK_SCREEN_BSS
+#ifdef __ELF__
+#define KRK_SCREEN_BSS __attribute__((section(".bss.scr")))
+#else
+#define KRK_SCREEN_BSS
+#endif
+#endif
+
 #define KRK_BG      0x0000      /* black */
 #define KRK_FG      0xFFFF      /* white */
 #define KRK_DIM     0x8410      /* grey */

@@ -37,7 +37,7 @@ static struct {
     u32 line_hash[KRK_LINES];   /* redraw a line only when its text changes */
     int s16;                    /* smoothed reading, half-dB x 16 (meter ballistics) */
     u8 have_s, text_div;
-} rssi_st;
+} rssi_st KRK_SCREEN_BSS;   /* screen-only (rssi_enter sets every field); see krk.h KRK_SCREEN_BSS */
 
 /* Meter ballistics: 4 register reads averaged per 100 ms tick, then a fast-attack (1/2) /
  * slow-decay (1/8, ~0.8 s) envelope, so a fading FM signal reads steadily (hardware feedback
