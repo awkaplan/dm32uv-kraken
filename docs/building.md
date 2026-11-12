@@ -148,19 +148,29 @@ Kraken's code is `patches/kraken_ui/`. It is one patch manifest (`kraken_ui.patc
 program into erased program flash, plus hooks: stock instructions replaced by a `bsr` into our code.
 Read [menu-hosts.md](menu-hosts.md) first; it explains screens, rows and hosts.
 
+**Quick start.** `tools/new_feature.py NAME --id FNN --kind setting|screen|oneshot --host kraken|aprs|rs|cs [--label "Text"]`
+writes a compiling stub that cannot transmit (`krk_<name>.c`: a RAM-only setting, a live screen or a one-shot with a popup), the
+feature spec `patches/kraken_ui/features/<name>.json`, a host test `tests/test_<name>.py`, a user-guide page with the Status and
+Where lines, and the `docs/feature-status.md` row, then runs the generators. Build (`tools/build.sh`), then replace the stub.
+`--remove` deletes exactly what it wrote. A host whose arrays are full (APRS today) is refused with a message
+([menu-hosts.md](menu-hosts.md), "A full host"). The steps below say what the pieces are; most of them are in the spec.
+
 1. **The code.** Write the feature as a `struct krk_screen` (a live screen, a one-shot action, or a
    setting with `.opt`) in a new `krk_<name>.c`. `krk.h` has the screen API. Stock functions are called by
    their names from dm32uv-re's `tools/link/dm32_stock_symbols.ld`.
-2. **The link.** Add the source to `sources` in `link.json` (with `"opt": "-Os"` if it is not timing-critical,
-   and `"keep": true` if something reaches its functions only by name, such as a QEMU test). That is all:
-   any source can call any other, and `tools/pack_kraken.py` places it at build time. The build prints how
-   much flash and SRAM is left (`out/kraken/pack/kraken_ui/report.txt`) and fails, with the number of bytes
-   missing, only when the whole pool is full. Manifest entries name Kraken symbols as `@kraken:symbol`.
-   `tools/pack_kraken.py lint` (run by the build and by `tests/test_pack_lint.py`) fails on a source that is in
-   neither `sources` nor `not_linked`, on a hand-written linker script, and on a claim without a `pinned` reason.
-3. **The menu row.** Append the row to its host in `menu_hosts.json` (the KRAKEN list itself is
-   `krk_screens[]` in `krk_core.c` and `krk_ext_screens[]` in `krk_ext.c`).
-4. **Hooks** into stock code, if any: one line per site in `hooks.json` with the address, the expected
+2. **The spec.** `features/<name>.json` ([menu-hosts.md](menu-hosts.md) section 3) names the feature id, the source (with
+   `"opt": "-Os"` if it is not timing-critical, and `"keep": true` if something reaches its functions only by name, such as a
+   QEMU test), the menu row, any hooks, and the user-guide page. That is all for the link: any source can call any other,
+   and `tools/pack_kraken.py` places it at build time. The build prints how much flash and SRAM is left
+   (`out/kraken/pack/kraken_ui/report.txt`) and fails, with the number of bytes missing, only when the whole pool is full.
+   Manifest entries name Kraken symbols as `@kraken:symbol`. Features not yet migrated to a spec are lines of `link.json`
+   (`sources`), `menu_hosts.json` (the row) and `hooks.json`. `tools/pack_kraken.py lint` (run by the build and by
+   `tests/test_pack_lint.py`) fails on a source that is in neither, on a spec without a guide page that has Status and Where
+   lines or without a status row, on a hand-written linker script, and on a claim without a `pinned` reason.
+3. **The menu row.** In the spec: `host` (`aprs`, `rs`, `cs`, `kraken`), `order` (the host's current row count, so no item
+   number moves), `key`, `label`, `screen`. The screen's `extern` is generated. APRS rows also go in `aprs_analog_items[]` in
+   `krk_core.c`.
+4. **Hooks** into stock code, if any: one entry per site in the spec's `hooks` (or `hooks.json`) with the address, the expected
    stock bytes or `bsr` target, and our target. Each hook is a reverse-engineering finding; put why it is
    safe in its `why` text.
 5. **Memory.** Nothing to do for ordinary code and `.bss`: the pack claims what it uses. State that must sit
@@ -169,14 +179,15 @@ Read [menu-hosts.md](menu-hosts.md) first; it explains screens, rows and hosts.
    `link.json`. [flash-allocation.md](flash-allocation.md) explains both.
 6. **Regenerate** the manifest and headers, then build:
    ```sh
-   python3 tools/gen_menu_hosts.py   # menu_hosts.json -> manifest rows, krk_menu_rows.h
-   python3 tools/gen_manifest.py     # hooks.json, link.json -> manifest splices and pack
+   python3 tools/gen_menu_hosts.py   # menu_hosts.json + features/*.json rows -> manifest rows, krk_menu_rows.h
+   python3 tools/gen_manifest.py     # hooks.json, link.json + features/*.json -> manifest splices and pack
    python3 tools/gen_claims.py       # allocations.json (pinned claims) -> krk_claims.h
    tools/build.sh
    ```
    The build fails while any generated file is stale.
 7. **Tests.** Add a host test for the logic (`tests/test_<name>.py`, with `hostcc.py` and `hostlib.py`)
    and QEMU checks for the hooks, called from `tests/kraken_ui_test.py`.
+8. **Docs.** The user-guide page (**Status** and **Where** lines), the `feature-status.md` row, and a developer note.
 
 A new patch that is not part of `kraken_ui` gets its own folder under `patches/`, its own manifest and
 claims file, and an entry in `image.json` (`patches`, and `allocation_files` for the claims). `patches/mi_rng/`

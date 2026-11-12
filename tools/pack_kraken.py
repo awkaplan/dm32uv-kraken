@@ -742,6 +742,60 @@ def verify(args):
     return 0
 
 
+FEATURE_ID = re.compile(r"^F\d+[a-z]?$")
+
+
+def feature_problems(repo, listed, skipped):
+    """Lint of patches/kraken_ui/features/*.json (docs/menu-hosts.md section 3). Adds the specs' sources to `listed`
+    (the set of linked sources) and returns the problems: a spec must carry a feature id with a row in docs/feature-status.md,
+    name a user-guide page with a Status and a Where line, name existing sources that no other file lists, and name an existing note."""
+    repo = pathlib.Path(repo)
+    ui = repo / "patches/kraken_ui"
+    bad = []
+    status = repo / "docs/feature-status.md"
+    status_text = status.read_text() if status.exists() else ""
+    seen = {}
+    for p in sorted((ui / "features").glob("*.json")):
+        rel = p.relative_to(repo)
+        try:
+            f = json.loads(p.read_text())
+        except ValueError as e:
+            bad.append(f"{rel}: not JSON ({e})")
+            continue
+        fid = f.get("feature", "")
+        if not FEATURE_ID.match(str(fid)):
+            bad.append(f"{rel}: \"feature\" must be an F-number like F8b (docs/feature-status.md), got {fid!r}")
+        elif not re.search(rf"^\|\s*{fid}\s*\|", status_text, re.M):
+            bad.append(f"{rel}: {fid} has no row in docs/feature-status.md")
+        guide = f.get("guide", "")
+        gpath = (repo / "docs" / guide.split("#")[0]) if guide else None
+        if not guide:
+            bad.append(f"{rel}: no \"guide\" (the user-guide page, e.g. user-guide/aprs.md)")
+        elif not gpath.is_file():
+            bad.append(f"{rel}: guide {guide} does not exist under docs/")
+        else:
+            text = gpath.read_text()
+            for tag in ("Status", "Where"):
+                if not re.search(rf"^\*\*{tag}:\*\*", text, re.M):
+                    bad.append(f"{rel}: guide {guide} has no \"**{tag}:**\" line")
+        note = f.get("note")
+        if note and not (repo / "docs" / note.split("#")[0]).is_file():
+            bad.append(f"{rel}: note {note} does not exist under docs/")
+        for s in f.get("sources", []):
+            name = s if isinstance(s, str) else s["file"]
+            if not (ui / name).is_file():
+                bad.append(f"{rel}: source {name} does not exist in patches/kraken_ui")
+            if name in listed:
+                bad.append(f"{rel}: source {name} is also in link.json sources (list a source in one place)")
+            if name in skipped:
+                bad.append(f"{rel}: source {name} is in link.json not_linked")
+            if name in seen:
+                bad.append(f"{rel}: source {name} is also in {seen[name]}")
+            seen[name] = rel.name
+            listed.add(name)
+    return bad
+
+
 def lint_problems(repo=REPO):
     """The reasons this tree would bypass the pack, as a list of strings (empty: clean)."""
     repo = pathlib.Path(repo)
@@ -750,6 +804,7 @@ def lint_problems(repo=REPO):
     spec = json.loads((ui / "link.json").read_text())
     listed = {(s if isinstance(s, str) else s["file"]) for s in spec["sources"]}
     skipped = spec.get("not_linked", {})
+    bad += feature_problems(repo, listed, skipped)
     for f in sorted(list(ui.glob("krk_*.c")) + list(ui.glob("*.S"))):
         if f.name not in listed and f.name not in skipped:
             bad.append(f"{f.relative_to(repo)}: not in link.json \"sources\" (or \"not_linked\" with why): add it there, "

@@ -20,6 +20,7 @@ or leave it unusable until reflashed. Read the safety rules below before changin
 | Path | What |
 |---|---|
 | `patches/kraken_ui/` | Almost all of Kraken: `krk_*.c` features, `krk.h` (screen API), `krk_stock.h` (stock calls), `krk_stubs.S` |
+| `patches/kraken_ui/features/<name>.json` | One feature's spec: id, sources, menu rows, hooks, doc pointers; merged into the files below by the generators |
 | `patches/kraken_ui/menu_hosts.json` | Where each feature's menu row appears (single source; generated into the manifest and `krk_menu_rows.h`) |
 | `patches/kraken_ui/hooks.json` | Every splice into stock code: address, expected stock bytes, target, and `why` |
 | `patches/kraken_ui/link.json` | Kraken is ONE link: its sources (link order, per-file flags), gc roots, and SRAM placement rules |
@@ -70,31 +71,25 @@ Kraken code or `.bss`, and never pick an address for it; a fixed claim is only f
 `pinned` reason. `pack_kraken.py lint` (build step 0, `tests/test_pack_lint.py`) refuses anything else.
 
 The full recipe is [docs/building.md section 6](docs/building.md#6-adding-a-feature). Read
-[docs/menu-hosts.md](docs/menu-hosts.md) first; it explains screens, rows and hosts. In short:
+[docs/menu-hosts.md](docs/menu-hosts.md) first; it explains screens, rows, hosts and the per-feature spec. Start with
+`tools/new_feature.py NAME --id FNN --kind setting|screen|oneshot --host kraken|aprs|rs|cs`: it writes a stub that cannot
+transmit, `patches/kraken_ui/features/<name>.json`, a host test, a user-guide stub and the status row, and runs the generators
+(`--remove` undoes it). Then:
 
-1. **Code.** A new `patches/kraken_ui/krk_<name>.c` defining a `const struct krk_screen` (see `krk.h`):
-   - a **live screen** (`.enter`, `.tick`): the runner owns Back, the keypad and the menu-exit timer;
-   - a **one-shot action** (`.flags = KRK_SF_ONESHOT`): report the result with `krk_popup()`;
-   - a **setting** (`.opt` -> `struct krk_opt`): you write only `get`/`set`. The stock option list or
-     numeric editor does the rest ([docs/stock-option-level.md](docs/stock-option-level.md), cookbook in
-     section 6).
-2. **Link.** Add the source to `sources` in `link.json`. Any source can call any other; the pack places
-   it. `out/kraken/pack/kraken_ui/report.txt` shows the flash and SRAM left. Manifest entries write Kraken
-   symbols as `@kraken:symbol`.
-3. **Menu row.** Add it to `menu_hosts.json`, either in the KRAKEN category or appended to a stock sub-list
-   (APRS, Call Log, GNSS, Radio Settings, Channel Set). Host-specific notes: `docs/*-submenu.md`.
-4. **Hooks** (only if the feature must change stock behaviour): one entry per site in `hooks.json`, with
-   the expected stock bytes and a `why` that says what the stock code does there and why replacing it is
-   safe. A hook must fall through to stock unchanged when the feature is off.
-5. **Memory.** Ordinary code and `.bss` need nothing: the pack claims exactly what it uses. Only state that
-   must sit at a fixed address gets a pinned claim in `allocations.json` (and an `sram_groups` rule in
-   `link.json` if it must line up with other state). [docs/flash-allocation.md](docs/flash-allocation.md).
-6. **Regenerate and build** (commands above), including `tools/gen_fw_maps.py`: every stock address must translate
-   into L01 and 049. One it cannot prove needs a hand proof in `firmware/<id>/overrides.json`, or a hook placed so
-   it fits every build ([docs/firmware-builds.md](docs/firmware-builds.md) section 4).
-7. **Tests.** A host test for pure logic (`tests/test_<name>.py`, using `hostcc.py` and `hostlib.py`), and
-   QEMU checks for anything that touches stock code or RAM, called from `tests/kraken_ui_test.py`.
-8. **Docs.** Update the user guide page (a **Status** line and a **Where** line), the row in
+1. **Code.** `krk_<name>.c` defines a `const struct krk_screen` (see `krk.h`): a live screen (`.enter`, `.tick`), a one-shot
+   (`.flags = KRK_SF_ONESHOT`, report with `krk_popup()`), or a setting (`.opt` -> `struct krk_opt`, only `get`/`set`; the stock
+   option list or numeric editor does the rest, [docs/stock-option-level.md](docs/stock-option-level.md)).
+2. **Spec.** `features/<name>.json` holds the source, the menu row (append: `order` = the host's row count, so no item number
+   moves) and any hooks (each needs the expected stock bytes and a `why`; a hook must fall through to stock unchanged when
+   the feature is off). Features without a spec are lines of `link.json`, `menu_hosts.json` and `hooks.json`.
+3. **Memory.** New flash or SRAM that must sit at a fixed address goes in a claim in `allocations.json`
+   ([docs/flash-allocation.md](docs/flash-allocation.md)); everything else is packed per build.
+4. **Regenerate and build** (commands above), including `tools/gen_fw_maps.py`: every stock address must translate into L01
+   and 049. One it cannot prove needs a hand proof in `firmware/<id>/overrides.json`, or a hook placed so it fits every
+   build ([docs/firmware-builds.md](docs/firmware-builds.md) section 4).
+5. **Tests.** A host test for pure logic (`tests/test_<name>.py`, using `hostcc.py` and `hostlib.py`), and QEMU checks for
+   anything that touches stock code or RAM, called from `tests/kraken_ui_test.py`.
+6. **Docs.** The user guide page (a **Status** line and a **Where** line; lint requires both), the row in
    [docs/feature-status.md](docs/feature-status.md), and the feature's developer note in `docs/`.
 
 A feature that is not part of `kraken_ui` gets its own `patches/<name>/` folder, manifest and claims

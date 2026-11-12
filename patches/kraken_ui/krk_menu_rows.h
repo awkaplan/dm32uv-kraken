@@ -58,4 +58,31 @@
 #define KRK_CS_ITEM_PARSTAT 30
 #define KRK_CS_ROWS &krk_dmrlink_screen, &krk_bv_screen, &krk_scramble_on_screen, &krk_scrkey_row, &krk_parrot_arm_screen, &krk_parrot_play_screen, &krk_parrot_check_screen, &krk_parrot_clear_screen, &krk_parrot_status_screen
 
+#ifndef __ASSEMBLER__
+/* Every row's screen, declared here so a row needs no edit in krk_ext.c. */
+struct krk_screen;
+extern const struct krk_screen krk_aprs_path_screen;
+extern const struct krk_screen krk_aprs_upload_screen;
+extern const struct krk_screen krk_callsign_screen;
+extern const struct krk_screen krk_aprsrx_screen;
+extern const struct krk_screen krk_monitor_row;
+extern const struct krk_screen krk_aprs_text_screen;
+extern const struct krk_screen krk_aprs_chan_screen;
+extern const struct krk_screen krk_aprs_msg_screen;
+extern const struct krk_screen krk_lastheard_screen;
+extern const struct krk_screen krk_grid_screen;
+extern const struct krk_screen krk_txtrim_screen;
+extern const struct krk_screen krk_squelch_screen;
+extern const struct krk_screen krk_band_screen;
+extern const struct krk_screen krk_dmrlink_screen;
+extern const struct krk_screen krk_bv_screen;
+extern const struct krk_screen krk_scramble_on_screen;
+extern const struct krk_screen krk_scrkey_row;
+extern const struct krk_screen krk_parrot_arm_screen;
+extern const struct krk_screen krk_parrot_play_screen;
+extern const struct krk_screen krk_parrot_check_screen;
+extern const struct krk_screen krk_parrot_clear_screen;
+extern const struct krk_screen krk_parrot_status_screen;
+#endif
+
 #endif

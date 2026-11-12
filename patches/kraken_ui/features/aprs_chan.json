@@ -1,0 +1,10 @@
+{
+ "feature": "F8b",
+ "name": "Beacon Chan",
+ "sources": [{"file": "krk_aprs_chan.c", "keep": true, "after": "krk_tags.c"}],
+ "rows": [
+  {"host": "aprs", "order": 6, "key": "chan", "label": "Beacon Chan", "screen": "&krk_aprs_chan_screen", "label_at": "0x030e77c0"}
+ ],
+ "guide": "user-guide/aprs.md#beacon-channel",
+ "note": "aprs-submenu.md"
+}
