@@ -69,6 +69,9 @@ def nodelay(c):
     c.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
 
+SSI0_BAUDR = 0x140A0014                 # stock's SPI NOR controller, SSI0 (dm32uv-qemu docs/devices.md)
+
+
 @contextlib.contextmanager
 def halted_machine(patched, port=None):
     """The combined image composed for QEMU and started halted at reset. Yields the gdb client; QEMU is killed on exit."""
@@ -87,6 +90,10 @@ def halted_machine(patched, port=None):
             else:
                 os.environ["DM32_GDB_PORT"] = old
     nodelay(c)
+    # SSI0 (the SPI NOR data chip) as stock's boot leaves it: BAUDR 2 (read at standby). The machine is halted at reset, so code
+    # called here that touches the data chip would otherwise run with BAUDR 0, and a timed SSI model (dm32uv-qemu main) shifts
+    # no frame with the clock off, as the hardware would: the stock flash driver then spins on TFE forever.
+    m.wmem(c, SSI0_BAUDR, struct.pack("<I", 2))
     try:
         yield c
     finally:

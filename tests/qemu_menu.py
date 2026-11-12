@@ -162,6 +162,31 @@ def idle_wait(d):
 _seq_reads_cache = {}
 
 
+_has_keyseq_prop = {}
+
+
+def _qemu_exe(port):
+    """The binary of the QEMU whose gdb stub listens on `port`."""
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or int(pid) == os.getpid():
+            continue
+        try:
+            cl = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
+        except OSError:
+            continue
+        if f"tcp::{port}".encode() in b" ".join(cl) and b"qemu-system" in cl[0]:
+            return os.path.realpath(f"/proc/{pid}/exe")
+    raise RuntimeError(f"no QEMU with gdb port {port}")
+
+
+def has_keyseq_property(port):
+    """Does this QEMU have the runtime key-sequencer properties (dm32uv-qemu main, docs/key-injection.md)?"""
+    exe = _qemu_exe(port)
+    if exe not in _has_keyseq_prop:
+        _has_keyseq_prop[exe] = b"keyseq-remaining" in open(exe, "rb").read()
+    return _has_keyseq_prop[exe]
+
+
 def _qemu_seq_reads(port):
     """(pid, address) of the dm32_seq_reads counter of the QEMU whose gdb stub listens on `port` (symbol from the binary, plus the load
     address of a position independent one)."""
@@ -211,6 +236,7 @@ class Boot:
                "--spinor", str(d / "datachip.bin"), "--extra", f"-gdb tcp::{self.port}"]
         self.log = open(d / "qr.log", "w")
         self.proc = subprocess.Popen(cmd, stdout=self.log, stderr=subprocess.STDOUT, cwd=str(RE_TOOLS))
+        self._qom_release = None                          # unknown until the first release: see release_step
         self.c = None
         for _ in range(600):
             try:
@@ -309,8 +335,21 @@ class Boot:
             self.release_step()
 
     def release_step(self):
-        """End the current key gap now: set QEMU's dm32_seq_reads (hw/gpio/dm32_gpio.c) past the step's span so the next keypad
-        scan moves on. QEMU runs in this container, so its static is written through /proc/<pid>/mem."""
+        """End the current key gap now. A QEMU with the key sequencer in device state (dm32uv-qemu main: docs/key-injection.md)
+        takes "qom-set /machine keyseq-remaining 0" through the gdb stub's monitor command; the older binary has a static
+        dm32_seq_reads (hw/gpio/dm32_gpio.c), set past the step's span through /proc/<pid>/mem (QEMU runs in this container)."""
+        if self._qom_release is None:
+            self._qom_release = has_keyseq_property(self.port)
+        if self._qom_release:
+            self._halt()
+            r, out = self.c.command("qRcmd," + b"qom-set /machine keyseq-remaining 0".hex()), ""
+            while r.startswith("O") and r != "OK":            # monitor output (hex) comes before the final reply
+                out += bytes.fromhex(r[1:]).decode(errors="replace")
+                r = self.c.read_packet()
+            self._go()
+            if r != "OK" or out.strip():
+                raise RuntimeError(f"keyseq-remaining release failed: {r!r} {out.strip()!r}")
+            return
         pid, addr = _qemu_seq_reads(self.port)
         with open(f"/proc/{pid}/mem", "r+b", buffering=0) as f:
             f.seek(addr)

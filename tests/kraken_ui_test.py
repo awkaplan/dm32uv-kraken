@@ -711,11 +711,21 @@ def check_aprs_sublist(c, s, s2):
 def check_f9(c):
     """F9 parrot / voice-frame layer: static splice checks (decoded from the IRAM pc) and in-target runs of the
     hooks, gates and watchdogs (tests/parrot_qemu_test.py). The baseband-window checks need a QEMU model that keeps
-    the data written to 0x16000960: run tests/parrot_qemu_test.py --window in such an image."""
+    the data written to 0x16000960: they run when this QEMU keeps it (window_retains)."""
     import parrot_qemu_test as pq
     s1, s2 = syms(ELF, sizes=True), syms(ELF2, sizes=True)
     pq.static_checks(PATCHED.read_bytes(), s2, pq.STOCK.read_bytes(), s1)
-    pq.run_checks(c, s1, s2, window=False)
+    pq.run_checks(c, s1, s2, window=window_retains(c, pq.WINDOW))
+
+
+def window_retains(c, addr):
+    """Does this QEMU's baseband voice window keep what is written to it? The image's older board model read zeros there;
+    dm32uv-qemu main's dm32_dmrram is RAM. parrot_qemu_test checks the window bytes only where they are kept."""
+    old = read_mem(c, addr, 4)
+    m.wmem(c, addr, b"\x5a\xa5\x3c\xc3")
+    kept = read_mem(c, addr, 4) == b"\x5a\xa5\x3c\xc3"
+    m.wmem(c, addr, old)
+    return kept
 
 
 class _ThreadOut:
