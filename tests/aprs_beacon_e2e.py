@@ -113,17 +113,21 @@ class Run:
 
     def wait_ticks(self, n, keep=None):
         """Let the guest run until n OS ticks have passed (keep(): called about once a second, e.g. to re-plant)."""
-        end = (self.ticks() + n) & 0xFFFFFFFF
-        while True:
+        end = time.time() + n / HZ                  # HOST time: under stock power save the OS tick runs ~2x fast (QEMU's timer follows
+        while True:                                 # stock's ch0 LoadCount 840000 <-> 240000), the RTC and krk_real_time keep real time
             self.b.pump(1.0)
             self.dw_off()
             if keep:
                 keep()
-            if (self.ticks() - end) & 0x80000000 == 0:
+            if time.time() >= end:
                 return
 
     def hits_after(self, t0):
         return [r for r in self.rec if (r[0] - t0) & 0x80000000 == 0]
+
+    def hit_walls(self, t0):
+        """Host-time stamps (s) of the hits hits_after(t0) returns."""
+        return [w for r, w in zip(self.rec, self.wall) if (r[0] - t0) & 0x80000000 == 0]
 
     def close(self):
         self.b.close()
@@ -141,6 +145,7 @@ def setup_ok(r, rep, name):
     rt, ivl = r.b.u8(APRS_RT), r.b.u16(APRS_INTERVAL)
     rep(ok and rt & 1 and ivl == IVL, f"[{name}] set up through the menu: standby (mode {r.b.u8(UI_MODE):#x}), "
                                       f"[0x40078] bit 0 = {rt & 1}, interval {ivl} s (want 1, {IVL})")
+    r.w0 = time.time()
     return r.ticks() if ok and rt & 1 and ivl == IVL else None
 
 
@@ -174,14 +179,14 @@ def sc_standby(patched, s, s2, rep, plant=None, name="standby"):
         rep(len(h) >= 2, f"[{name}] two due beacons within {2 * IVL + 12} s of standby ({len(h)}: "
                          f"{[(round((t - t0) / HZ, 1), hex(m)) for t, m, _ in h]} as (s after standby, mode))")
         if len(h) >= 2:
-            d1, d2 = (h[0][0] - t0) / HZ, (h[1][0] - h[0][0]) / HZ
+            hw = r.hit_walls(t0)
+            d1, d2 = hw[0] - r.w0, hw[1] - hw[0]            # host seconds: the interval is real time (krk_real_time)
             rep(IVL - 6 <= d1 <= IVL + 8, f"[{name}] first due beacon {d1:.1f} s after standby was seen (one interval, {IVL} s; the timer arms at "
                                          f"the first tick at standby, which a loaded host sees a few seconds late)")
-            i0 = r.rec.index(h[0])
-            w2 = r.wall[i0 + 1] - r.wall[i0]
+            w2 = (h[1][0] - h[0][0]) / HZ
             # krk_real_time keeps the interval on the RTC, which QEMU runs on host time: on a loaded host the guest tick
             # runs slow, so the tick-counted interval comes out a little short (seen: 28.7 s of ticks for 30 s)
-            rep(IVL - 4 <= d2 <= IVL + 6, f"[{name}] second due beacon {d2:.1f} s of OS ticks ({w2:.1f} s host time) after the first (one interval)")
+            rep(IVL - 4 <= d2 <= IVL + 6, f"[{name}] second due beacon {d2:.1f} s host time ({w2:.1f} s of OS ticks) after the first (one interval)")
         if plant is not None:
             rep(h and all(m == plant for _, m, _ in h), f"[{name}] every due beacon ran with the screen-mode byte at {plant:#x} "
                                                          f"({[hex(m) for _, m, _ in h]})")
@@ -240,8 +245,10 @@ def sc_hold(patched, s, s2, rep, name, hold, release, what):
         rep(not h, f"[{name}] {what} held {IVL * 3 // 2 + 5} s at standby: no due beacon ({len(h)} hits {[(hex(m), x) for _, m, x in h]})")
         release(r)
         tr = r.ticks()
+        r.wr = time.time()
         r.wait_ticks((IVL + 12) * HZ)
         h = r.hits_after(tr)
+        r.hw = [w - r.wr for w in r.hit_walls(tr)]
         return r, tr, h
     except Exception:
         r.close()
@@ -256,7 +263,7 @@ def sc_mode69(patched, s, s2, rep):
     if res:
         r, tr, h = res
         try:
-            d = (h[0][0] - tr) / HZ if h else None
+            d = r.hw[0] if h else None
             rep(h and d <= 8, f"[mode69] standby (0) back: the due beacon {d} s later")
         finally:
             r.close()
@@ -269,7 +276,7 @@ def sc_owner(patched, s, s2, rep):
     if res:
         r, tr, h = res
         try:
-            d = (h[0][0] - tr) / HZ if h else None
+            d = r.hw[0] if h else None
             rep(h and d <= 8, f"[owner] screen released: the due beacon {d} s later")
         finally:
             r.close()
@@ -285,7 +292,7 @@ def sc_cps(patched, s, s2, rep):
     if res:
         r, tr, h = res
         try:
-            d = (h[0][0] - tr) / HZ if h else None
+            d = r.hw[0] if h else None
             rep(h and IVL - 6 <= d <= IVL + 8, f"[cps_off] bit set again: a due beacon {d} s later (one interval: re-armed)")
         finally:
             r.close()
