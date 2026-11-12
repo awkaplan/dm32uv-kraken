@@ -721,10 +721,15 @@ def check_f9(c):
 def window_retains(c, addr):
     """Does this QEMU's baseband voice window keep what is written to it? The image's older board model read zeros there;
     dm32uv-qemu main's dm32_dmrram is RAM. parrot_qemu_test checks the window bytes only where they are kept."""
-    old = read_mem(c, addr, 4)
-    m.wmem(c, addr, b"\x5a\xa5\x3c\xc3")
-    kept = read_mem(c, addr, 4) == b"\x5a\xa5\x3c\xc3"
-    m.wmem(c, addr, old)
+    probe = b"\x5a\xa5\x3c\xc3"
+    try:
+        old = read_mem(c, addr, 4)
+    except Exception:
+        return False                                    # not readable at all: unmapped
+    if c.command("M%x,4:%s" % (addr, probe.hex())) != "OK":
+        return False                                    # the older model refuses the write (m.wmem would exit the test)
+    kept = read_mem(c, addr, 4) == probe
+    c.command("M%x,4:%s" % (addr, old.hex()))
     return kept
 
 
