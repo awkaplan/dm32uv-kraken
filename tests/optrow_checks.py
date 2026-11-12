@@ -903,7 +903,7 @@ def boot_checks(patched, s, s2):
         "scr_open": (to_scr + " ok", None, c_level(2, [b"Off", b"On"], 0, "Scrambler On/Off", hdr=0x1C)),
         "scr_on": (to_scr + " ok down ok", popup_bp, c_back_in_cs(ROW_SCR, "Scrambler On (no key set)", ok_scr_on)),
         "scr_cancel": (to_scr + " ok down back", popup_bp, c_scr_cancel),
-        "scr_off": (to_scr + " ok down ok:2500 ok up ok", popup_bp, c_scr_off),
+        "scr_off": (to_scr + " ok down ok:?scr_popups ok up ok", popup_bp, c_scr_off),
         "fmt_open": (to_fmt + " ok", None, c_level(4, [b"fmt0 plain K", b"fmt1 rx=~K", b"fmt2 swap K", b"fmt3 bitrev K"], 0, "Scrambler Fmt")),
         "fmt_set": (to_fmt + " ok down down ok", None, c_back_in_list(ROW_FMT, "Scrambler Fmt fmt2", lambda b, rep: rep(scr_state(b)[0] and scr_state(b)[3] == 2, f"Scrambler Fmt: fmt = 2 {scr_state(b)}"))),
         "key_digits": (to_key + " ok k1 k2 k3", None, key_entry(b"0123", "typed 1 2 3 after the shown 0")),
@@ -921,13 +921,15 @@ def boot_checks(patched, s, s2):
         "bcn1": (to_aprs_beacon + " ok", send_bp, c_bcn(0, "one OK, the popup times out")),
         "bcn2": (to_aprs_beacon + " ok:60 ok", send_bp, c_bcn(1, "OK then OK within the window")),
         "bcn_other": (to_aprs_beacon + " ok:60 up", send_bp, c_bcn(0, "OK then Up (any other key cancels)")),
-        "bcn_timeout": (to_aprs_beacon + " ok:1500 ok", send_bp, c_bcn(0, "OK, 4 s idle, OK (the second OK arms again)")),
+        "bcn_timeout": (to_aprs_beacon + " ok:t450 ok", send_bp, c_bcn(0, "OK, 4 s idle, OK (the second OK arms again)")),
     }
     print("== booted runs (RX Monitor option level, Upload Beacon one-shot; about 1 minute, parallel)")
     BATCH = int(os.environ.get("OPTROW_PARALLEL", "12"))          # parallel QEMUs; 12 since the idle hook sleeps (qemu_menu.idle_wait):
     # each QEMU then takes ~1/4 core at idle, not one core, and 12 ran all 27 scenarios clean in 173 s on a loaded host (2026-11-06)
     only = os.environ.get("OPTROW_ONLY", "").split(",") if os.environ.get("OPTROW_ONLY") else None
-    run_scenarios(patched, scen, m.report, batch=BATCH, only=only)
+    # a gap that waits for the guest, not for key scans (qemu_menu.keys): Scrambler On shows its 3 warning popups (3 x 1.5 s of os_time_dly_ms), then the list is back
+    conds = {"scr_popups": lambda b: b.hits >= 3 and in_cs_list(b)}
+    run_scenarios(patched, scen, m.report, batch=BATCH, only=only, conds=conds)
     # pixel faithfulness against the stock Auto PowerOff level (first row: 'Off', highlighted, dot)
     fo, fs = frames.get("ours"), frames.get("stock")
     m.report(fo is not None and fs is not None, "frames of both levels captured")
